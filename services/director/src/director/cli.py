@@ -18,6 +18,7 @@ from . import __version__
 from .agent import review_pr as run_agent
 from .atomic_io import write_text_atomic
 from .bake_master import bake_master
+from .captions import write_captions
 from .concat import assemble_master, diff_takes
 from .config import settings
 from .continuous_narration import synth_continuous
@@ -150,6 +151,20 @@ def master(
         f"[green]master[/] {walkthrough_id}/{take_id}: "
         f"{len(manifest['segments'])} segments, sha256={manifest['master_sha256'][:12]}…"
     )
+
+
+@app.command("captions")
+def captions_cmd(
+    walkthrough_id: str = typer.Argument("v1"),
+) -> None:
+    """Generate walkthroughs/<id>/captions.vtt from narration.timing.json.
+
+    Writes one cue per step using each step's title + narration. The
+    walkthrough must have a continuous narration take on disk (run
+    `director synth-continuous <id>` first).
+    """
+    out = write_captions(_walkthrough_dir(walkthrough_id))
+    rprint(f"[green]captions[/] {walkthrough_id}: wrote {out}")
 
 
 @app.command("propose-steps")
