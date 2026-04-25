@@ -30,6 +30,8 @@ walkthroughs/*/steps/.narration-cache/
 # Render runtime state — recreated each run, not part of the deliverable.
 walkthroughs/*/.render-status.json
 walkthroughs/*/.render.log
+# Per-page feedback log (M6) — local-only telemetry.
+walkthroughs/*/.feedback.jsonl
 # Take artifacts ARE the demo deliverable — track them so the cutroom can be
 # deployed as a read-only public site. (Use git LFS at scale.)
 
