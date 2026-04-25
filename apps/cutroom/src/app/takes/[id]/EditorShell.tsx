@@ -30,7 +30,7 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 };
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
-import { Inspector } from "./Inspector";
+import { ChangesTimeline } from "./ChangesTimeline";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
 import type { MusicClip } from "@/lib/timeline";
@@ -110,6 +110,8 @@ export function EditorShell({
    *  user opens the transitions feature, suggestion preview when previewing
    *  a proposed block from the left rail. */
   const [canvasMode, setCanvasMode] = useState<"video" | "transitions" | "suggestion">("video");
+  /** Bottom panel: clip timeline vs chronological changes view. */
+  const [bottomMode, setBottomMode] = useState<"timeline" | "changes">("timeline");
   const [previewSuggestion, setPreviewSuggestion] = useState<{
     title: string;
     narration: string;
@@ -1109,49 +1111,63 @@ export function EditorShell({
         </section>
 
         <div className="editor-inspector-slot">
-          {selectedClipId && overlay ? (
-            <ClipInspector
-              overlay={overlay}
-              selectedClipId={selectedClipId}
-              sourceById={sourceById}
-              onPatch={patchClipState}
-              onRemove={removeClipState}
-              onRetake={(stepId) => { setSelectedStepId(stepId); aiReRunReview(); }}
-              onRenarrate={(stepId) => { setSelectedStepId(stepId); aiReNarrateSelected(); }}
-              onGenerateBanana={generateBananaClip}
-              onGenerateMusic={generateMusicClip}
-              musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
-              onApplyMusicSuggestion={applyMusicSuggestion}
-              transitions={transitions}
-              onUpdateTransition={updateTransition}
-              onOpenTransitionInCanvas={(id) => {
-                setActiveTransitionId(id);
-                setTransitionResetKey((n) => n + 1);
-                setCanvasMode("transitions");
-              }}
-              onEditStep={editStepInYaml}
-              busy={busyAction !== null}
-            />
-          ) : (
-            <Inspector
-              take={take}
-              step={selectedStep}
-              stepIndex={selectedStepIdx}
-              totalSteps={tracks.length}
-              onPrev={() => jumpStep(-1)}
-              onNext={() => jumpStep(1)}
-              takeId={takeId}
-              editTriggerCount={editNarrationTrigger}
-              genaiPreviewUrl={selectedStepId ? genaiByStep[selectedStepId] ?? null : null}
-              onDirectorActionStart={() => setBusyAction("retake")}
-              onDirectorActionEnd={() => setBusyAction(null)}
-            />
-          )}
+          <ClipInspector
+            overlay={overlay ?? { version: 2, clips: [] }}
+            selectedClipId={selectedClipId}
+            sourceById={sourceById}
+            onPatch={patchClipState}
+            onRemove={removeClipState}
+            onRetake={(stepId) => { setSelectedStepId(stepId); aiReRunReview(); }}
+            onRenarrate={(stepId) => { setSelectedStepId(stepId); aiReNarrateSelected(); }}
+            onGenerateBanana={generateBananaClip}
+            onGenerateMusic={generateMusicClip}
+            musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
+            onApplyMusicSuggestion={applyMusicSuggestion}
+            transitions={transitions}
+            onUpdateTransition={updateTransition}
+            onOpenTransitionInCanvas={(id) => {
+              setActiveTransitionId(id);
+              setTransitionResetKey((n) => n + 1);
+              setCanvasMode("transitions");
+            }}
+            onEditStep={editStepInYaml}
+            busy={busyAction !== null}
+          />
         </div>
       </div>
 
 
-      {overlay ? (
+      <div className="bottom-pane">
+        <div className="bottom-tabs">
+          <button
+            type="button"
+            className={`bottom-tab ${bottomMode === "timeline" ? "active" : ""}`}
+            onClick={() => setBottomMode("timeline")}
+          >
+            Timeline
+          </button>
+          <button
+            type="button"
+            className={`bottom-tab ${bottomMode === "changes" ? "active" : ""}`}
+            onClick={() => setBottomMode("changes")}
+          >
+            Changes
+          </button>
+        </div>
+        {bottomMode === "changes" ? (
+          <ChangesTimeline
+            walkthroughId={walkthrough.id}
+            onPreview={(c) => previewSuggestionFromRail({
+              title: c.title, narration: c.narration, reason: c.reason,
+              status: c.status, pr_title: c.pr_title, pr_number: c.pr_number,
+              frame_url: c.frame_url,
+            })}
+            onInsert={(c) => insertSuggestionAsClip({
+              step_id: c.step_id, title: c.title, narration: c.narration,
+              duration_ms: c.duration_ms,
+            })}
+          />
+        ) : overlay ? (
         <Timeline2
           overlay={overlay}
           sourceById={sourceById}
@@ -1178,6 +1194,7 @@ export function EditorShell({
           isClipStale={isClipStale}
           onRegenerateStale={regenerateAllStale}
           regenBusy={busyAction === "regen-all"}
+          onRemoveClip={removeClipState}
         />
       ) : (
         <Timeline
@@ -1196,6 +1213,7 @@ export function EditorShell({
           onZoom={(n) => setZoom(Math.max(12, Math.min(120, n)))}
         />
       )}
+      </div>
     </div>
   );
 }

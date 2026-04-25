@@ -41,6 +41,8 @@ interface Props {
   onRegenerateStale?: () => void;
   /** True while a regen sweep is in flight. */
   regenBusy?: boolean;
+  /** Right-click delete on a clip. */
+  onRemoveClip?: (id: string) => void;
 }
 
 const LABEL_GUTTER = 64;
@@ -156,13 +158,30 @@ export function Timeline2(p: Props) {
       setDrag(null);
       p.onInteractionEnd?.();
     }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onUp();
+    }
+    function onBlur() { onUp(); }
+    function onLeave(e: PointerEvent) {
+      // If the pointer leaves the document entirely, treat as release.
+      if (e.clientX <= 0 || e.clientY <= 0
+          || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+        onUp();
+      }
+    }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
+    window.addEventListener("pointerleave", onLeave);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("keydown", onEsc);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("keydown", onEsc);
     };
   }, [scrubbing, drag, p.zoom, totalMs, rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -306,6 +325,7 @@ export function Timeline2(p: Props) {
                 isClipStale={p.isClipStale}
                 onSelectClip={p.onSelectClip}
                 onClipPointerDown={startDrag}
+                onRemoveClip={p.onRemoveClip}
               />
             ))}
             <GhostRow rowIndex={rows} zoom={p.zoom} currentTime={p.currentTime} />
@@ -326,6 +346,7 @@ interface RowProps {
   isClipStale?: (clip: Clip) => boolean;
   onSelectClip: (id: string | null) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
+  onRemoveClip?: (id: string) => void;
 }
 
 function Row(p: RowProps) {
@@ -345,6 +366,7 @@ function Row(p: RowProps) {
             stale={p.isClipStale?.(c) ?? false}
             onSelect={p.onSelectClip}
             onPointerDown={p.onClipPointerDown}
+            onRemove={p.onRemoveClip}
           />
         ))}
         <Playhead time={p.currentTime} zoom={p.zoom} />
@@ -375,6 +397,7 @@ interface ClipProps {
   stale: boolean;
   onSelect: (id: string | null) => void;
   onPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
+  onRemove?: (id: string) => void;
 }
 
 function ClipBlock(p: ClipProps) {
@@ -437,7 +460,14 @@ function ClipBlock(p: ClipProps) {
         p.onPointerDown(p.clip, "move", e);
       }}
       onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id); }}
-      title={label}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (p.onRemove && window.confirm(`Delete this ${p.clip.kind} clip?`)) {
+          p.onRemove(p.clip.id);
+        }
+      }}
+      title={`${label} — right-click to delete`}
     >
       {fadeInPx > 4 ? <div className="tl3-fade tl3-fade-in" style={{ width: fadeInPx }} /> : null}
       {fadeOutPx > 4 ? <div className="tl3-fade tl3-fade-out" style={{ width: fadeOutPx }} /> : null}
