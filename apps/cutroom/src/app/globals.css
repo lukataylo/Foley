@@ -499,6 +499,54 @@ div > .folder-card.placeholder { cursor: default; }
 .sticky-mini .mini-title { font-size: 13.5px; color: var(--fg-2); margin-bottom: 6px; letter-spacing: -0.005em; }
 .sticky-mini .mini-pills { display: flex; flex-wrap: wrap; gap: 4px; }
 
+/* GitHub-branded "Watching" tile — octocat + repo link + live indicator */
+.gh-card { padding-top: 14px; }
+.gh-card .gh-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.gh-card .gh-mark {
+  color: #1d1d1f;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .gh-card .gh-mark { color: #ededed; }
+.gh-card .gh-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  color: var(--diff-added);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gh-card .gh-live .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--diff-added);
+  box-shadow: 0 0 0 3px rgba(52,199,123,0.18);
+  animation: gh-pulse 2.4s ease-in-out infinite;
+}
+@keyframes gh-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(52,199,123,0.18); }
+  50%      { box-shadow: 0 0 0 5px rgba(52,199,123,0.05); }
+}
+.gh-row { transition: background 120ms ease; padding-left: 6px; padding-right: 6px; margin: 0 -6px; border-radius: 6px; }
+.gh-row:hover { background: rgba(0,0,0,0.04); }
+[data-theme="dark"] .gh-row:hover { background: rgba(255,255,255,0.04); }
+.gh-row .ext-arrow {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  transition: transform 120ms ease, color 120ms ease;
+}
+.gh-row:hover .ext-arrow { color: var(--fg); transform: translate(2px, -2px); }
+
 /* Section labels inside a sticky card — used to introduce a sub-area */
 .sticky .sub-label {
   font-size: 10.5px;
