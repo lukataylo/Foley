@@ -4313,6 +4313,111 @@ a.back:hover { color: var(--fg); }
 .live-typed.align-center { top: 50%; transform: translateY(-50%); }
 .live-typed.align-bottom { bottom: 8%; }
 
+/* Preset gradient backgrounds — when bg_color is "aurora-amber" /
+   "aurora-pink" / etc. the typed clip becomes a full-bleed slide with
+   a layered gradient. The text stays vertically aligned via align-*. */
+.live-typed.has-bg-preset {
+  left: 0; right: 0;
+  padding: 8% 10%;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 4px 28px rgba(0,0,0,0.5);
+}
+.live-typed.has-bg-preset.align-top    { top: 0; bottom: auto; height: 100%; align-items: flex-start; padding-top: 12%; transform: none; }
+.live-typed.has-bg-preset.align-center { top: 0; bottom: auto; height: 100%; align-items: center; transform: none; }
+.live-typed.has-bg-preset.align-bottom { top: 0; bottom: auto; height: 100%; align-items: flex-end;   padding-bottom: 14%; }
+.live-typed.has-bg-preset > span { position: relative; z-index: 1; max-width: 100%; }
+
+.live-typed.has-bg-preset::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.live-typed.bg-aurora-pink::before {
+  background:
+    radial-gradient(900px 520px at 24% 100%, #ff80b8 0%, rgba(255,128,184,0) 70%),
+    radial-gradient(720px 540px at 70% 90%, #b074ff 0%, rgba(176,116,255,0) 70%),
+    radial-gradient(1200px 800px at 44% 50%, #5a2c8c 0%, rgba(90,44,140,0) 70%),
+    linear-gradient(160deg, #0a0612 0%, #1c0e2c 60%, #0a0612 100%);
+}
+.live-typed.bg-aurora-blue::before {
+  background:
+    radial-gradient(880px 520px at 22% 100%, #5dd6ff 0%, rgba(93,214,255,0) 70%),
+    radial-gradient(700px 520px at 72% 90%, #6a82ff 0%, rgba(106,130,255,0) 70%),
+    radial-gradient(1100px 800px at 50% 60%, #1f3a86 0%, rgba(31,58,134,0) 70%),
+    linear-gradient(160deg, #04080d 0%, #0a1628 60%, #03060a 100%);
+}
+.live-typed.bg-aurora-amber::before {
+  background:
+    radial-gradient(820px 520px at 28% 95%, #ffb37a 0%, rgba(255,179,122,0) 70%),
+    radial-gradient(640px 480px at 70% 92%, #f06a8d 0%, rgba(240,106,141,0) 70%),
+    radial-gradient(1000px 720px at 50% 40%, #6b2d3d 0%, rgba(107,45,61,0) 70%),
+    linear-gradient(165deg, #110307 0%, #2a0e16 60%, #100307 100%);
+}
+.live-typed.bg-aurora-mint::before {
+  background:
+    radial-gradient(820px 520px at 24% 100%, #76f0c4 0%, rgba(118,240,196,0) 70%),
+    radial-gradient(640px 520px at 72% 88%, #4ec9d0 0%, rgba(78,201,208,0) 70%),
+    radial-gradient(1000px 800px at 50% 50%, #1a4f5a 0%, rgba(26,79,90,0) 70%),
+    linear-gradient(160deg, #03100c 0%, #0a201c 60%, #03100c 100%);
+}
+.live-typed.bg-aurora-graphite::before {
+  background:
+    radial-gradient(1000px 600px at 50% 100%, #4f4f5a 0%, rgba(79,79,90,0) 75%),
+    radial-gradient(700px 520px at 28% 18%, #2d2d34 0%, rgba(45,45,52,0) 70%),
+    linear-gradient(170deg, #0a0a0c 0%, #16161a 60%, #050507 100%);
+}
+.live-typed.bg-void::before {
+  background:
+    radial-gradient(1200px 700px at 50% 30%, #16161c 0%, rgba(22,22,28,0) 70%),
+    #050505;
+}
+.live-typed.bg-paper::before {
+  background:
+    radial-gradient(900px 600px at 30% 20%, #f6e9ed 0%, rgba(246,233,237,0) 70%),
+    radial-gradient(900px 600px at 75% 90%, #eef0fb 0%, rgba(238,240,251,0) 70%),
+    linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%);
+}
+
+/* Inline edit affordance — when the typed clip is the selected one,
+   show a small pencil chip that swaps the typed.js display for an
+   editable textarea. */
+.live-typed.is-editable { pointer-events: auto; cursor: text; }
+.live-typed-editor {
+  pointer-events: auto;
+  width: 100%; max-width: 80%;
+  min-height: 1.4em;
+  resize: none;
+  background: rgba(0,0,0,0.35);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  border: 1px dashed rgba(255,255,255,0.5);
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+}
+.live-typed-edit-btn {
+  pointer-events: auto;
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 2;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.live-typed-edit-btn:hover { background: rgba(0,0,0,0.7); }
+
 .live-caption {
   position: absolute;
   left: 50%;

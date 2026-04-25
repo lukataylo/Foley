@@ -35,9 +35,23 @@ interface Props {
   videoStyle?: React.CSSProperties;
   /** Bumped after asset re-synth so audio/video src= queries bust cache. */
   assetVersion?: number;
+  /** Currently selected clip id — used to enable inline-edit on typed clips. */
+  selectedClipId?: string | null;
+  /** Patch a clip from inside the canvas (e.g. inline edit of typed text). */
+  onPatchClip?: (id: string, patch: Partial<Clip>) => void;
   onTimeUpdate: (t: number) => void;
   onPlayStateChange: (playing: boolean) => void;
 }
+
+const TYPED_BG_PRESETS = new Set([
+  "aurora-amber",
+  "aurora-pink",
+  "aurora-blue",
+  "aurora-mint",
+  "aurora-graphite",
+  "void",
+  "paper",
+]);
 
 function inRange(c: { start_ms: number; duration_ms: number }, tMs: number) {
   return tMs >= c.start_ms && tMs < c.start_ms + c.duration_ms;
@@ -242,26 +256,13 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
 
         {/* Typed text overlays */}
         {activeTyped.map((t) => (
-          <div
+          <TypedClipView
             key={t.id}
-            className={`live-typed align-${t.align}`}
-            style={{
-              fontFamily: t.font_family,
-              fontSize: t.font_size_px,
-              color: t.color,
-              background: t.bg_color === "transparent" ? "transparent" : t.bg_color,
-            }}
-          >
-            <TypedText
-              strings={t.strings}
-              loop={t.loop}
-              showCursor={t.show_cursor}
-              cursorChar={t.cursor_char}
-              typeSpeed={t.type_speed_ms}
-              backSpeed={t.back_speed_ms}
-              resetKey={`${t.id}-${tMs >= t.start_ms ? "live" : "idle"}`}
-            />
-          </div>
+            clip={t}
+            tMs={tMs}
+            isSelected={p.selectedClipId === t.id}
+            onPatch={p.onPatchClip}
+          />
         ))}
 
         {/* Caption */}
@@ -286,3 +287,91 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     </div>
   );
 });
+
+// Typed clip — renders the gradient bg + animated text + inline-edit
+// affordance when the clip is selected. Pulled out so the editing state
+// can live in local component state without polluting LivePreview.
+function TypedClipView({
+  clip,
+  tMs,
+  isSelected,
+  onPatch,
+}: {
+  clip: TypedClip;
+  tMs: number;
+  isSelected: boolean;
+  onPatch?: (id: string, patch: Partial<Clip>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(clip.strings.join("\n"));
+  const isPreset = TYPED_BG_PRESETS.has(clip.bg_color);
+
+  const presetClass = isPreset ? `has-bg-preset bg-${clip.bg_color}` : "";
+  const editableClass = isSelected && onPatch ? "is-editable" : "";
+
+  const inlineStyle: React.CSSProperties = {
+    fontFamily: clip.font_family,
+    fontSize: clip.font_size_px,
+    color: clip.color,
+    ...(isPreset
+      ? {}
+      : { background: clip.bg_color === "transparent" ? "transparent" : clip.bg_color }),
+  };
+
+  function commit() {
+    if (!onPatch) return setEditing(false);
+    const lines = draft.split("\n").map((l) => l).filter((l) => l.length > 0);
+    onPatch(clip.id, { strings: lines.length > 0 ? lines : [draft] });
+    setEditing(false);
+  }
+
+  return (
+    <div
+      className={`live-typed align-${clip.align} ${presetClass} ${editableClass}`}
+      style={inlineStyle}
+    >
+      {isSelected && onPatch && !editing ? (
+        <button
+          type="button"
+          className="live-typed-edit-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDraft(clip.strings.join("\n"));
+            setEditing(true);
+          }}
+        >
+          ✎ edit
+        </button>
+      ) : null}
+
+      {editing ? (
+        <textarea
+          autoFocus
+          className="live-typed-editor"
+          value={draft}
+          rows={Math.max(1, draft.split("\n").length)}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              setEditing(false);
+            }
+          }}
+        />
+      ) : (
+        <TypedText
+          strings={clip.strings}
+          loop={clip.loop}
+          showCursor={clip.show_cursor}
+          cursorChar={clip.cursor_char}
+          typeSpeed={clip.type_speed_ms}
+          backSpeed={clip.back_speed_ms}
+          resetKey={`${clip.id}-${tMs >= clip.start_ms ? "live" : "idle"}`}
+        />
+      )}
+    </div>
+  );
+}

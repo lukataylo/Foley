@@ -36,6 +36,19 @@ interface Props {
   busy?: boolean;
 }
 
+// Background presets shared with TransitionSpec — when a typed clip's
+// bg_color matches one of these, LivePreview applies the matching aurora
+// gradient class instead of a solid color.
+const TYPED_BG_PRESETS = new Set([
+  "aurora-amber",
+  "aurora-pink",
+  "aurora-blue",
+  "aurora-mint",
+  "aurora-graphite",
+  "void",
+  "paper",
+]);
+
 // Curated ElevenLabs voice presets. The full list is huge; these are the
 // voices most likely to read product walkthrough narration well.
 const VOICE_PRESETS: { id: string; name: string; flavor: string }[] = [
@@ -686,9 +699,36 @@ function TypedBody({
           <input type="color" value={clip.color} onChange={(e) => onPatch(clip.id, { color: e.target.value })} />
         </Row>
         <Row label="Background">
-          <input type="color" value={clip.bg_color === "transparent" ? "#000000" : clip.bg_color}
-            onChange={(e) => onPatch(clip.id, { bg_color: e.target.value })} />
+          <select
+            className="ci-select"
+            value={TYPED_BG_PRESETS.has(clip.bg_color) ? clip.bg_color : (clip.bg_color === "transparent" ? "transparent" : "solid")}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "transparent") onPatch(clip.id, { bg_color: "transparent" });
+              else if (v === "solid") onPatch(clip.id, { bg_color: "#000000" });
+              else onPatch(clip.id, { bg_color: v });
+            }}
+          >
+            <option value="transparent">None (transparent)</option>
+            <option value="solid">Solid color</option>
+            <option value="aurora-amber">Aurora amber</option>
+            <option value="aurora-pink">Aurora pink</option>
+            <option value="aurora-blue">Aurora blue</option>
+            <option value="aurora-mint">Aurora mint</option>
+            <option value="aurora-graphite">Aurora graphite</option>
+            <option value="void">Void</option>
+            <option value="paper">Paper</option>
+          </select>
         </Row>
+        {!TYPED_BG_PRESETS.has(clip.bg_color) && clip.bg_color !== "transparent" ? (
+          <Row label="Solid hex">
+            <input
+              type="color"
+              value={clip.bg_color}
+              onChange={(e) => onPatch(clip.id, { bg_color: e.target.value })}
+            />
+          </Row>
+        ) : null}
         <Row label="Align">
           <select value={clip.align} onChange={(e) => onPatch(clip.id, { align: e.target.value as "top" | "center" | "bottom" })}>
             <option value="top">Top</option>

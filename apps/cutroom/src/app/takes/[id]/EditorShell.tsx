@@ -1116,6 +1116,8 @@ export function EditorShell({
                   isPlaying={isPlaying}
                   videoStyle={videoTransform}
                   assetVersion={assetVersion}
+                  selectedClipId={selectedClipId}
+                  onPatchClip={patchClipState}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);
