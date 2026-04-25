@@ -2487,6 +2487,71 @@ a.back:hover { color: var(--fg); }
 .editor-load-error-hint { opacity: 0.85; }
 [data-theme="dark"] .editor-load-error { color: #ff9d92; }
 
+.transcript-panel {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  max-height: 280px;
+  display: flex; flex-direction: column;
+}
+.transcript-panel-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.02);
+  font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--muted);
+}
+[data-theme="dark"] .transcript-panel-head { background: rgba(255,255,255,0.03); }
+.transcript-panel-label { font-weight: 600; }
+.transcript-panel-hint { font-size: 10.5px; opacity: 0.7; text-transform: none; letter-spacing: 0; }
+
+.transcript-list {
+  list-style: none; padding: 0; margin: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.transcript-row {
+  display: grid; grid-template-columns: 56px 1fr; gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 100ms ease;
+  border-bottom: 1px solid var(--border);
+}
+.transcript-row:last-child { border-bottom: none; }
+.transcript-row:hover { background: rgba(0,0,0,0.04); }
+[data-theme="dark"] .transcript-row:hover { background: rgba(255,255,255,0.04); }
+.transcript-row.is-active {
+  background: rgba(245, 185, 74, 0.14);
+  border-left: 3px solid var(--brand-accent, #f5b94a);
+  padding-left: 9px;
+}
+.transcript-ts {
+  font-family: ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+  align-self: start;
+  padding-top: 1px;
+}
+.transcript-row.is-active .transcript-ts {
+  color: var(--brand-accent, #f5b94a);
+  font-weight: 600;
+}
+.transcript-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.transcript-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+.transcript-narration {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--fg);
+  opacity: 0.85;
+}
+
 .editor-add-step-row {
   display: flex; align-items: center; gap: 12px;
   padding: 16px 0 4px;

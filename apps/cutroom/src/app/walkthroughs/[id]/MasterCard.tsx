@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TranscriptPanel } from "@/components/TranscriptPanel";
 
 interface MasterBackup {
   id: string;
@@ -41,6 +42,7 @@ export function MasterCard({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [backups, setBackups] = useState<MasterBackup[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -87,6 +89,7 @@ export function MasterCard({
 
       {/* Cache-bust the player when the master swaps so the user sees the new clip. */}
       <video
+        ref={videoRef}
         controls
         preload="metadata"
         src={`${videoUrl}?t=${masterSha ?? "x"}`}
@@ -104,6 +107,8 @@ export function MasterCard({
           default={false}
         />
       </video>
+
+      <TranscriptPanel walkthroughId={walkthroughId} videoRef={videoRef} />
 
       <div className="meta">
         {(totalDurationMs / 1000).toFixed(1)}s
