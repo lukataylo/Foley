@@ -67,6 +67,7 @@ export function Timeline2(p: Props) {
   const [scrubbing, setScrubbing] = useState(false);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string; kind: ClipKind } | null>(null);
 
   const totalMs = Math.max(totalDurationMs(p.overlay), 1);
   const totalSeconds = totalMs / 1000;
@@ -230,6 +231,30 @@ export function Timeline2(p: Props) {
     return () => window.removeEventListener("mousedown", onDoc);
   }, [addOpen]);
 
+  // Click outside the context menu closes it.
+  useEffect(() => {
+    if (!ctxMenu) return;
+    function onDoc(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest(".tl3-ctxmenu")) setCtxMenu(null);
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === "Escape") setCtxMenu(null); }
+    function onScroll() { setCtxMenu(null); }
+    window.addEventListener("mousedown", onDoc);
+    window.addEventListener("keydown", onEsc);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onEsc);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [ctxMenu]);
+
+  function openCtxMenu(clip: Clip, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY, clipId: clip.id, kind: clip.kind });
+  }
+
   return (
     <section className="timeline tl3">
       <div className="timeline-bar tl3-bar">
@@ -325,11 +350,41 @@ export function Timeline2(p: Props) {
                 isClipStale={p.isClipStale}
                 onSelectClip={p.onSelectClip}
                 onClipPointerDown={startDrag}
-                onRemoveClip={p.onRemoveClip}
+                onContextMenu={openCtxMenu}
               />
             ))}
             <GhostRow rowIndex={rows} zoom={p.zoom} currentTime={p.currentTime} />
           </div>
+          {ctxMenu && (
+            <div
+              className="tl3-ctxmenu"
+              style={{ left: ctxMenu.x, top: ctxMenu.y }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="tl3-ctxmenu-head">{ctxMenu.kind} clip</div>
+              <button
+                type="button"
+                className="tl3-ctxmenu-item"
+                onClick={() => {
+                  p.onSelectClip(ctxMenu.clipId);
+                  setCtxMenu(null);
+                }}
+              >
+                Edit in inspector
+              </button>
+              <button
+                type="button"
+                className="tl3-ctxmenu-item danger"
+                onClick={() => {
+                  p.onRemoveClip?.(ctxMenu.clipId);
+                  setCtxMenu(null);
+                }}
+              >
+                Delete clip
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -346,7 +401,7 @@ interface RowProps {
   isClipStale?: (clip: Clip) => boolean;
   onSelectClip: (id: string | null) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
-  onRemoveClip?: (id: string) => void;
+  onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
 }
 
 function Row(p: RowProps) {
@@ -366,7 +421,7 @@ function Row(p: RowProps) {
             stale={p.isClipStale?.(c) ?? false}
             onSelect={p.onSelectClip}
             onPointerDown={p.onClipPointerDown}
-            onRemove={p.onRemoveClip}
+            onContextMenu={p.onContextMenu}
           />
         ))}
         <Playhead time={p.currentTime} zoom={p.zoom} />
@@ -397,7 +452,7 @@ interface ClipProps {
   stale: boolean;
   onSelect: (id: string | null) => void;
   onPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
-  onRemove?: (id: string) => void;
+  onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
 }
 
 function ClipBlock(p: ClipProps) {
@@ -460,14 +515,8 @@ function ClipBlock(p: ClipProps) {
         p.onPointerDown(p.clip, "move", e);
       }}
       onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id); }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (p.onRemove && window.confirm(`Delete this ${p.clip.kind} clip?`)) {
-          p.onRemove(p.clip.id);
-        }
-      }}
-      title={`${label} — right-click to delete`}
+      onContextMenu={(e) => p.onContextMenu?.(p.clip, e)}
+      title={`${label} — right-click for menu`}
     >
       {fadeInPx > 4 ? <div className="tl3-fade tl3-fade-in" style={{ width: fadeInPx }} /> : null}
       {fadeOutPx > 4 ? <div className="tl3-fade tl3-fade-out" style={{ width: fadeOutPx }} /> : null}
