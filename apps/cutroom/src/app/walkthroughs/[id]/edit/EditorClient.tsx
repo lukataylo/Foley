@@ -70,6 +70,8 @@ export function EditorClient({
   const [steps, setSteps] = useState<ClientStep[]>(initialSteps);
   const [stepStatus, setStepStatus] = useState<Record<string, SaveStatus>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const [render, setRender] = useState<RenderPoll | null>(null);
   const [skipNarration, setSkipNarration] = useState(false);
@@ -182,6 +184,52 @@ export function EditorClient({
       setTitleStatus("error");
     }
   }, [displayName, initialDisplayName, walkthroughId, router]);
+
+  const persistOrder = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        const r = await fetch(`/api/walkthroughs/${walkthroughId}/steps/reorder`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: orderedIds }),
+        });
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          console.error("reorder failed", data);
+          // Roll the UI back to whatever the server thinks is canonical.
+          router.refresh();
+        }
+      } catch (err) {
+        console.error("reorder network error", err);
+        router.refresh();
+      }
+    },
+    [walkthroughId, router],
+  );
+
+  const handleDrop = useCallback(
+    (overId: string) => {
+      if (!dragId || dragId === overId) {
+        setDragId(null);
+        setDragOverId(null);
+        return;
+      }
+      setSteps((prev) => {
+        const fromIdx = prev.findIndex((s) => s.id === dragId);
+        const toIdx = prev.findIndex((s) => s.id === overId);
+        if (fromIdx < 0 || toIdx < 0) return prev;
+        const next = prev.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        // Fire-and-forget the server write; we already moved the UI optimistically.
+        void persistOrder(next.map((s) => s.id));
+        return next;
+      });
+      setDragId(null);
+      setDragOverId(null);
+    },
+    [dragId, persistOrder],
+  );
 
   const addStep = useCallback(async () => {
     setAddStepError(null);
@@ -342,6 +390,17 @@ export function EditorClient({
               step={s}
               status={stepStatus[s.id] ?? "idle"}
               busy={busy === s.id}
+              isDragging={dragId === s.id}
+              isDragTarget={dragOverId === s.id && dragId !== null && dragId !== s.id}
+              onDragStart={() => setDragId(s.id)}
+              onDragEnd={() => {
+                setDragId(null);
+                setDragOverId(null);
+              }}
+              onDragEnter={() => {
+                if (dragId && dragId !== s.id) setDragOverId(s.id);
+              }}
+              onDrop={() => handleDrop(s.id)}
               onChange={(patch) => updateStepLocal(s.id, patch)}
               onCommit={(patch) => persistStep(s.id, patch)}
               onDelete={() => deleteStep(s.id)}
@@ -372,20 +431,68 @@ interface StepCardProps {
   step: ClientStep;
   status: SaveStatus;
   busy: boolean;
+  isDragging: boolean;
+  isDragTarget: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragEnter: () => void;
+  onDrop: () => void;
   onChange: (patch: Partial<ClientStep>) => void;
   onCommit: (patch: { title?: string; narration?: string; duration_ms?: number }) => void;
   onDelete: () => void;
 }
 
-function StepCard({ index, step, status, busy, onChange, onCommit, onDelete }: StepCardProps) {
+function StepCard({
+  index,
+  step,
+  status,
+  busy,
+  isDragging,
+  isDragTarget,
+  onDragStart,
+  onDragEnd,
+  onDragEnter,
+  onDrop,
+  onChange,
+  onCommit,
+  onDelete,
+}: StepCardProps) {
   const hasCaptureError = !!step.captureError;
   const hasCaptureWarnings = (step.captureWarnings?.length ?? 0) > 0;
   return (
     <article
       className={`editor-step ${busy ? "is-busy" : ""} ${
         hasCaptureError ? "has-capture-error" : hasCaptureWarnings ? "has-capture-warning" : ""
-      }`}
+      } ${isDragging ? "is-dragging" : ""} ${isDragTarget ? "is-drag-target" : ""}`}
+      onDragOver={(e) => {
+        if (isDragging || isDragTarget) {
+          e.preventDefault();
+          // dropEffect must be set every onDragOver for the drop to fire.
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDragEnter={onDragEnter}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
     >
+      <button
+        type="button"
+        className="step-drag-handle"
+        title="Drag to reorder"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          // Required for Firefox to actually start the drag.
+          e.dataTransfer.setData("text/plain", step.id);
+          onDragStart();
+        }}
+        onDragEnd={onDragEnd}
+        aria-label={`Reorder step ${index + 1}`}
+      >
+        ⋮⋮
+      </button>
       <aside className="step-thumb">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

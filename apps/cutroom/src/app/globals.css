@@ -2434,16 +2434,39 @@ a.back:hover { color: var(--fg); }
 }
 
 .editor-step {
-  display: grid; grid-template-columns: 220px 1fr; gap: 18px;
+  display: grid; grid-template-columns: 28px 220px 1fr; gap: 14px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 16px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 160ms ease, transform 160ms ease;
+  transition: box-shadow 160ms ease, transform 160ms ease, opacity 160ms ease;
 }
 .editor-step:hover { box-shadow: var(--shadow-md); }
 .editor-step.is-busy { opacity: 0.6; pointer-events: none; }
+.editor-step.is-dragging { opacity: 0.45; }
+.editor-step.is-drag-target {
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.5) inset;
+}
+.step-drag-handle {
+  align-self: stretch;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  letter-spacing: -2px;
+  cursor: grab;
+  border-radius: 6px;
+  padding: 0;
+  user-select: none;
+  opacity: 0.5;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+.step-drag-handle:hover { opacity: 1; background: rgba(0,0,0,0.04); }
+.step-drag-handle:active { cursor: grabbing; }
+[data-theme="dark"] .step-drag-handle:hover { background: rgba(255,255,255,0.05); }
 .editor-load-error {
   background: rgba(220, 80, 70, 0.10);
   border: 1px solid rgba(220, 80, 70, 0.4);
@@ -2515,7 +2538,9 @@ a.back:hover { color: var(--fg); }
 .editor-step.has-capture-error { box-shadow: 0 0 0 1px rgba(220, 80, 70, 0.55) inset; }
 .editor-step.has-capture-warning { box-shadow: 0 0 0 1px rgba(245, 185, 74, 0.55) inset; }
 @media (max-width: 720px) {
-  .editor-step { grid-template-columns: 1fr; }
+  .editor-step { grid-template-columns: 28px 1fr; }
+  .editor-step .step-thumb { grid-column: 1 / -1; }
+  .editor-step .step-body { grid-column: 1 / -1; }
 }
 
 .step-thumb-dot {
