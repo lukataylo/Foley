@@ -178,9 +178,9 @@ export default async function WalkthroughDetailPage({
   );
 }
 
-function activityBucketLabel(iso: string): { label: string; rank: number } {
+function activityBucketLabel(iso: string): { label: string; rank: number; collapse: boolean } {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { label: "—", rank: -1 };
+  if (Number.isNaN(d.getTime())) return { label: "—", rank: -1, collapse: false };
   const today = new Date();
   const yest = new Date(today);
   yest.setDate(yest.getDate() - 1);
@@ -188,11 +188,12 @@ function activityBucketLabel(iso: string): { label: string; rank: number } {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
-  if (sameDay(d, today)) return { label: "Today", rank: 100 };
-  if (sameDay(d, yest)) return { label: "Yesterday", rank: 99 };
+  if (sameDay(d, today)) return { label: "Today", rank: 100, collapse: false };
+  if (sameDay(d, yest)) return { label: "Yesterday", rank: 99, collapse: false };
   return {
     label: d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
     rank: -d.getTime(),
+    collapse: true,
   };
 }
 
@@ -206,10 +207,10 @@ interface ActivityTake {
 
 function ActivityTimeline({ takes }: { takes: ActivityTake[] }) {
   const sorted = [...takes].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const groups = new Map<string, { label: string; rank: number; entries: ActivityTake[] }>();
+  const groups = new Map<string, { label: string; rank: number; collapse: boolean; entries: ActivityTake[] }>();
   for (const t of sorted) {
-    const { label, rank } = activityBucketLabel(t.created_at);
-    const g = groups.get(label) ?? { label, rank, entries: [] };
+    const { label, rank, collapse } = activityBucketLabel(t.created_at);
+    const g = groups.get(label) ?? { label, rank, collapse, entries: [] };
     g.entries.push(t);
     groups.set(label, g);
   }
@@ -220,20 +221,57 @@ function ActivityTimeline({ takes }: { takes: ActivityTake[] }) {
       {buckets.map((b) => (
         <div key={b.label} className="activity-bucket">
           <div className="activity-bucket-head">{b.label}</div>
-          {b.entries.map((t) => (
-            <div key={t.id} className={`activity-row status-${t.status}`}>
-              <span className="activity-when">{formatTime(t.created_at)}</span>
-              <span className="activity-body">
-                <strong>{t.id}</strong>
-                {t.pr_title ? <span className="activity-detail"> · {t.pr_title}</span> : null}
-                {t.promoted_from ? (
-                  <span className="activity-detail"> · promoted from {t.promoted_from}</span>
-                ) : null}
-              </span>
-            </div>
-          ))}
+          {b.collapse ? (
+            <CollapsedDay entries={b.entries} />
+          ) : (
+            b.entries.map((t) => (
+              <div key={t.id} className={`activity-row status-${t.status}`}>
+                <span className="activity-when">{formatTime(t.created_at)}</span>
+                <span className="activity-body">
+                  <strong>{t.id}</strong>
+                  {t.pr_title ? <span className="activity-detail"> · {t.pr_title}</span> : null}
+                  {t.promoted_from ? (
+                    <span className="activity-detail"> · promoted from {t.promoted_from}</span>
+                  ) : null}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Older days collapse into one line: "N takes — promoted, drafting, …".
+// Keeps the activity panel scannable when history grows past a few days.
+function CollapsedDay({ entries }: { entries: ActivityTake[] }) {
+  const counts = entries.reduce<Record<string, number>>((acc, t) => {
+    acc[t.status] = (acc[t.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const total = entries.length;
+  const dominantStatus =
+    Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "ready";
+  const idRange = (() => {
+    if (entries.length === 1) return entries[0].id;
+    const first = entries[entries.length - 1].id;
+    const last = entries[0].id;
+    return first === last ? first : `${first} → ${last}`;
+  })();
+
+  return (
+    <div className={`activity-row activity-row-collapsed status-${dominantStatus}`}>
+      <span className="activity-when">{total} ×</span>
+      <span className="activity-body">
+        <strong>{idRange}</strong>
+        <span className="activity-detail">
+          {" · "}
+          {Object.entries(counts)
+            .map(([status, n]) => `${n} ${status}`)
+            .join(", ")}
+        </span>
+      </span>
     </div>
   );
 }
