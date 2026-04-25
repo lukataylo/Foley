@@ -2,7 +2,7 @@
   "walkthrough_id": "v1",
   "take_id": "take-007",
   "master_path": "master.mp4",
-  "master_sha256": "e48f2df9f2d4fe53d9f426e15204a9664e50dfa7d789fb2427de7cb10307acce",
+  "master_sha256": "38e50a2415da914e3f38ec3747dd52e3d70c9cf2e66c0ad0cdd279dd827b3e0e",
   "segments": [
     {
       "step_id": "intro",
@@ -36,7 +36,7 @@
       "step_id": "mark_done",
       "fingerprint": "61c900a0be73e52d",
       "segment_path": "segments/mark_done.mp4",
-      "segment_sha256": "32f36822e3838f0a7aa6f73183456bc5d74d00d1e2a4308743911c42fa59d203",
+      "segment_sha256": "2af415b523d5b7d7a8acd09a06a04904bf361fd513dce87b0428d27cb3d43d89",
       "duration_ms": 5500
     },
     {

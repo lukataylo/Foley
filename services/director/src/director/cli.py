@@ -153,6 +153,18 @@ def review(
     )
 
     rprint(f"\n[bold]director's verdict[/]: {verdict.summary}\n")
+    _print_verdict_table(verdict)
+    _retake_and_assemble(
+        wt,
+        verdict,
+        take_id=f"take-{pr_number:03d}",
+        parent_take=parent_take,
+        pr_number=pr_number,
+        pr_title=pr_meta.get("title", ""),
+    )
+
+
+def _print_verdict_table(verdict) -> None:
     table = Table()
     table.add_column("step")
     table.add_column("status")
@@ -162,37 +174,47 @@ def review(
         table.add_row(d.step_id, f"[{style}]{d.status.value}[/]", d.reason)
     rprint(table)
 
-    # Retake every CHANGED/ADDED step using the proposed_step spec.
-    for d in verdict.step_diffs:
-        if d.status in (StepStatus.CHANGED, StepStatus.ADDED) and d.proposed_step is not None:
-            capture_step(wt, d.proposed_step, settings.walkthroughs_dir, force=True)
-            paths = settings.walkthroughs_dir / wt.id / "steps" / f"{d.proposed_step.id}.narration.mp3"
-            synth_narration(d.proposed_step.narration, paths, voice_id=wt.brand.voice_id)
-            rprint(f"  retook [yellow]{d.proposed_step.id}[/]")
 
-    # For the master concat, we need the walkthrough Step list to reflect ADDED steps.
-    extended_steps = list(wt.steps)
-    for d in verdict.step_diffs:
-        if d.status is StepStatus.ADDED and d.proposed_step is not None:
-            extended_steps.append(d.proposed_step)
-    wt = wt.model_copy(update={"steps": extended_steps})
+@app.command("review-fixture")
+def review_fixture(
+    fixture: str = typer.Argument(..., help="Fixture dir under tests/fixtures/"),
+    walkthrough_id: str = typer.Argument("v1"),
+    parent_take: str = typer.Option("master", "--parent"),
+) -> None:
+    """End-to-end review using a saved fixture instead of fetching a live PR.
 
-    take_id = f"take-{pr_number:03d}"
-    manifest = assemble_master(
+    Useful for replicating the production loop locally — point the demo app
+    at the post-PR state, then run this against the matching fixture.
+    """
+    import json as _json
+
+    fixtures_root = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
+    fdir = fixtures_root / fixture
+    if not fdir.exists():
+        rprint(f"[red]no fixture[/]: {fdir}")
+        raise typer.Exit(1)
+
+    pr = _json.loads((fdir / "pr.json").read_text())
+    diff = (fdir / "pr.diff").read_text()
+    wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
+
+    rprint(f"[bold]review-fixture[/] {fixture}: {pr.get('title', '')}")
+    verdict = run_agent(
+        wt, diff, pr_title=pr.get("title", ""), pr_body=pr.get("body", "")
+    )
+    rprint(f"\n[bold]director's verdict[/]: {verdict.summary}\n")
+    _print_verdict_table(verdict)
+
+    pr_number = int(pr.get("number") or 0)
+    take_id = f"take-{pr_number:03d}" if pr_number else f"take-{fixture}"
+    _retake_and_assemble(
         wt,
-        settings.walkthroughs_dir,
+        verdict,
         take_id=take_id,
-        step_diffs=verdict.step_diffs,
-        parent_take_id=parent_take,
-        pr_number=pr_number,
-        pr_title=pr_meta.get("title", ""),
-        status=TakeStatus.READY,
+        parent_take=parent_take,
+        pr_number=pr_number or None,
+        pr_title=pr.get("title", ""),
     )
-    rprint(
-        f"\n[green]✓[/] {take_id}: {len(manifest['segments'])} segments, "
-        f"sha256={manifest['master_sha256'][:12]}…"
-    )
-    rprint(f"  [dim]open http://localhost:3000/takes/{take_id}[/]")
 
 
 _STATUS_STYLES = {
@@ -201,6 +223,46 @@ _STATUS_STYLES = {
     StepStatus.ADDED: "green",
     StepStatus.REMOVED: "red",
 }
+
+
+def _retake_and_assemble(
+    wt,
+    verdict,
+    *,
+    take_id: str,
+    parent_take: str = "master",
+    pr_number: int | None = None,
+    pr_title: str | None = None,
+):
+    """Shared post-agent pipeline: retake CHANGED/ADDED steps, build new master."""
+    for d in verdict.step_diffs:
+        if d.status in (StepStatus.CHANGED, StepStatus.ADDED) and d.proposed_step is not None:
+            capture_step(wt, d.proposed_step, settings.walkthroughs_dir, force=True)
+            paths = settings.walkthroughs_dir / wt.id / "steps" / f"{d.proposed_step.id}.narration.mp3"
+            synth_narration(d.proposed_step.narration, paths, voice_id=wt.brand.voice_id)
+            rprint(f"  retook [yellow]{d.proposed_step.id}[/]")
+
+    extended_steps = list(wt.steps)
+    for d in verdict.step_diffs:
+        if d.status is StepStatus.ADDED and d.proposed_step is not None:
+            extended_steps.append(d.proposed_step)
+    wt = wt.model_copy(update={"steps": extended_steps})
+
+    manifest = assemble_master(
+        wt,
+        settings.walkthroughs_dir,
+        take_id=take_id,
+        step_diffs=verdict.step_diffs,
+        parent_take_id=parent_take,
+        pr_number=pr_number,
+        pr_title=pr_title,
+        status=TakeStatus.READY,
+    )
+    rprint(
+        f"\n[green]✓[/] {take_id}: {len(manifest['segments'])} segments, "
+        f"sha256={manifest['master_sha256'][:12]}…"
+    )
+    rprint(f"  [dim]open http://localhost:3000/takes/{take_id}[/]")
 
 
 @app.command("test-agent")
