@@ -2487,6 +2487,146 @@ a.back:hover { color: var(--fg); }
 .editor-load-error-hint { opacity: 0.85; }
 [data-theme="dark"] .editor-load-error { color: #ff9d92; }
 
+/* Ask-this-walkthrough widget on /docs/<id> ───────────────────────── */
+.ask-widget-launcher {
+  position: fixed; right: 24px; bottom: 24px;
+  z-index: 60;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--brand-accent, #f5b94a);
+  color: #1d1d1f;
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.ask-widget-launcher:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.22);
+}
+.ask-widget-launcher-icon { font-size: 16px; }
+
+.ask-widget {
+  position: fixed; right: 24px; bottom: 24px;
+  z-index: 60;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 16px 38px rgba(0,0,0,0.22);
+  overflow: hidden;
+}
+.ask-widget-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  background: rgba(0,0,0,0.04);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="dark"] .ask-widget-head { background: rgba(255,255,255,0.04); }
+.ask-widget-title {
+  font-weight: 600; font-size: 13.5px;
+  letter-spacing: 0.01em;
+}
+.ask-widget-close {
+  margin-left: auto;
+  background: none; border: none;
+  font-size: 22px; line-height: 1;
+  color: var(--muted); opacity: 0.7;
+  cursor: pointer; padding: 0 4px;
+}
+.ask-widget-close:hover { opacity: 1; }
+.ask-widget-body {
+  flex: 1; overflow-y: auto;
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ask-widget-empty {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ask-widget-turn {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ask-widget-question {
+  font-size: 12px; color: var(--muted);
+  font-weight: 500;
+  padding-bottom: 2px;
+}
+.ask-widget-answer {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.ask-widget-citations {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 4px;
+}
+.ask-widget-citation {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  background: rgba(0,112,243,0.08);
+  border: 1px solid rgba(0,112,243,0.3);
+  color: var(--link, #0070f3);
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.ask-widget-citation:hover {
+  background: rgba(0,112,243,0.15);
+}
+.ask-widget-error {
+  margin: 0 14px 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #b13a30;
+  background: rgba(220, 80, 70, 0.08);
+  border-radius: 6px;
+}
+[data-theme="dark"] .ask-widget-error { color: #ff9d92; }
+.ask-widget-form {
+  display: flex; gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="dark"] .ask-widget-form { background: rgba(255,255,255,0.02); }
+.ask-widget-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit; font-size: 13.5px;
+}
+.ask-widget-input:focus { outline: 2px solid var(--brand-accent, #f5b94a); outline-offset: -1px; }
+.ask-widget-input:disabled { opacity: 0.6; }
+.ask-widget-send {
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--brand-accent, #f5b94a);
+  background: var(--brand-accent, #f5b94a);
+  color: #1d1d1f;
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer;
+}
+.ask-widget-send:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.docs-step.docs-step-flash {
+  animation: docs-step-flash 1.4s ease;
+}
+@keyframes docs-step-flash {
+  0%   { background: rgba(245, 185, 74, 0.0); }
+  20%  { background: rgba(245, 185, 74, 0.18); }
+  100% { background: rgba(245, 185, 74, 0.0); }
+}
+
 .brand-clone {
   margin-top: 12px;
   padding-top: 12px;

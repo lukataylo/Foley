@@ -16,6 +16,7 @@ from rich.table import Table
 
 from . import __version__
 from .agent import review_pr as run_agent
+from .ask import ask_walkthrough
 from .atomic_io import write_text_atomic
 from .bake_master import bake_master
 from .captions import write_captions
@@ -151,6 +152,30 @@ def master(
         f"[green]master[/] {walkthrough_id}/{take_id}: "
         f"{len(manifest['segments'])} segments, sha256={manifest['master_sha256'][:12]}…"
     )
+
+
+@app.command("ask")
+def ask_cmd(
+    walkthrough_id: str = typer.Argument(...),
+    question: str = typer.Option(..., "--question", help="The user's question."),
+) -> None:
+    """RAG over a walkthrough's narration. Prints a JSON envelope on stdout
+    so route handlers can parse: { answer: str, citations: [step_id…] }.
+    """
+    import json as _json
+    import sys as _sys
+
+    wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
+    answer = ask_walkthrough(wt, question)
+    # Single-line envelope so the cutroom can JSON.parse the trailing
+    # object regardless of any logfire status lines printed earlier.
+    # Use plain print so rich doesn't soft-wrap and inject \n into the JSON.
+    payload = _json.dumps(
+        {"answer": answer.answer, "citations": answer.citations},
+        ensure_ascii=False,
+    )
+    _sys.stdout.write(payload + "\n")
+    _sys.stdout.flush()
 
 
 @app.command("captions")
