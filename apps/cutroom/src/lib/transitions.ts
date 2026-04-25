@@ -124,7 +124,30 @@ export function layoutDefaults(layout: TransitionLayout): Omit<ScreenshotPlaceme
     case "hero-cover-tr":   return HERO_COVER_TR;
     case "hero-cover-bl":   return HERO_COVER_BL;
     case "hero-cover-br":   return HERO_COVER_BR;
+    default:                return SCATTER;  // legacy values fall back gracefully
   }
+}
+
+const LAYOUT_ALIASES: Record<string, TransitionLayout> = {
+  centered:     "scatter",
+  "hero-left":  "hero-cover-tl",
+  "hero-right": "hero-cover-tr",
+};
+
+export function normalizeLayout(layout: string): TransitionLayout {
+  return (LAYOUT_ALIASES[layout] ?? layout) as TransitionLayout;
+}
+
+const BG_ALIASES: Record<string, TransitionBg> = {
+  "gradient-purple":   "aurora-pink",
+  "gradient-amber":    "aurora-amber",
+  "gradient-graphite": "aurora-graphite",
+  "dark":              "void",
+  "light":             "paper",
+};
+
+export function normalizeBg(bg: string): TransitionBg {
+  return (BG_ALIASES[bg] ?? bg) as TransitionBg;
 }
 
 /** Apply a layout preset to a list of step ids, producing placements. */
@@ -139,12 +162,14 @@ export function placementsForLayout(
   }));
 }
 
-/** Migrate legacy { screenshot_step_ids } to the new screenshots[] shape. */
+/** Migrate legacy { screenshot_step_ids } + legacy layout/bg names. */
 export function migrateTransition(spec: TransitionSpec): TransitionSpec {
-  if (spec.screenshots && spec.screenshots.length > 0) return spec;
-  const ids = spec.screenshot_step_ids ?? [];
-  return {
-    ...spec,
-    screenshots: placementsForLayout(spec.layout, ids),
-  };
+  const layout = normalizeLayout(spec.layout);
+  const bg = normalizeBg(spec.bg);
+  const out: TransitionSpec = { ...spec, layout, bg };
+  if (!spec.screenshots || spec.screenshots.length === 0) {
+    const ids = spec.screenshot_step_ids ?? [];
+    out.screenshots = placementsForLayout(layout, ids);
+  }
+  return out;
 }
