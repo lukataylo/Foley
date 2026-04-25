@@ -6,6 +6,7 @@ import "server-only";
 import { readFile } from "fs/promises";
 import path from "path";
 import { listTakes, loadWalkthrough } from "./fs";
+import { assertWalkthroughId } from "./ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -45,6 +46,7 @@ interface DocsFile {
 }
 
 export async function loadDocs(walkthroughId: string): Promise<DocPage[]> {
+  assertWalkthroughId(walkthroughId);
   const file = path.join(REPO_ROOT, "walkthroughs", walkthroughId, "docs.json");
   try {
     const raw = await readFile(file, "utf8");

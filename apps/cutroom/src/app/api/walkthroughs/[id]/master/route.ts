@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { writeJsonAtomic } from "@/lib/atomic-io";
+import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -31,12 +32,18 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const { take_id } = (await req.json()) as { take_id?: string };
   if (!take_id) {
     return NextResponse.json({ error: "missing take_id" }, { status: 400 });
   }
   if (take_id === "master") {
     return NextResponse.json({ error: "already master" }, { status: 400 });
+  }
+  if (!isValidTakeId(take_id)) {
+    return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
   }
 
   const wtDir = path.join(REPO_ROOT, "walkthroughs", params.id);

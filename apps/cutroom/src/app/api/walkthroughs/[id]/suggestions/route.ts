@@ -1,6 +1,7 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { listTakes } from "@/lib/fs";
+import { listTakes, publicPath } from "@/lib/fs";
+import { isValidStepId, isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ suggestions: [] });
+  }
   let takes;
   try {
     takes = await listTakes(params.id);
@@ -54,6 +58,7 @@ export async function GET(
       if (d.status !== "added" && d.status !== "changed") continue;
       const ps = d.proposed_step ?? null;
       const stepId = ps?.id ?? d.step_id;
+      if (!isValidStepId(stepId)) continue;
       const title = ps?.title ?? stepId;
       const narration = (ps?.narration ?? "").trim();
       out.push({
@@ -67,7 +72,7 @@ export async function GET(
         narration,
         reason: d.reason ?? "",
         duration_ms: ps?.duration_ms ?? 5000,
-        frame_url: `/walkthroughs/${params.id}/steps/${stepId}.png`,
+        frame_url: publicPath(params.id, "steps", `${stepId}.png`),
         proposed_step: ps,
       });
     }

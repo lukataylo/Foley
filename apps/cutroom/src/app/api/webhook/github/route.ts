@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
+  if (!SECRET && process.env.NODE_ENV === "production") {
+    return NextResponse.json({ ok: false, error: "webhook secret not configured" }, { status: 503 });
+  }
   if (!verify(body, req.headers.get("x-hub-signature-256"))) {
     return NextResponse.json({ ok: false, error: "bad signature" }, { status: 401 });
   }

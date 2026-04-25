@@ -2,6 +2,7 @@ import "server-only";
 import { spawn } from "child_process";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { isValidStepId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
   const { step_id } = (await req.json()) as { step_id?: string };
   if (!step_id) {
     return NextResponse.json({ error: "missing step_id" }, { status: 400 });
+  }
+  if (!isValidStepId(step_id)) {
+    return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
   }
 
   const child = spawn(

@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { writeJsonAtomic } from "@/lib/atomic-io";
+import { isValidTakeId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -11,6 +12,9 @@ function file(takeId: string): string {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  if (!isValidTakeId(params.id)) {
+    return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
+  }
   try {
     const raw = await fs.readFile(file(params.id), "utf8");
     return NextResponse.json(JSON.parse(raw));
@@ -23,6 +27,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  if (!isValidTakeId(params.id)) {
+    return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
+  }
   const body = await req.json();
   const out = file(params.id);
   await fs.mkdir(path.dirname(out), { recursive: true });

@@ -6,19 +6,11 @@ import "server-only";
 import { readFile, unlink } from "fs/promises";
 import path from "path";
 import yaml from "js-yaml";
-import { isValidStepId, isValidWalkthroughId } from "./ids";
 import { writeFileAtomic } from "./atomic-io";
+import { assertStepId, assertWalkthroughId } from "./ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
-
-function assertWalkthroughId(id: string): void {
-  if (!isValidWalkthroughId(id)) throw new Error(`invalid walkthrough id: ${id}`);
-}
-
-function assertStepId(id: string): void {
-  if (!isValidStepId(id)) throw new Error(`invalid step id: ${id}`);
-}
 
 export interface RawStep {
   id: string;

@@ -2,6 +2,7 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const wtDir = path.join(REPO_ROOT, "walkthroughs", params.id, "takes");
   let entries;
   try {

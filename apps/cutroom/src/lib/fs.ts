@@ -7,6 +7,7 @@ import path from "path";
 import yaml from "js-yaml";
 import type { Take, Walkthrough } from "./types";
 import { writeJsonAtomic } from "./atomic-io";
+import { assertStepId, assertTakeId, assertWalkthroughId } from "./ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
@@ -77,6 +78,7 @@ export async function listWalkthroughSummaries(): Promise<WalkthroughSummary[]> 
 }
 
 export async function loadWalkthrough(id: string): Promise<Walkthrough> {
+  assertWalkthroughId(id);
   const dir = path.join(WALKTHROUGHS_DIR, id);
   const wtRaw = yaml.load(await readFile(path.join(dir, "walkthrough.yaml"), "utf8")) as Record<string, unknown>;
   const brandRef = (wtRaw.brand_ref as string | undefined) ?? "brand.yaml";
@@ -86,6 +88,7 @@ export async function loadWalkthrough(id: string): Promise<Walkthrough> {
 }
 
 export async function listTakes(walkthroughId: string): Promise<Take[]> {
+  assertWalkthroughId(walkthroughId);
   const takesDir = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes");
   let entries;
   try {
@@ -113,12 +116,16 @@ export async function listTakes(walkthroughId: string): Promise<Take[]> {
 }
 
 export async function loadTake(walkthroughId: string, takeId: string): Promise<Take> {
+  assertWalkthroughId(walkthroughId);
+  assertTakeId(takeId);
   const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "take.json");
   const raw = JSON.parse(await readFile(file, "utf8"));
   return raw as Take;
 }
 
 export async function loadManifest(walkthroughId: string, takeId: string): Promise<Manifest> {
+  assertWalkthroughId(walkthroughId);
+  assertTakeId(takeId);
   const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "manifest.json");
   const raw = JSON.parse(await readFile(file, "utf8"));
   return raw as Manifest;
@@ -129,6 +136,8 @@ export async function setTakeStatus(
   takeId: string,
   status: Take["status"],
 ): Promise<Take> {
+  assertWalkthroughId(walkthroughId);
+  assertTakeId(takeId);
   const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "take.json");
   const take = JSON.parse(await readFile(file, "utf8")) as Take;
   take.status = status;
@@ -146,6 +155,8 @@ export async function loadStepWaveform(
   walkthroughId: string,
   stepId: string,
 ): Promise<StepWaveform | null> {
+  assertWalkthroughId(walkthroughId);
+  assertStepId(stepId);
   const file = path.join(
     WALKTHROUGHS_DIR,
     walkthroughId,
@@ -176,6 +187,7 @@ interface ContinuousNarrationDoc {
 export async function loadContinuousNarration(
   walkthroughId: string,
 ): Promise<ContinuousNarrationDoc | null> {
+  assertWalkthroughId(walkthroughId);
   const dir = path.join(WALKTHROUGHS_DIR, walkthroughId);
   try {
     const [timingRaw, waveformRaw, audioStat] = await Promise.all([
@@ -190,7 +202,7 @@ export async function loadContinuousNarration(
     const waveform = JSON.parse(waveformRaw) as { peaks: number[] };
     const audio_url =
       audioStat && audioStat.isFile() && audioStat.size > 0
-        ? `/walkthroughs/${walkthroughId}/narration.mp3`
+        ? publicPath(walkthroughId, "narration.mp3")
         : null;
     return {
       duration_ms: timing.duration_ms,
@@ -206,13 +218,16 @@ export async function loadContinuousNarration(
 
 // Public path under /walkthroughs/... served by Next from public/walkthroughs.
 export function publicPath(walkthroughId: string, ...rest: string[]): string {
+  assertWalkthroughId(walkthroughId);
   return "/" + path.posix.join("walkthroughs", walkthroughId, ...rest);
 }
 
 export function takePublicPath(walkthroughId: string, takeId: string, file: string): string {
+  assertTakeId(takeId);
   return publicPath(walkthroughId, "takes", takeId, file);
 }
 
 export function stepFramePath(walkthroughId: string, stepId: string): string {
+  assertStepId(stepId);
   return publicPath(walkthroughId, "steps", `${stepId}.png`);
 }

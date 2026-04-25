@@ -4,6 +4,7 @@ import path from "path";
 import { loadWalkthrough } from "@/lib/fs";
 import { migrateOverlay, synthesizeOverlay, type EditOverlay } from "@/lib/timeline";
 import { writeJsonAtomic } from "@/lib/atomic-io";
+import { isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const file = pathFor(params.id);
   try {
     const raw = await readFile(file, "utf8");
@@ -38,6 +42,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const body = (await req.json().catch(() => null)) as { overlay?: EditOverlay } | null;
   if (!body?.overlay) {
     return NextResponse.json({ error: "overlay required" }, { status: 400 });

@@ -4,6 +4,7 @@ import path from "path";
 import yaml from "js-yaml";
 import { NextRequest, NextResponse } from "next/server";
 import { writeFileAtomic } from "@/lib/atomic-io";
+import { isValidStepId, isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body || typeof body !== "object" || !("op" in body)) {
     return NextResponse.json({ error: "op required" }, { status: 400 });
@@ -59,6 +63,9 @@ export async function PATCH(
   parsed.steps = parsed.steps ?? [];
 
   if (body.op === "add") {
+    if (!isValidStepId(body.step.id)) {
+      return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
+    }
     const exists = parsed.steps.some((s) => s.id === body.step.id);
     if (exists) {
       return NextResponse.json({ error: `step ${body.step.id} already exists` }, { status: 409 });
@@ -78,6 +85,9 @@ export async function PATCH(
       parsed.steps.push(newStep);
     }
   } else if (body.op === "rename") {
+    if (!isValidStepId(body.id) || (body.new_id && !isValidStepId(body.new_id))) {
+      return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
+    }
     const s = parsed.steps.find((x) => x.id === body.id);
     if (!s) return NextResponse.json({ error: `step ${body.id} not found` }, { status: 404 });
     if (body.new_id && body.new_id !== body.id) {
@@ -90,9 +100,15 @@ export async function PATCH(
     if (body.narration !== undefined) s.narration = body.narration;
     if (body.duration_ms !== undefined) s.duration_ms = body.duration_ms;
   } else if (body.op === "remove") {
+    if (!isValidStepId(body.id)) {
+      return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
+    }
     parsed.steps = parsed.steps.filter((s) => s.id !== body.id);
   } else if (body.op === "reorder") {
     const order = body.order;
+    if (!order.every(isValidStepId)) {
+      return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
+    }
     const byId = new Map(parsed.steps.map((s) => [s.id, s]));
     const next: YamlStep[] = [];
     for (const id of order) {

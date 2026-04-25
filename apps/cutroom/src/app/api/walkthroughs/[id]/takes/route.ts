@@ -1,6 +1,7 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { listTakes } from "@/lib/fs";
+import { isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ takes: [] });
+  }
   try {
     const takes = await listTakes(params.id);
     return NextResponse.json({

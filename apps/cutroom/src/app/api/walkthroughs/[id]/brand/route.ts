@@ -4,6 +4,7 @@ import path from "path";
 import yaml from "js-yaml";
 import { NextRequest, NextResponse } from "next/server";
 import { writeFileAtomic } from "@/lib/atomic-io";
+import { isValidWalkthroughId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -33,6 +34,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
   const patch = (await req.json()) as BrandPatch;
   const file = path.join(REPO_ROOT, "walkthroughs", params.id, "brand.yaml");
 

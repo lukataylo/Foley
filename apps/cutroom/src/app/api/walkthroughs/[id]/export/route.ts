@@ -5,6 +5,9 @@ import { mkdir, readFile, stat, writeFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { migrateOverlay, type EditOverlay, type MusicClip } from "@/lib/timeline";
+import { publicPath } from "@/lib/fs";
+import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
+import { publicAssetPath } from "@/lib/path-security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // ffmpeg can take a while
@@ -34,6 +37,12 @@ export async function POST(
 ): Promise<NextResponse> {
   const body = (await req.json().catch(() => ({}))) as Body;
   const takeId = body.take_id ?? "master";
+  if (!isValidWalkthroughId(params.id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
+  if (!isValidTakeId(takeId)) {
+    return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
+  }
 
   const takeDir = path.join(REPO_ROOT, "walkthroughs", params.id, "takes", takeId);
   const masterPath = path.join(takeDir, "master.mp4");
@@ -69,7 +78,7 @@ export async function POST(
   });
   const hash = crypto.createHash("sha256").update(hashInput).digest("hex").slice(0, 12);
   const outPath = path.join(exportsDir, `${takeId}-${hash}.mp4`);
-  const publicUrl = `/walkthroughs/${params.id}/exports/${takeId}-${hash}.mp4`;
+  const publicUrl = publicPath(params.id, "exports", `${takeId}-${hash}.mp4`);
 
   try {
     const s = await stat(outPath);
@@ -93,7 +102,10 @@ export async function POST(
   // The master video stream is copied through; only audio is re-encoded.
   const inputs: string[] = ["-i", masterPath];
   for (const m of musicClips) {
-    const localPath = path.join(REPO_ROOT, "apps", "cutroom", "public", m.asset_url.split("?")[0]);
+    const localPath = publicAssetPath(REPO_ROOT, m.asset_url);
+    if (!localPath) {
+      return NextResponse.json({ error: "invalid_music_asset" }, { status: 400 });
+    }
     inputs.push("-i", localPath);
   }
 

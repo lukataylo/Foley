@@ -4,6 +4,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import type { TransitionSpec } from "@/lib/transitions";
+import { isValidStepId, isValidWalkthroughId } from "@/lib/ids";
+import { publicPath } from "@/lib/fs";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const MODEL = "gemini-2.5-flash-image";
@@ -55,6 +57,12 @@ export async function POST(req: NextRequest) {
   const { walkthrough_id = "v1", transition, screenshot_step_ids = [] } = body;
   if (!transition) {
     return NextResponse.json({ error: "missing transition spec" }, { status: 400 });
+  }
+  if (!isValidWalkthroughId(walkthrough_id)) {
+    return NextResponse.json({ error: "invalid_walkthrough_id" }, { status: 400 });
+  }
+  if (!isValidStepId(transition.id) || !screenshot_step_ids.every(isValidStepId)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
   }
 
   // Load the picked screenshots inline.
@@ -117,7 +125,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    url: `/walkthroughs/${walkthrough_id}/genai/transition-${transition.id}.${ext}`,
+    url: publicPath(walkthrough_id, "genai", `transition-${transition.id}.${ext}`),
     bytes: imageBuf.length,
   });
 }

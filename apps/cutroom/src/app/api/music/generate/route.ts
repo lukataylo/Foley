@@ -3,6 +3,8 @@ import crypto from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { isValidWalkthroughId } from "@/lib/ids";
+import { publicPath } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // ElevenLabs music can take ~30-60s
@@ -24,6 +26,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!body?.walkthrough_id || !body?.prompt) {
     return NextResponse.json({ error: "walkthrough_id and prompt required" }, { status: 400 });
   }
+  if (!isValidWalkthroughId(body.walkthrough_id)) {
+    return NextResponse.json({ error: "invalid_walkthrough_id" }, { status: 400 });
+  }
 
   // ElevenLabs music API: 10s minimum, ~5min max. Default to 30s if unset.
   const durationMs = Math.max(10_000, Math.min(300_000, body.duration_ms ?? 30_000));
@@ -37,7 +42,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .slice(0, 12);
   const dir = path.join(REPO_ROOT, "walkthroughs", body.walkthrough_id, "music");
   const filePath = path.join(dir, `${hash}.mp3`);
-  const publicUrl = `/walkthroughs/${body.walkthrough_id}/music/${hash}.mp3`;
+  const publicUrl = publicPath(body.walkthrough_id, "music", `${hash}.mp3`);
 
   // If we already have it, short-circuit.
   try {

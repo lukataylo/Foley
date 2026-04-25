@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { loadWalkthrough, loadManifest, listTakes } from "@/lib/fs";
+import { isValidWalkthroughId } from "@/lib/ids";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ function escapeHtml(s: string): string {
 export async function GET(req: NextRequest): Promise<Response> {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!isValidWalkthroughId(id)) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
 
   let wt;
   try {
