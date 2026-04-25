@@ -283,13 +283,16 @@ export function EditorShell({
   const [animIn, setAnimIn] = useState("none");
   const [animOut, setAnimOut] = useState("none");
 
-  // volume + speed → video element
+  // Force the video to full volume, unmuted, every time anything changes.
+  // The legacy global volume slider is gone (per-clip volume lives in the
+  // inspector now); we shouldn't be silently halving narration loudness.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.volume = Math.max(0, Math.min(1, volume / 100));
+    v.volume = 1.0;
+    v.muted = false;
     v.playbackRate = speed;
-  }, [volume, speed]);
+  });
 
   // fade in / fade out — drive video opacity from currentTime
   useEffect(() => {
