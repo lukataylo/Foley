@@ -23,14 +23,12 @@ __pycache__/
 # remotion
 remotion-out/
 
-# generated walkthrough artifacts (keep structure, ignore binaries)
-walkthroughs/*/steps/*.mp4
-walkthroughs/*/steps/*.mp3
-walkthroughs/*/steps/*.png
+# generated walkthrough artifacts
+# Step-level captures are derived data; ignore them.
 walkthroughs/*/steps/*.webm
 walkthroughs/*/steps/.narration-cache/
-walkthroughs/*/takes/*/master.mp4
-walkthroughs/*/takes/*/segments/
+# Take artifacts ARE the demo deliverable — track them so the cutroom can be
+# deployed as a read-only public site. (Use git LFS at scale.)
 
 # scratch
 .DS_Store

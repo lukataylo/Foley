@@ -1,0 +1,22 @@
+# Render deployment for the cutroom (read-only public frontend).
+# The director (agent + Playwright + ffmpeg) is too heavy for a serverless
+# Node service — it runs locally during demos. This deploy serves the dailies,
+# take detail, side-by-side compare, and the branded docs page.
+
+services:
+  - type: web
+    name: foley-cutroom
+    runtime: node
+    plan: starter
+    buildCommand: |
+      corepack enable && corepack prepare pnpm@10.25.0 --activate
+      pnpm install --frozen-lockfile
+      cd apps/cutroom && pnpm build
+    startCommand: cd apps/cutroom && pnpm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+    autoDeploy: true
+    rootDir: .
