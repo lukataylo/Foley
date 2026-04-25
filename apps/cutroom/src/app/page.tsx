@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Folder } from "@/components/Folder";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PreflightBanner } from "@/components/PreflightBanner";
 import {
   listWalkthroughSummaries,
   loadWalkthrough,
@@ -98,6 +99,7 @@ export default async function HomePage() {
 
   return (
     <main className="home">
+      <PreflightBanner />
       <div className="home-inner">
         <header className="home-header">
           <div className="brand-mark">Foley</div>

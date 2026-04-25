@@ -2444,6 +2444,33 @@ a.back:hover { color: var(--fg); }
 }
 .editor-step:hover { box-shadow: var(--shadow-md); }
 .editor-step.is-busy { opacity: 0.6; pointer-events: none; }
+.preflight-banner {
+  background: rgba(245, 185, 74, 0.12);
+  border-bottom: 1px solid rgba(245, 185, 74, 0.4);
+  color: #6e4d12;
+  font-size: 13px;
+  padding: 9px 16px;
+}
+[data-theme="dark"] .preflight-banner {
+  background: rgba(245, 185, 74, 0.10);
+  color: #f0c779;
+}
+.preflight-banner-row {
+  display: flex; align-items: center; gap: 12px;
+  max-width: 1200px; margin: 0 auto;
+}
+.preflight-banner-icon { font-size: 16px; flex-shrink: 0; }
+.preflight-banner-body { flex: 1; line-height: 1.45; }
+.preflight-banner-label { font-weight: 600; }
+.preflight-banner-hint { color: inherit; opacity: 0.85; }
+.preflight-banner-close {
+  background: none; border: none; cursor: pointer;
+  font-size: 22px; line-height: 1;
+  color: inherit; opacity: 0.6;
+  padding: 0 4px;
+}
+.preflight-banner-close:hover { opacity: 1; }
+
 .editor-step.has-capture-error { box-shadow: 0 0 0 1px rgba(220, 80, 70, 0.55) inset; }
 .editor-step.has-capture-warning { box-shadow: 0 0 0 1px rgba(245, 185, 74, 0.55) inset; }
 @media (max-width: 720px) {
