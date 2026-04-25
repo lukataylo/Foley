@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { loadWalkthrough } from "@/lib/fs";
-import { synthesizeOverlay, type EditOverlay } from "@/lib/timeline";
+import { migrateOverlay, synthesizeOverlay, type EditOverlay } from "@/lib/timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +19,10 @@ export async function GET(
   const file = pathFor(params.id);
   try {
     const raw = await readFile(file, "utf8");
-    const overlay = JSON.parse(raw) as EditOverlay;
+    const parsed = JSON.parse(raw);
+    const overlay = migrateOverlay(parsed);
     return NextResponse.json({ overlay, source: "disk" });
   } catch {
-    // Synthesize lazily from the walkthrough's authored steps.
     try {
       const wt = await loadWalkthrough(params.id);
       const overlay = synthesizeOverlay(wt);
@@ -41,8 +41,10 @@ export async function PUT(
   if (!body?.overlay) {
     return NextResponse.json({ error: "overlay required" }, { status: 400 });
   }
-  const overlay = body.overlay;
-  if (overlay.version !== 1) {
+  // Defensive migrate so the client can PUT either v1 or v2 — we always
+  // persist v2.
+  const overlay = migrateOverlay(body.overlay);
+  if (overlay.version !== 2) {
     return NextResponse.json({ error: "unsupported version" }, { status: 400 });
   }
   const file = pathFor(params.id);

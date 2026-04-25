@@ -1,23 +1,24 @@
 "use client";
 
-// Editor v2 timeline. Renders the EditOverlay (timeline.json) with one row
-// per track. Clips are selectable, draggable (move), and resizable from
-// either edge. All edits go through props so EditorShell owns persistence.
+// Editor v2/v3 timeline: anonymous rows that any clip kind can sit on.
+// Row 0 = front-most in z-order. Drag horizontally to move (start_ms),
+// drag either edge to resize (duration_ms), drag vertically to change row.
+// Drop on the ghost row at the bottom to spawn a new row.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type Clip,
+  type ClipKind,
   type EditOverlay,
-  TRACK_GLYPH,
-  TRACK_LABEL,
-  TRACK_ORDER,
+  KIND_GLYPH,
+  KIND_LABEL,
+  rowCount,
   totalDurationMs,
 } from "@/lib/timeline";
 import type { TrackEntry } from "./EditorShell";
 
 interface Props {
   overlay: EditOverlay;
-  /** Source-side track frames keyed by step_id, used for thumbnails. */
   sourceById: Record<string, TrackEntry>;
   selectedClipId: string | null;
   currentTime: number;
@@ -30,15 +31,11 @@ interface Props {
   onTogglePlay: () => void;
   onZoom: (n: number) => void;
   onJump: (dir: -1 | 1) => void;
-  /** Called when the user drops a palette item on a track. */
-  onDropPalette: (
-    track: keyof EditOverlay["tracks"],
-    paletteKind: string,
-    startMs: number,
-  ) => void;
+  onAddClip: (kind: ClipKind) => void;
 }
 
-const LABEL_GUTTER = 92;
+const LABEL_GUTTER = 64;
+const ROW_HEIGHT = 44;
 const SNAP_MS = 250;
 
 type DragMode = "move" | "resize-l" | "resize-r";
@@ -46,18 +43,24 @@ interface DragState {
   clipId: string;
   mode: DragMode;
   startClientX: number;
+  startClientY: number;
   startMs: number;
   startDur: number;
+  startRow: number;
 }
+
+const ALL_KINDS: ClipKind[] = ["video", "voice", "music", "transition", "caption", "banana", "typed"];
 
 export function Timeline2(p: Props) {
   const lanesRef = useRef<HTMLDivElement>(null);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
   const totalMs = Math.max(totalDurationMs(p.overlay), 1);
   const totalSeconds = totalMs / 1000;
   const totalWidth = totalSeconds * p.zoom;
-  const [scrubbing, setScrubbing] = useState(false);
-  const [drag, setDrag] = useState<DragState | null>(null);
-  const [hoverDropTrack, setHoverDropTrack] = useState<keyof EditOverlay["tracks"] | null>(null);
+  const rows = rowCount(p.overlay);
 
   const ticks = useMemo(() => {
     const arr: number[] = [];
@@ -65,18 +68,27 @@ export function Timeline2(p: Props) {
     return arr;
   }, [totalSeconds]);
 
+  const clipsByRow = useMemo(() => {
+    const out: Record<number, Clip[]> = {};
+    for (const c of p.overlay.clips) {
+      (out[c.row] ??= []).push(c);
+    }
+    return out;
+  }, [p.overlay]);
+
   function xToMs(clientX: number): number {
     if (!lanesRef.current) return 0;
     const rect = lanesRef.current.getBoundingClientRect();
     const x = clientX - rect.left + lanesRef.current.scrollLeft - LABEL_GUTTER;
-    return Math.max(0, Math.min(totalMs, (x / p.zoom) * 1000));
+    return Math.max(0, Math.min(totalMs * 2, (x / p.zoom) * 1000));
   }
   function snap(ms: number): number {
     return Math.round(ms / SNAP_MS) * SNAP_MS;
   }
 
   function startScrub(e: React.PointerEvent) {
-    if ((e.target as HTMLElement).closest(".tl2-clip")) return;
+    if ((e.target as HTMLElement).closest(".tl3-clip")) return;
+    if ((e.target as HTMLElement).closest(".tl3-row-chrome")) return;
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     setScrubbing(true);
@@ -91,12 +103,13 @@ export function Timeline2(p: Props) {
       clipId: clip.id,
       mode,
       startClientX: e.clientX,
+      startClientY: e.clientY,
       startMs: clip.start_ms,
       startDur: clip.duration_ms,
+      startRow: clip.row,
     });
   }
 
-  // Global pointer-move while scrubbing OR dragging a clip.
   useEffect(() => {
     if (!scrubbing && !drag) return;
     function onMove(e: PointerEvent) {
@@ -107,8 +120,12 @@ export function Timeline2(p: Props) {
       if (drag) {
         const dxMs = ((e.clientX - drag.startClientX) / p.zoom) * 1000;
         if (drag.mode === "move") {
-          const next = Math.max(0, snap(drag.startMs + dxMs));
-          p.onPatchClip(drag.clipId, { start_ms: next });
+          const newStart = Math.max(0, snap(drag.startMs + dxMs));
+          // Vertical row change — rounded by half-row units. Allow new rows
+          // up to one past the bottom (drop on ghost row).
+          const dyRow = Math.round((e.clientY - drag.startClientY) / ROW_HEIGHT);
+          const newRow = Math.max(0, Math.min(rows, drag.startRow + dyRow));
+          p.onPatchClip(drag.clipId, { start_ms: newStart, row: newRow });
         } else if (drag.mode === "resize-r") {
           const next = Math.max(SNAP_MS, snap(drag.startDur + dxMs));
           p.onPatchClip(drag.clipId, { duration_ms: next });
@@ -132,9 +149,8 @@ export function Timeline2(p: Props) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [scrubbing, drag, p.zoom, totalMs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scrubbing, drag, p.zoom, totalMs, rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keyboard
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -150,6 +166,7 @@ export function Timeline2(p: Props) {
         p.onTogglePlay();
       } else if (e.key === "Escape") {
         p.onSelectClip(null);
+        setAddOpen(false);
       } else if (e.key === "j" || e.key === "J") {
         p.onJump(-1);
       } else if (e.key === "l" || e.key === "L") {
@@ -160,7 +177,6 @@ export function Timeline2(p: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [p.currentTime, totalSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-scroll to keep playhead visible
   useEffect(() => {
     const el = lanesRef.current;
     if (!el) return;
@@ -170,35 +186,56 @@ export function Timeline2(p: Props) {
       el.scrollTo({ left: x - el.clientWidth + 80, behavior: "smooth" });
   }, [p.currentTime, p.zoom]);
 
-  function handleDragOverLane(e: React.DragEvent, track: keyof EditOverlay["tracks"]) {
-    if (e.dataTransfer.types.includes("application/x-foley-palette")) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "copy";
-      setHoverDropTrack(track);
+  // Click outside the add menu closes it.
+  useEffect(() => {
+    if (!addOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest(".tl3-add")) setAddOpen(false);
     }
-  }
-  function handleDropOnLane(e: React.DragEvent, track: keyof EditOverlay["tracks"]) {
-    const paletteKind = e.dataTransfer.getData("application/x-foley-palette");
-    if (!paletteKind) return;
-    e.preventDefault();
-    const ms = snap(xToMs(e.clientX));
-    p.onDropPalette(track, paletteKind, ms);
-    setHoverDropTrack(null);
-  }
+    window.addEventListener("mousedown", onDoc);
+    return () => window.removeEventListener("mousedown", onDoc);
+  }, [addOpen]);
 
   return (
-    <section className="timeline tl2">
-      <div className="timeline-bar">
+    <section className="timeline tl3">
+      <div className="timeline-bar tl3-bar">
         <div className="controls">
+          <div className="tl3-add">
+            <button
+              type="button"
+              className="tl3-add-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAddOpen((v) => !v);
+              }}
+              aria-haspopup="menu"
+              aria-expanded={addOpen}
+            >
+              + Add <span className="tl3-add-caret">▾</span>
+            </button>
+            {addOpen ? (
+              <div className="tl3-add-menu" role="menu">
+                {ALL_KINDS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className="tl3-add-item"
+                    onClick={() => { p.onAddClip(k); setAddOpen(false); }}
+                  >
+                    <span className="tl3-add-glyph">{KIND_GLYPH[k]}</span>
+                    <span>{KIND_LABEL[k]}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button className="ctrl-icon" onClick={() => p.onJump(-1)} title="Previous clip (J)">⏮</button>
           <button className="play" onClick={p.onTogglePlay} title="Play / pause (Space)">
             {p.isPlaying ? "❚❚" : "▶"}
           </button>
           <button className="ctrl-icon" onClick={() => p.onJump(1)} title="Next clip (L)">⏭</button>
           <span className="speed">{p.speed.toFixed(1)}x</span>
-          <span className="timestamp">
-            {fmt(p.currentTime)} / {fmt(totalSeconds)}
-          </span>
+          <span className="timestamp">{fmt(p.currentTime)} / {fmt(totalSeconds)}</span>
         </div>
         <div className="zoom">
           <button className="ctrl-icon" onClick={() => p.onZoom(p.zoom - 8)} title="Zoom out">－</button>
@@ -214,12 +251,12 @@ export function Timeline2(p: Props) {
       </div>
 
       <div
-        className={`timeline-tracks ${scrubbing ? "scrubbing" : ""} ${drag ? "dragging" : ""}`}
+        className={`timeline-tracks tl3-tracks ${scrubbing ? "scrubbing" : ""} ${drag ? "dragging" : ""}`}
         ref={lanesRef}
       >
-        <div className="timeline-scaler" style={{ width: totalWidth + LABEL_GUTTER, minWidth: "100%" }}>
+        <div className="tl3-scaler" style={{ width: totalWidth + LABEL_GUTTER, minWidth: "100%" }}>
           <div
-            className="ruler"
+            className="ruler tl3-ruler"
             style={{ marginLeft: LABEL_GUTTER, position: "relative", cursor: "ew-resize" }}
             onPointerDown={startScrub}
           >
@@ -230,24 +267,21 @@ export function Timeline2(p: Props) {
             ))}
           </div>
 
-          <div className="tracks tl2-tracks" onPointerDown={startScrub}>
-            {TRACK_ORDER.map((track) => (
-              <TrackLane
-                key={track}
-                track={track}
-                clips={p.overlay.tracks[track]}
+          <div className="tl3-rows" onPointerDown={startScrub}>
+            {Array.from({ length: rows }).map((_, r) => (
+              <Row
+                key={r}
+                rowIndex={r}
+                clips={clipsByRow[r] ?? []}
                 zoom={p.zoom}
                 sourceById={p.sourceById}
                 selectedClipId={p.selectedClipId}
                 currentTime={p.currentTime}
                 onSelectClip={p.onSelectClip}
                 onClipPointerDown={startDrag}
-                onDragOver={(e) => handleDragOverLane(e, track)}
-                onDrop={(e) => handleDropOnLane(e, track)}
-                onDragLeave={() => setHoverDropTrack(null)}
-                isDropHover={hoverDropTrack === track}
               />
             ))}
+            <GhostRow rowIndex={rows} zoom={p.zoom} currentTime={p.currentTime} />
           </div>
         </div>
       </div>
@@ -255,8 +289,8 @@ export function Timeline2(p: Props) {
   );
 }
 
-interface LaneProps {
-  track: keyof EditOverlay["tracks"];
+interface RowProps {
+  rowIndex: number;
   clips: Clip[];
   zoom: number;
   sourceById: Record<string, TrackEntry>;
@@ -264,30 +298,19 @@ interface LaneProps {
   currentTime: number;
   onSelectClip: (id: string | null) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-  onDragLeave: () => void;
-  isDropHover: boolean;
 }
 
-function TrackLane(p: LaneProps) {
+function Row(p: RowProps) {
   return (
-    <div className={`track tl2-track tl2-track-${p.track}`}>
-      <div className="label tl2-label">
-        <span style={{ marginRight: 5 }}>{TRACK_GLYPH[p.track]}</span>
-        {TRACK_LABEL[p.track]}
+    <div className="tl3-row" data-row={p.rowIndex}>
+      <div className="tl3-row-chrome">
+        <span className="tl3-row-speaker" title={`Row ${p.rowIndex + 1}`}>🔊</span>
       </div>
-      <div
-        className={`lane tl2-lane ${p.isDropHover ? "drop-hover" : ""}`}
-        onDragOver={p.onDragOver}
-        onDrop={p.onDrop}
-        onDragLeave={p.onDragLeave}
-      >
+      <div className="tl3-row-lane">
         {p.clips.map((c) => (
           <ClipBlock
             key={c.id}
             clip={c}
-            track={p.track}
             zoom={p.zoom}
             sourceById={p.sourceById}
             selected={p.selectedClipId === c.id}
@@ -301,9 +324,22 @@ function TrackLane(p: LaneProps) {
   );
 }
 
+function GhostRow({ rowIndex, zoom, currentTime }: { rowIndex: number; zoom: number; currentTime: number }) {
+  return (
+    <div className="tl3-row tl3-row-ghost" data-row={rowIndex}>
+      <div className="tl3-row-chrome">
+        <span className="tl3-row-speaker">＋</span>
+      </div>
+      <div className="tl3-row-lane">
+        <div className="tl3-ghost-hint">drop here to start a new row</div>
+        <Playhead time={currentTime} zoom={zoom} />
+      </div>
+    </div>
+  );
+}
+
 interface ClipProps {
   clip: Clip;
-  track: keyof EditOverlay["tracks"];
   zoom: number;
   sourceById: Record<string, TrackEntry>;
   selected: boolean;
@@ -324,7 +360,7 @@ function ClipBlock(p: ClipProps) {
     label = src?.title ?? p.clip.step_id;
     const thumbCount = Math.max(1, Math.floor(width / 56));
     body = (
-      <div className="tl2-video-thumbs">
+      <div className="tl3-video-thumbs">
         {Array.from({ length: thumbCount }).map((_, j) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={j} src={src?.frame_url} alt="" draggable={false} />
@@ -335,7 +371,7 @@ function ClipBlock(p: ClipProps) {
     const src = p.sourceById[p.clip.step_id];
     label = `vo: ${src?.title ?? p.clip.step_id}`;
     body = (
-      <div className="tl2-waveform">
+      <div className="tl3-waveform">
         {(src?.waveform?.peaks ?? []).map((peak, idx) => (
           <span key={idx} className="bar" style={{ height: `${Math.max(2, peak * 100)}%` }} />
         ))}
@@ -343,52 +379,45 @@ function ClipBlock(p: ClipProps) {
     );
   } else if (p.clip.kind === "music") {
     label = p.clip.label;
-    body = <div className="tl2-music-fill" />;
+    body = <div className="tl3-music-fill" />;
   } else if (p.clip.kind === "transition") {
     label = `trans: ${p.clip.transition_id}`;
-    body = <div className="tl2-trans-fill"><span>✨ {p.clip.transition_id}</span></div>;
+    body = <div className="tl3-trans-fill"><span>✨ {p.clip.transition_id}</span></div>;
   } else if (p.clip.kind === "caption") {
     label = p.clip.text.slice(0, 24);
-    body = <div className="tl2-caption-fill">📝 {p.clip.text}</div>;
+    body = <div className="tl3-caption-fill">📝 {p.clip.text}</div>;
   } else if (p.clip.kind === "banana") {
     label = p.clip.prompt.slice(0, 32) || "(no prompt yet)";
     body = (
-      <div className="tl2-banana-fill" style={p.clip.asset_url ? { backgroundImage: `url(${p.clip.asset_url})` } : undefined}>
+      <div className="tl3-banana-fill" style={p.clip.asset_url ? { backgroundImage: `url(${p.clip.asset_url})` } : undefined}>
         {!p.clip.asset_url ? <span>🍌 {p.clip.prompt || "ungenerated"}</span> : null}
       </div>
     );
   } else if (p.clip.kind === "typed") {
     label = p.clip.strings[0]?.slice(0, 28) ?? "(typed)";
-    body = <div className="tl2-typed-fill">⌨ {p.clip.strings.join(" / ")}</div>;
+    body = <div className="tl3-typed-fill">⌨ {p.clip.strings.join(" / ")}</div>;
   }
 
   return (
     <div
-      className={`tl2-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""}`}
+      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""}`}
       style={{ left, width }}
       onPointerDown={(e) => {
-        // body drag = move
-        if ((e.target as HTMLElement).closest(".tl2-handle")) return;
+        if ((e.target as HTMLElement).closest(".tl3-handle")) return;
         p.onPointerDown(p.clip, "move", e);
       }}
-      onClick={(e) => {
-        e.stopPropagation();
-        p.onSelect(p.clip.id);
-      }}
+      onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id); }}
       title={label}
     >
-      {fadeInPx > 4 ? <div className="tl2-fade tl2-fade-in" style={{ width: fadeInPx }} /> : null}
-      {fadeOutPx > 4 ? <div className="tl2-fade tl2-fade-out" style={{ width: fadeOutPx }} /> : null}
-      <div className="tl2-clip-body">{body}</div>
-      <div className="tl2-clip-label">{label}</div>
-      <div
-        className="tl2-handle tl2-handle-l"
-        onPointerDown={(e) => p.onPointerDown(p.clip, "resize-l", e)}
-      />
-      <div
-        className="tl2-handle tl2-handle-r"
-        onPointerDown={(e) => p.onPointerDown(p.clip, "resize-r", e)}
-      />
+      {fadeInPx > 4 ? <div className="tl3-fade tl3-fade-in" style={{ width: fadeInPx }} /> : null}
+      {fadeOutPx > 4 ? <div className="tl3-fade tl3-fade-out" style={{ width: fadeOutPx }} /> : null}
+      <div className="tl3-clip-body">{body}</div>
+      <div className="tl3-clip-label">
+        <span className="tl3-clip-glyph">{KIND_GLYPH[p.clip.kind]}</span>
+        {label}
+      </div>
+      <div className="tl3-handle tl3-handle-l" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-l", e)} />
+      <div className="tl3-handle tl3-handle-r" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-r", e)} />
     </div>
   );
 }

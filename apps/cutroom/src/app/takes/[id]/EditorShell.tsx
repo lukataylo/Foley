@@ -33,11 +33,13 @@ import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
 import { SidePanel } from "./SidePanel";
 import { ClipInspector } from "./ClipInspector";
-import { ClipPalette } from "./ClipPalette";
 import {
   type Clip,
+  type ClipKind,
   type EditOverlay,
+  DEFAULT_ROW,
   addClip as addClipPure,
+  migrateOverlay,
   nextClipId,
   patchClip as patchClipPure,
   removeClip as removeClipPure,
@@ -442,7 +444,7 @@ export function EditorShell({
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return;
-        if (j?.overlay) setOverlay(j.overlay as EditOverlay);
+        if (j?.overlay) setOverlay(migrateOverlay(j.overlay));
       })
       .catch(() => { /* leave null */ });
     return () => { cancelled = true; };
@@ -478,92 +480,76 @@ export function EditorShell({
     });
     if (selectedClipId === id) setSelectedClipId(null);
   }
-  function dropPaletteOnTrack(
-    track: keyof EditOverlay["tracks"],
-    paletteKind: string,
-    startMs: number,
-  ) {
+  function addClipOfKind(kind: ClipKind) {
     setOverlay((curr) => {
       if (!curr) return curr;
-      let next: EditOverlay = curr;
-      if (paletteKind === "banana" && track === "banana") {
-        const id = nextClipId("banana");
-        next = addClipPure(curr, "banana", {
-          id,
-          kind: "banana",
-          start_ms: startMs,
-          duration_ms: 3000,
-          fade_in_ms: 300,
-          fade_out_ms: 300,
-          volume: 1,
-          prompt: "",
-          asset_url: "",
-          layout: "fullscreen",
-          ref_step_id: tracks[0]?.id ?? null,
-        });
-        setSelectedClipId(id);
-      } else if (paletteKind === "typed" && track === "typed") {
-        const id = nextClipId("typed");
-        next = addClipPure(curr, "typed", {
-          id,
-          kind: "typed",
-          start_ms: startMs,
-          duration_ms: 3500,
-          fade_in_ms: 200,
-          fade_out_ms: 200,
-          volume: 1,
+      const startMs = Math.round(currentTime * 1000 / 250) * 250;
+      const row = DEFAULT_ROW[kind];
+      let clip: Clip | null = null;
+      if (kind === "banana") {
+        clip = {
+          id: nextClipId("banana"), kind: "banana", row,
+          start_ms: startMs, duration_ms: 3000, fade_in_ms: 300, fade_out_ms: 300, volume: 1,
+          prompt: "", asset_url: "", layout: "fullscreen", ref_step_id: tracks[0]?.id ?? null,
+        };
+      } else if (kind === "typed") {
+        clip = {
+          id: nextClipId("typed"), kind: "typed", row,
+          start_ms: startMs, duration_ms: 3500, fade_in_ms: 200, fade_out_ms: 200, volume: 1,
           strings: ["Watch this."],
           font_family: "SF Pro Display, Inter, sans-serif",
-          font_size_px: 64,
-          color: "#fdf3d8",
-          bg_color: "transparent",
-          type_speed_ms: 55,
-          back_speed_ms: 30,
-          loop: false,
-          show_cursor: true,
-          cursor_char: "|",
-          align: "center",
-        });
-        setSelectedClipId(id);
-      } else if (paletteKind === "music" && track === "music") {
-        const id = nextClipId("music");
-        next = addClipPure(curr, "music", {
-          id,
-          kind: "music",
-          start_ms: startMs,
-          duration_ms: 12000,
-          fade_in_ms: 1500,
-          fade_out_ms: 1500,
-          volume: 0.18,
-          asset_url: "",
-          label: "New music bed",
-          loop: true,
-        });
-        setSelectedClipId(id);
-      } else if (paletteKind === "caption" && track === "caption") {
-        const id = nextClipId("caption");
-        next = addClipPure(curr, "caption", {
-          id,
-          kind: "caption",
-          start_ms: startMs,
-          duration_ms: 2500,
-          fade_in_ms: 200,
-          fade_out_ms: 200,
-          volume: 1,
-          text: "New caption",
-          align: "bottom",
-        });
-        setSelectedClipId(id);
+          font_size_px: 64, color: "#fdf3d8", bg_color: "transparent",
+          type_speed_ms: 55, back_speed_ms: 30,
+          loop: false, show_cursor: true, cursor_char: "|", align: "center",
+        };
+      } else if (kind === "music") {
+        clip = {
+          id: nextClipId("music"), kind: "music", row,
+          start_ms: startMs, duration_ms: 12000, fade_in_ms: 1500, fade_out_ms: 1500, volume: 0.18,
+          asset_url: "", label: "New music bed", loop: true,
+        };
+      } else if (kind === "caption") {
+        clip = {
+          id: nextClipId("caption"), kind: "caption", row,
+          start_ms: startMs, duration_ms: 2500, fade_in_ms: 200, fade_out_ms: 200, volume: 1,
+          text: "New caption", align: "bottom",
+        };
+      } else if (kind === "transition") {
+        clip = {
+          id: nextClipId("trans"), kind: "transition", row,
+          start_ms: startMs, duration_ms: 2000, fade_in_ms: 300, fade_out_ms: 300, volume: 1,
+          transition_id: transitions[0]?.id ?? "",
+        };
+      } else if (kind === "video") {
+        const stepId = tracks[0]?.id ?? "";
+        clip = {
+          id: nextClipId("v"), kind: "video", row,
+          start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
+          step_id: stepId,
+          zoom_enabled: false, zoom_factor: 1.6, zoom_origin_x: 50, zoom_origin_y: 50,
+          match_source_length: false,
+        };
+      } else if (kind === "voice") {
+        const stepId = tracks[0]?.id ?? "";
+        clip = {
+          id: nextClipId("vo"), kind: "voice", row,
+          start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
+          step_id: stepId,
+        };
       }
-      if (next !== curr) persistOverlay(next);
+      if (!clip) return curr;
+      const next = addClipPure(curr, clip);
+      setSelectedClipId(clip.id);
+      persistOverlay(next);
       return next;
     });
   }
 
   async function generateBananaClip(clipId: string) {
     if (!overlay) return;
-    const found = overlay.tracks.banana.find((c) => c.id === clipId);
-    if (!found || !found.prompt) return;
+    const f = overlay.clips.find((c) => c.id === clipId);
+    if (!f || f.kind !== "banana" || !f.prompt) return;
+    const found = f;
     setBusyAction("banana");
     try {
       const res = await fetch(`/api/genai/laptop-mockup`, {
@@ -780,7 +766,6 @@ export function EditorShell({
         </div>
       </div>
 
-      {overlay ? <ClipPalette /> : null}
 
       {overlay ? (
         <Timeline2
@@ -793,11 +778,9 @@ export function EditorShell({
           speed={speed}
           onSelectClip={(id) => {
             setSelectedClipId(id);
-            // Mirror selection into the legacy step state so the canvas stays in sync.
             if (id) {
-              const found = overlay.tracks.video.find((c) => c.id === id)
-                ?? overlay.tracks.voice.find((c) => c.id === id);
-              if (found && "step_id" in found) setSelectedStepId(found.step_id);
+              const found = overlay.clips.find((c) => c.id === id);
+              if (found && "step_id" in found) setSelectedStepId(found.step_id as string);
             }
           }}
           onPatchClip={patchClipState}
@@ -805,7 +788,7 @@ export function EditorShell({
           onTogglePlay={togglePlay}
           onJump={jumpStep}
           onZoom={(n) => setZoom(Math.max(12, Math.min(160, n)))}
-          onDropPalette={dropPaletteOnTrack}
+          onAddClip={addClipOfKind}
         />
       ) : (
         <Timeline

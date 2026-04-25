@@ -32,8 +32,8 @@ export function ClipInspector(p: Props) {
       </div>
     );
   }
-  const found = findClip(p.overlay, p.selectedClipId);
-  if (!found) {
+  const clip = findClip(p.overlay, p.selectedClipId);
+  if (!clip) {
     return (
       <div className="ci ci-empty">
         <div className="ci-empty-glyph">∅</div>
@@ -41,8 +41,6 @@ export function ClipInspector(p: Props) {
       </div>
     );
   }
-
-  const { clip } = found;
   return (
     <div className="ci">
       <ClipHeader clip={clip} onRemove={p.onRemove} />
@@ -78,6 +76,13 @@ function ClipTiming({
 }) {
   return (
     <Section title="Timing">
+      <Row label="Row">
+        <span className="ci-row-stepper">
+          <button type="button" className="ci-step-btn" onClick={() => onPatch(clip.id, { row: Math.max(0, clip.row - 1) })}>↑</button>
+          <span className="ci-row-num">row {clip.row + 1}</span>
+          <button type="button" className="ci-step-btn" onClick={() => onPatch(clip.id, { row: clip.row + 1 })}>↓</button>
+        </span>
+      </Row>
       <Row label="Start">
         <NumInput
           value={clip.start_ms / 1000}
