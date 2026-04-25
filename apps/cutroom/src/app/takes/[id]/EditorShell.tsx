@@ -32,6 +32,8 @@ import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
 import { FeaturesPanel } from "./FeaturesPanel";
+import { MusicMixer } from "./MusicMixer";
+import type { MusicClip } from "@/lib/timeline";
 import { ClipInspector } from "./ClipInspector";
 import {
   type Clip,
@@ -676,6 +678,15 @@ export function EditorShell({
     return out;
   }, [tracks]);
 
+  // Music clips with a valid asset_url, for live mix during preview.
+  const musicClipsForMix: MusicClip[] = useMemo(
+    () =>
+      (overlay?.clips ?? []).filter(
+        (c): c is MusicClip => c.kind === "music" && !!c.asset_url,
+      ),
+    [overlay],
+  );
+
   // captions text — what step is the playhead inside
   const currentCaption = (() => {
     if (!captionsOn) return null;
@@ -782,6 +793,11 @@ export function EditorShell({
               {currentCaption ? (
                 <div className="captions-overlay">{currentCaption}</div>
               ) : null}
+              <MusicMixer
+                clips={musicClipsForMix}
+                currentTime={currentTime}
+                isPlaying={isPlaying}
+              />
             </div>
           )}
           <div className="tabs">
