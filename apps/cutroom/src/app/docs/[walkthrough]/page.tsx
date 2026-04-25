@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AskWidget } from "@/components/AskWidget";
+import { OpenInLLMMenu } from "@/components/OpenInLLMMenu";
 import { listTakes, loadWalkthrough, stepFramePath, takePublicPath } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
@@ -93,7 +94,10 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
         <Link href={`/walkthroughs/${params.walkthrough}`} className="back" style={{ margin: 0 }}>
           ← {walkthrough.id === "v1" ? "Loop" : walkthrough.id}
         </Link>
-        <ThemeToggle />
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <OpenInLLMMenu walkthroughId={params.walkthrough} />
+          <ThemeToggle />
+        </div>
       </div>
 
       <header className="docs-hero">
