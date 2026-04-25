@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEntry } from "./EditorShell";
 
 interface Props {
@@ -20,7 +20,8 @@ interface Props {
 }
 
 export function Timeline(p: Props) {
-  const laneRef = useRef<HTMLDivElement>(null);
+  const lanesRef = useRef<HTMLDivElement>(null);
+  const [scrubbing, setScrubbing] = useState(false);
   const totalWidth = p.totalDuration * p.zoom;
 
   // Ruler ticks every 5 seconds.
@@ -31,22 +32,90 @@ export function Timeline(p: Props) {
     return arr;
   }, [p.totalDuration]);
 
-  function onLaneClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!laneRef.current) return;
-    const rect = laneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + laneRef.current.scrollLeft;
-    p.onSeek(x / p.zoom);
+  // Convert a global clientX into a timeline second, clamped.
+  // The track grid puts a 92px label column before the lanes, so subtract it.
+  const LABEL_GUTTER = 92;
+  function xToSeconds(clientX: number): number {
+    if (!lanesRef.current) return 0;
+    const rect = lanesRef.current.getBoundingClientRect();
+    const x = clientX - rect.left + lanesRef.current.scrollLeft - LABEL_GUTTER;
+    return Math.max(0, Math.min(p.totalDuration, x / p.zoom));
   }
+
+  function startScrub(e: React.PointerEvent) {
+    // Don't initiate scrub when the user clicked an interactive child (a step
+    // block button). Those have their own onClick handlers.
+    if ((e.target as HTMLElement).closest(".lane-block")) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    setScrubbing(true);
+    p.onSeek(xToSeconds(e.clientX));
+  }
+
+  // Track pointer-move globally while scrubbing. Using window listeners keeps
+  // the scrub alive even if the cursor leaves the lane.
+  useEffect(() => {
+    if (!scrubbing) return;
+    function onMove(e: PointerEvent) {
+      p.onSeek(xToSeconds(e.clientX));
+    }
+    function onUp() {
+      setScrubbing(false);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [scrubbing, p.zoom, p.totalDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyboard scrub: ←/→ for ±1s, shift+←/→ for ±5s, space to toggle play.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        p.onSeek(Math.max(0, p.currentTime - (e.shiftKey ? 5 : 1)));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        p.onSeek(Math.min(p.totalDuration, p.currentTime + (e.shiftKey ? 5 : 1)));
+      } else if (e.key === " ") {
+        e.preventDefault();
+        p.onTogglePlay();
+      } else if (e.key === "j" || e.key === "J") {
+        p.onJump(-1);
+      } else if (e.key === "l" || e.key === "L") {
+        p.onJump(1);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [p.currentTime, p.totalDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll the timeline to keep the playhead in view.
+  useEffect(() => {
+    const el = lanesRef.current;
+    if (!el) return;
+    const x = p.currentTime * p.zoom;
+    const left = el.scrollLeft;
+    const right = left + el.clientWidth;
+    if (x < left + 60) el.scrollTo({ left: Math.max(0, x - 60), behavior: "smooth" });
+    else if (x > right - 60) el.scrollTo({ left: x - el.clientWidth + 60, behavior: "smooth" });
+  }, [p.currentTime, p.zoom]);
 
   return (
     <section className="timeline">
       <div className="timeline-bar">
         <div className="controls">
-          <button className="ctrl-icon" onClick={() => p.onJump(-1)} title="Previous step">⏮</button>
-          <button className="play" onClick={p.onTogglePlay} title="Play / pause">
+          <button className="ctrl-icon" onClick={() => p.onJump(-1)} title="Previous step (J)">⏮</button>
+          <button className="play" onClick={p.onTogglePlay} title="Play / pause (Space)">
             {p.isPlaying ? "❚❚" : "▶"}
           </button>
-          <button className="ctrl-icon" onClick={() => p.onJump(1)} title="Next step">⏭</button>
+          <button className="ctrl-icon" onClick={() => p.onJump(1)} title="Next step (L)">⏭</button>
           <span className="speed">{p.speed.toFixed(1)}x</span>
           <span className="timestamp">
             {fmt(p.currentTime)} / {fmt(p.totalDuration)}
@@ -65,10 +134,20 @@ export function Timeline(p: Props) {
         </div>
       </div>
 
-      <div className="timeline-tracks">
-        <div className="timeline-scaler" style={{ width: totalWidth + 92 /* label gutter */ }}>
-          {/* ruler */}
-          <div className="ruler" style={{ marginLeft: 92, position: "relative" }}>
+      <div
+        className={`timeline-tracks ${scrubbing ? "scrubbing" : ""}`}
+        ref={lanesRef}
+      >
+        <div
+          className="timeline-scaler"
+          style={{ width: totalWidth + 92, /* label gutter */ minWidth: "100%" }}
+        >
+          {/* ruler — clicking/dragging here scrubs */}
+          <div
+            className="ruler"
+            style={{ marginLeft: 92, position: "relative", cursor: "ew-resize" }}
+            onPointerDown={startScrub}
+          >
             {ticks.map((t) => (
               <div key={t} className="tick" style={{ left: t * p.zoom }}>
                 <span className="lbl">{fmt(t)}</span>
@@ -76,10 +155,10 @@ export function Timeline(p: Props) {
             ))}
           </div>
 
-          <div className="tracks">
+          <div className="tracks" onPointerDown={startScrub}>
             {/* Steps lane */}
             <Track label="Steps" glyph="⊞">
-              <div ref={laneRef} className="lane" onClick={onLaneClick}>
+              <div className="lane">
                 {p.tracks.map((t, i) => (
                   <button
                     key={t.id}
@@ -106,7 +185,7 @@ export function Timeline(p: Props) {
 
             {/* Video lane */}
             <Track label="Video" glyph="●">
-              <div className="lane" onClick={onLaneClick}>
+              <div className="lane">
                 {p.tracks.map((t, i) => {
                   const w = (t.duration_ms / 1000) * p.zoom - 2;
                   const thumbCount = Math.max(1, Math.floor(w / 56));
@@ -121,7 +200,7 @@ export function Timeline(p: Props) {
                     >
                       {Array.from({ length: thumbCount }).map((_, j) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={j} src={t.frame_url} alt="" />
+                        <img key={j} src={t.frame_url} alt="" draggable={false} />
                       ))}
                     </div>
                   );
@@ -132,7 +211,7 @@ export function Timeline(p: Props) {
 
             {/* Narration waveform lane */}
             <Track label="Narration" glyph="♪">
-              <div className="lane" onClick={onLaneClick}>
+              <div className="lane">
                 {p.tracks.map((t, i) => {
                   const w = (t.duration_ms / 1000) * p.zoom - 2;
                   return (
@@ -160,7 +239,7 @@ export function Timeline(p: Props) {
 
             {/* Diff lane — the unique Foley track */}
             <Track label="Diff" glyph="✱">
-              <div className="lane" onClick={onLaneClick}>
+              <div className="lane">
                 {p.tracks.map((t, i) => (
                   <div
                     key={t.id}

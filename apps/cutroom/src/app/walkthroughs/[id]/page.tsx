@@ -95,40 +95,35 @@ export default async function WalkthroughDetailPage({
             <div className="voice-locked">🔒 voice locked at the walkthrough level</div>
           </div>
 
-          {/* Dailies — cream */}
+          {/* Dailies — cream, with nested mini-cards per take */}
           <div className="sticky sticky-cream">
             <h2>Dailies</h2>
+            <div className="sub-label">{otherTakes.length} in review</div>
             {otherTakes.length === 0 ? (
               <p style={{ color: "var(--muted)" }}>No takes in review.</p>
             ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {otherTakes.map((t) => {
-                  const counts = t.step_diffs.reduce<Record<string, number>>(
-                    (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
-                    {},
-                  );
-                  return (
-                    <li key={t.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                      <Link href={`/takes/${t.id}`} style={{ display: "block" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span className="mono" style={{ color: "var(--fg)" }}>{t.id}</span>
-                          <span className={`status status-${t.status}`}>{t.status}</span>
-                        </div>
-                        <div style={{ color: "var(--fg)", fontSize: 13, marginTop: 4 }}>
-                          {t.pr_title}
-                        </div>
-                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          {(["changed", "added", "removed", "unchanged"] as const).map((s) =>
-                            counts[s] ? (
-                              <span key={s} className={`pill pill-${s}`}>{counts[s]} {s}</span>
-                            ) : null,
-                          )}
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              otherTakes.map((t) => {
+                const counts = t.step_diffs.reduce<Record<string, number>>(
+                  (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
+                  {},
+                );
+                return (
+                  <Link key={t.id} href={`/takes/${t.id}`} className="sticky-mini">
+                    <div className="mini-row">
+                      <span className="mini-id">{t.id}</span>
+                      <span className={`status status-${t.status}`}>{t.status}</span>
+                    </div>
+                    <div className="mini-title">{t.pr_title}</div>
+                    <div className="mini-pills">
+                      {(["changed", "added", "removed", "unchanged"] as const).map((s) =>
+                        counts[s] ? (
+                          <span key={s} className={`pill pill-${s}`}>{counts[s]} {s}</span>
+                        ) : null,
+                      )}
+                    </div>
+                  </Link>
+                );
+              })
             )}
           </div>
 

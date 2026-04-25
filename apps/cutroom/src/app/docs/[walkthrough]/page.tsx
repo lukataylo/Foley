@@ -1,10 +1,11 @@
 // One YAML, two outputs.
-// The same Walkthrough that drives the video also renders here as a
-// scrollable, on-brand documentation page. No CMS, no editor — just the
-// canonical Steps, on-brand.
+// Same Walkthrough that drives the video also renders here as scrollable,
+// branded prose. Brand colors only paint the accent line + eyebrow; bg/fg
+// follow the theme so the page reads in both light and dark.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { listTakes, loadWalkthrough, stepFramePath, takePublicPath } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
@@ -26,12 +27,17 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
     <main
       className="docs"
       style={{
-        // Brand variables drive the page palette.
-        ["--brand-bg" as string]: walkthrough.brand.palette_bg,
-        ["--brand-fg" as string]: walkthrough.brand.palette_fg,
+        // Only the accent picks up brand color; bg/fg track the theme.
         ["--brand-accent" as string]: walkthrough.brand.palette_accent,
       }}
     >
+      <div className="docs-toolbar">
+        <Link href={`/walkthroughs/${params.walkthrough}`} className="back" style={{ margin: 0 }}>
+          ← {walkthrough.id === "v1" ? "Loop" : walkthrough.id}
+        </Link>
+        <ThemeToggle />
+      </div>
+
       <header className="docs-hero">
         <div className="brand-band" />
         <div className="docs-hero-inner">

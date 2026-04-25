@@ -1,18 +1,25 @@
 import Link from "next/link";
 import { Folder } from "@/components/Folder";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { listWalkthroughSummaries } from "@/lib/fs";
+import {
+  listWalkthroughSummaries,
+  loadWalkthrough,
+  publicPath,
+} from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
 
 interface FolderItem {
   id: string;
   name: string;
-  caption: string;
+  mark: string;
   sub: string;
   meta: string;
-  href: string | null;        // null → not navigable
+  href: string | null;
   variant: "default" | "muted";
+  tone: "blue" | "amber" | "graphite" | "mint" | "violet" | "rose";
+  thumbs: string[];
+  glyph?: string;
   tag?: "sample" | "soon";
 }
 
@@ -20,21 +27,25 @@ const PLACEHOLDERS: FolderItem[] = [
   {
     id: "acme-cloud",
     name: "Acme Cloud",
-    caption: "ACME · v1",
+    mark: "ac—",
     sub: "12 steps · 1 take",
     meta: "George · Last 09:14",
     href: null,
     variant: "muted",
+    tone: "amber",
+    thumbs: [],
     tag: "sample",
   },
   {
     id: "beam",
     name: "Beam",
-    caption: "BEAM · v1",
+    mark: "be—",
     sub: "9 steps · 0 takes",
     meta: "Charlotte · not bootstrapped",
     href: null,
     variant: "muted",
+    tone: "graphite",
+    thumbs: [],
     tag: "soon",
   },
 ];
@@ -55,18 +66,33 @@ function relativeTime(iso: string | null): string {
 
 export default async function HomePage() {
   const summaries = await listWalkthroughSummaries();
-  const real: FolderItem[] = summaries.map((s) => {
-    const dur = `${s.total_duration_s.toFixed(0)}s`;
-    return {
-      id: s.id,
-      name: s.display_name,
-      caption: `${s.id.toUpperCase()} · ${dur}`,
-      sub: `${s.step_count} steps · ${s.take_count} takes`,
-      meta: `${s.voice_name} · Last ${relativeTime(s.last_activity)}`,
-      href: `/walkthroughs/${s.id}`,
-      variant: "default",
-    };
-  });
+
+  // For each real walkthrough, take the first 3 step frame paths as thumbs.
+  const real: FolderItem[] = await Promise.all(
+    summaries.map(async (s) => {
+      let thumbs: string[] = [];
+      try {
+        const wt = await loadWalkthrough(s.id);
+        thumbs = wt.steps
+          .slice(0, 3)
+          .map((step) => publicPath(s.id, "steps", `${step.id}.png`));
+      } catch {
+        /* leave empty */
+      }
+      const dur = `${s.total_duration_s.toFixed(0)}s`;
+      return {
+        id: s.id,
+        name: s.display_name,
+        mark: s.id === "v1" ? "lp—" : s.id.slice(0, 2) + "—",
+        sub: `${s.step_count} steps · ${s.take_count} takes · ${dur}`,
+        meta: `${s.voice_name} · ${relativeTime(s.last_activity)}`,
+        href: `/walkthroughs/${s.id}`,
+        variant: "default",
+        tone: "blue",
+        thumbs,
+      };
+    }),
+  );
 
   const items: FolderItem[] = [...real, ...PLACEHOLDERS];
 
@@ -85,8 +111,10 @@ export default async function HomePage() {
             const card = (
               <div className={`folder-card ${item.variant === "muted" ? "placeholder" : ""}`}>
                 <Folder
-                  caption={item.caption}
-                  label={item.name}
+                  thumbs={item.thumbs}
+                  mark={item.mark}
+                  glyph={item.glyph}
+                  tone={item.tone}
                   variant={item.variant}
                 />
                 <div className="folder-meta">
@@ -107,7 +135,7 @@ export default async function HomePage() {
           })}
 
           <Link href="/walkthroughs/new" className="folder-card placeholder">
-            <Folder caption="" label="+" variant="muted" />
+            <Folder mark="" glyph="+" tone="violet" variant="muted" />
             <div className="folder-meta">
               <div className="folder-title">New walkthrough</div>
               <div className="folder-sub">Bootstrap from a repo</div>

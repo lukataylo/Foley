@@ -63,6 +63,7 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(36); // px per second
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
 
   // Editor state knobs (visual / wire-only for the demo surface).
   const [volume, setVolume] = useState(100);
@@ -131,7 +132,7 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
   const selectedStepIdx = tracks.findIndex((t) => t.id === selectedStepId);
 
   return (
-    <div className="editor">
+    <div className={`editor ${mode === "preview" ? "mode-preview" : "mode-edit"}`}>
       {/* ─── header ─── */}
       <header className="editor-header">
         <div className="left">
@@ -145,6 +146,7 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
           <span className={`status status-${take.status}`}>{take.status}</span>
         </div>
         <div className="right">
+          <ModeToggle mode={mode} onChange={setMode} />
           <ThemeToggle />
           {take.parent_take_id ? (
             <Link
@@ -265,5 +267,30 @@ function RailButton(props: {
       <span className="glyph">{props.glyph}</span>
       <span>{props.children}</span>
     </button>
+  );
+}
+
+function ModeToggle({ mode, onChange }: { mode: "edit" | "preview"; onChange: (m: "edit" | "preview") => void }) {
+  return (
+    <div className="mode-toggle" role="tablist" aria-label="View mode">
+      <button
+        type="button"
+        className={`opt ${mode === "edit" ? "active" : ""}`}
+        onClick={() => onChange("edit")}
+        role="tab"
+        aria-selected={mode === "edit"}
+      >
+        Edit
+      </button>
+      <button
+        type="button"
+        className={`opt ${mode === "preview" ? "active" : ""}`}
+        onClick={() => onChange("preview")}
+        role="tab"
+        aria-selected={mode === "preview"}
+      >
+        Preview
+      </button>
+    </div>
   );
 }
