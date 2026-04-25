@@ -20,6 +20,7 @@ from .ask import ask_walkthrough
 from .atomic_io import write_text_atomic
 from .bake_master import bake_master
 from .captions import write_captions
+from .checker import CheckIssue, check_walkthrough
 from .concat import assemble_master, diff_takes
 from .config import settings
 from .continuous_narration import synth_continuous
@@ -152,6 +153,52 @@ def master(
         f"[green]master[/] {walkthrough_id}/{take_id}: "
         f"{len(manifest['segments'])} segments, sha256={manifest['master_sha256'][:12]}…"
     )
+
+
+_SEVERITY_STYLE = {"error": "red", "warn": "yellow", "info": "dim"}
+
+
+@app.command("check")
+def check_cmd(
+    walkthrough_id: str = typer.Argument("v1"),
+    no_network: bool = typer.Option(
+        False,
+        "--no-network",
+        help="Skip the link checker (offline / CI without internet).",
+    ),
+) -> None:
+    """Strict validator + link checker + a11y triage for a walkthrough.
+
+    Exit code: 0 if no errors, 1 if any error, 2 if only warnings.
+    """
+    import sys as _sys
+
+    report = check_walkthrough(_walkthrough_dir(walkthrough_id), network=not no_network)
+
+    table = Table(title=f"check · {walkthrough_id}")
+    table.add_column("severity")
+    table.add_column("category")
+    table.add_column("where")
+    table.add_column("message")
+    for issue in report.issues:
+        style = _SEVERITY_STYLE.get(issue.severity, "")
+        table.add_row(
+            f"[{style}]{issue.severity}[/]",
+            issue.category,
+            issue.where,
+            issue.message,
+        )
+    rprint(table)
+
+    n_err = len(report.errors)
+    n_warn = len(report.warnings)
+    if n_err:
+        rprint(f"\n[red]✗[/] {n_err} error(s), {n_warn} warning(s)")
+    elif n_warn:
+        rprint(f"\n[yellow]![/] {n_warn} warning(s); no errors")
+    else:
+        rprint("\n[green]✓[/] all checks passed")
+    _sys.exit(report.exit_code())
 
 
 @app.command("ask")
