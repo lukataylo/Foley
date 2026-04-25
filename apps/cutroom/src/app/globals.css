@@ -4125,6 +4125,86 @@ a.back:hover { color: var(--fg); }
 .tl3-stale-cta:disabled { opacity: 0.6; cursor: not-allowed; }
 [data-theme="dark"] .tl3-stale-cta { color: #f5cc7d; }
 
+/* Live preview ------------------------------------------- */
+
+.live-canvas { position: relative; overflow: hidden; }
+.live-preview { position: absolute; inset: 0; }
+.live-preview-stack {
+  position: absolute;
+  inset: 0;
+  background: #0a0a0a;
+}
+.live-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0a0a0a;
+  display: none;
+}
+.live-video-active { display: block; }
+.live-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+.live-typed {
+  position: absolute;
+  left: 5%; right: 5%;
+  pointer-events: none;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  line-height: 1.1;
+  padding: 12px 20px;
+  border-radius: 8px;
+}
+.live-typed.align-top { top: 8%; }
+.live-typed.align-center { top: 50%; transform: translateY(-50%); }
+.live-typed.align-bottom { bottom: 8%; }
+
+.live-caption {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.live-caption.align-top { top: 8%; }
+.live-caption.align-center { top: 50%; transform: translate(-50%, -50%); }
+.live-caption.align-bottom { bottom: 8%; }
+
+.live-banana {
+  position: absolute;
+  pointer-events: none;
+}
+.live-banana img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+.live-banana.layout-fullscreen { inset: 0; display: flex; align-items: center; justify-content: center; }
+.live-banana.layout-fullscreen img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.live-banana.layout-lower-third { left: 4%; right: 4%; bottom: 6%; max-height: 28%; }
+.live-banana.layout-corner { top: 4%; right: 4%; max-width: 28%; }
+
 .tl3-ctxmenu {
   position: fixed;
   z-index: 200;

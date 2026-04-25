@@ -33,6 +33,7 @@ import { Timeline2 } from "./Timeline2";
 import { ChangesTimeline } from "./ChangesTimeline";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
+import { LivePreview, type LivePreviewHandle } from "./LivePreview";
 import type { MusicClip } from "@/lib/timeline";
 import { ClipInspector } from "./ClipInspector";
 import {
@@ -83,6 +84,7 @@ export function EditorShell({
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const musicMixerRef = useRef<MusicMixerHandle>(null);
+  const livePreviewRef = useRef<LivePreviewHandle>(null);
 
   const totalDuration = useMemo(
     () => tracks.reduce((n, t) => n + t.duration_ms, 0) / 1000,
@@ -377,6 +379,16 @@ export function EditorShell({
   }
 
   function togglePlay() {
+    if (livePreviewRef.current) {
+      if (isPlaying) {
+        livePreviewRef.current.pause();
+      } else {
+        livePreviewRef.current.play();
+        livePreviewRef.current.syncPlay();
+        musicMixerRef.current?.syncPlay();
+      }
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
@@ -389,9 +401,16 @@ export function EditorShell({
   }
 
   function seekTo(seconds: number) {
+    const clamped = Math.max(0, Math.min(totalDuration, seconds));
+    if (livePreviewRef.current) {
+      setCurrentTime(clamped);
+      livePreviewRef.current.syncSeek(clamped);
+      musicMixerRef.current?.syncSeek(clamped);
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = Math.max(0, Math.min(totalDuration, seconds));
+    v.currentTime = clamped;
     setCurrentTime(v.currentTime);
   }
 
@@ -1059,21 +1078,34 @@ export function EditorShell({
               />
             </div>
           ) : (
-            <div className={`canvas ${animClass} ${activeZoom?.enabled ? "step-zoomed" : ""}`}>
-              <video
-                ref={videoRef}
-                src={masterUrl}
-                onTimeUpdate={onTimeUpdate}
-                onPlay={() => { setIsPlaying(true); musicMixerRef.current?.syncPlay(); }}
-                onPause={() => { setIsPlaying(false); musicMixerRef.current?.syncPause(); }}
-                onSeeked={(e) => musicMixerRef.current?.syncSeek((e.currentTarget as HTMLVideoElement).currentTime)}
-                preload="metadata"
-                controls
-                style={videoTransform}
-              />
-              {currentCaption ? (
-                <div className="captions-overlay">{currentCaption}</div>
-              ) : null}
+            <div className={`canvas live-canvas ${animClass} ${activeZoom?.enabled ? "step-zoomed" : ""}`}>
+              {overlay ? (
+                <LivePreview
+                  ref={livePreviewRef}
+                  overlay={overlay}
+                  walkthroughId={walkthrough.id}
+                  currentTime={currentTime}
+                  isPlaying={isPlaying}
+                  videoStyle={videoTransform}
+                  onTimeUpdate={(t) => setCurrentTime(t)}
+                  onPlayStateChange={(playing) => {
+                    setIsPlaying(playing);
+                    if (playing) musicMixerRef.current?.syncPlay();
+                    else musicMixerRef.current?.syncPause();
+                  }}
+                />
+              ) : (
+                <video
+                  ref={videoRef}
+                  src={masterUrl}
+                  onTimeUpdate={onTimeUpdate}
+                  onPlay={() => { setIsPlaying(true); musicMixerRef.current?.syncPlay(); }}
+                  onPause={() => { setIsPlaying(false); musicMixerRef.current?.syncPause(); }}
+                  preload="metadata"
+                  controls
+                  style={videoTransform}
+                />
+              )}
               <MusicMixer
                 ref={musicMixerRef}
                 clips={musicClipsForMix}
