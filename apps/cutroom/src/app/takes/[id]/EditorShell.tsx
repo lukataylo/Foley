@@ -29,8 +29,19 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
   origin_y: 50,
 };
 import { Timeline } from "./Timeline";
+import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
 import { SidePanel } from "./SidePanel";
+import { ClipInspector } from "./ClipInspector";
+import { ClipPalette } from "./ClipPalette";
+import {
+  type Clip,
+  type EditOverlay,
+  addClip as addClipPure,
+  nextClipId,
+  patchClip as patchClipPure,
+  removeClip as removeClipPure,
+} from "@/lib/timeline";
 
 export interface TrackEntry {
   id: string;
@@ -88,6 +99,8 @@ export function EditorShell({
     null;
 
   const [selectedStepId, setSelectedStepId] = useState<string | null>(initialStep);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<EditOverlay | null>(null);
   const [railTab, setRailTab] = useState<RailTab>("steps");
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -421,6 +434,165 @@ export function EditorShell({
     }
   }
 
+  // ─── EditOverlay (timeline.json) ─────────────────────────────────────
+  // Load on mount; fall back to a synthesized overlay on first run.
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`/api/walkthroughs/${walkthrough.id}/timeline`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        if (j?.overlay) setOverlay(j.overlay as EditOverlay);
+      })
+      .catch(() => { /* leave null */ });
+    return () => { cancelled = true; };
+  }, [walkthrough.id]);
+
+  // Debounced persistence — every overlay change schedules a PUT.
+  const overlayPersistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistOverlay = useCallback((next: EditOverlay) => {
+    if (overlayPersistTimer.current) clearTimeout(overlayPersistTimer.current);
+    overlayPersistTimer.current = setTimeout(() => {
+      void fetch(`/api/walkthroughs/${walkthrough.id}/timeline`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overlay: next }),
+      });
+    }, 350);
+  }, [walkthrough.id]);
+
+  function patchClipState(id: string, patch: Partial<Clip>) {
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      const next = patchClipPure(curr, id, patch);
+      persistOverlay(next);
+      return next;
+    });
+  }
+  function removeClipState(id: string) {
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      const next = removeClipPure(curr, id);
+      persistOverlay(next);
+      return next;
+    });
+    if (selectedClipId === id) setSelectedClipId(null);
+  }
+  function dropPaletteOnTrack(
+    track: keyof EditOverlay["tracks"],
+    paletteKind: string,
+    startMs: number,
+  ) {
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      let next: EditOverlay = curr;
+      if (paletteKind === "banana" && track === "banana") {
+        const id = nextClipId("banana");
+        next = addClipPure(curr, "banana", {
+          id,
+          kind: "banana",
+          start_ms: startMs,
+          duration_ms: 3000,
+          fade_in_ms: 300,
+          fade_out_ms: 300,
+          volume: 1,
+          prompt: "",
+          asset_url: "",
+          layout: "fullscreen",
+          ref_step_id: tracks[0]?.id ?? null,
+        });
+        setSelectedClipId(id);
+      } else if (paletteKind === "typed" && track === "typed") {
+        const id = nextClipId("typed");
+        next = addClipPure(curr, "typed", {
+          id,
+          kind: "typed",
+          start_ms: startMs,
+          duration_ms: 3500,
+          fade_in_ms: 200,
+          fade_out_ms: 200,
+          volume: 1,
+          strings: ["Watch this."],
+          font_family: "SF Pro Display, Inter, sans-serif",
+          font_size_px: 64,
+          color: "#fdf3d8",
+          bg_color: "transparent",
+          type_speed_ms: 55,
+          back_speed_ms: 30,
+          loop: false,
+          show_cursor: true,
+          cursor_char: "|",
+          align: "center",
+        });
+        setSelectedClipId(id);
+      } else if (paletteKind === "music" && track === "music") {
+        const id = nextClipId("music");
+        next = addClipPure(curr, "music", {
+          id,
+          kind: "music",
+          start_ms: startMs,
+          duration_ms: 12000,
+          fade_in_ms: 1500,
+          fade_out_ms: 1500,
+          volume: 0.18,
+          asset_url: "",
+          label: "New music bed",
+          loop: true,
+        });
+        setSelectedClipId(id);
+      } else if (paletteKind === "caption" && track === "caption") {
+        const id = nextClipId("caption");
+        next = addClipPure(curr, "caption", {
+          id,
+          kind: "caption",
+          start_ms: startMs,
+          duration_ms: 2500,
+          fade_in_ms: 200,
+          fade_out_ms: 200,
+          volume: 1,
+          text: "New caption",
+          align: "bottom",
+        });
+        setSelectedClipId(id);
+      }
+      if (next !== curr) persistOverlay(next);
+      return next;
+    });
+  }
+
+  async function generateBananaClip(clipId: string) {
+    if (!overlay) return;
+    const found = overlay.tracks.banana.find((c) => c.id === clipId);
+    if (!found || !found.prompt) return;
+    setBusyAction("banana");
+    try {
+      const res = await fetch(`/api/genai/laptop-mockup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walkthrough_id: walkthrough.id,
+          step_id: found.ref_step_id ?? tracks[0]?.id,
+          prompt_override: found.prompt,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (json.ok && json.url) {
+        patchClipState(clipId, { asset_url: `${json.url}?t=${Date.now()}` });
+      } else {
+        alert(json.error ?? "Banana failed");
+      }
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  // Source frames keyed by step_id, for thumbnails in clip blocks.
+  const sourceById = useMemo(() => {
+    const out: Record<string, TrackEntry> = {};
+    for (const t of tracks) out[t.id] = t;
+    return out;
+  }, [tracks]);
+
   // captions text — what step is the playhead inside
   const currentCaption = (() => {
     if (!captionsOn) return null;
@@ -577,36 +749,81 @@ export function EditorShell({
           </div>
         </section>
 
-        <Inspector
-          take={take}
-          step={selectedStep}
-          stepIndex={selectedStepIdx}
-          totalSteps={tracks.length}
-          onPrev={() => jumpStep(-1)}
-          onNext={() => jumpStep(1)}
-          takeId={takeId}
-          editTriggerCount={editNarrationTrigger}
-          genaiPreviewUrl={selectedStepId ? genaiByStep[selectedStepId] ?? null : null}
-          onDirectorActionStart={() => setBusyAction("retake")}
-          onDirectorActionEnd={() => setBusyAction(null)}
-        />
+        <div className="editor-inspector-slot">
+          {selectedClipId && overlay ? (
+            <ClipInspector
+              overlay={overlay}
+              selectedClipId={selectedClipId}
+              sourceById={sourceById}
+              onPatch={patchClipState}
+              onRemove={removeClipState}
+              onRetake={(stepId) => { setSelectedStepId(stepId); aiReRunReview(); }}
+              onRenarrate={(stepId) => { setSelectedStepId(stepId); aiReNarrateSelected(); }}
+              onGenerateBanana={generateBananaClip}
+              busy={busyAction !== null}
+            />
+          ) : (
+            <Inspector
+              take={take}
+              step={selectedStep}
+              stepIndex={selectedStepIdx}
+              totalSteps={tracks.length}
+              onPrev={() => jumpStep(-1)}
+              onNext={() => jumpStep(1)}
+              takeId={takeId}
+              editTriggerCount={editNarrationTrigger}
+              genaiPreviewUrl={selectedStepId ? genaiByStep[selectedStepId] ?? null : null}
+              onDirectorActionStart={() => setBusyAction("retake")}
+              onDirectorActionEnd={() => setBusyAction(null)}
+            />
+          )}
+        </div>
       </div>
 
-      <Timeline
-        tracks={tracks}
-        stepStartsMs={stepStartsMs}
-        totalDuration={totalDuration}
-        currentTime={currentTime}
-        isPlaying={isPlaying}
-        zoom={zoom}
-        speed={speed}
-        selectedStepId={selectedStepId}
-        onSelectStep={selectStep}
-        onSeek={seekTo}
-        onTogglePlay={togglePlay}
-        onJump={jumpStep}
-        onZoom={(n) => setZoom(Math.max(12, Math.min(120, n)))}
-      />
+      {overlay ? <ClipPalette /> : null}
+
+      {overlay ? (
+        <Timeline2
+          overlay={overlay}
+          sourceById={sourceById}
+          selectedClipId={selectedClipId}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          zoom={zoom}
+          speed={speed}
+          onSelectClip={(id) => {
+            setSelectedClipId(id);
+            // Mirror selection into the legacy step state so the canvas stays in sync.
+            if (id) {
+              const found = overlay.tracks.video.find((c) => c.id === id)
+                ?? overlay.tracks.voice.find((c) => c.id === id);
+              if (found && "step_id" in found) setSelectedStepId(found.step_id);
+            }
+          }}
+          onPatchClip={patchClipState}
+          onSeek={seekTo}
+          onTogglePlay={togglePlay}
+          onJump={jumpStep}
+          onZoom={(n) => setZoom(Math.max(12, Math.min(160, n)))}
+          onDropPalette={dropPaletteOnTrack}
+        />
+      ) : (
+        <Timeline
+          tracks={tracks}
+          stepStartsMs={stepStartsMs}
+          totalDuration={totalDuration}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          zoom={zoom}
+          speed={speed}
+          selectedStepId={selectedStepId}
+          onSelectStep={selectStep}
+          onSeek={seekTo}
+          onTogglePlay={togglePlay}
+          onJump={jumpStep}
+          onZoom={(n) => setZoom(Math.max(12, Math.min(120, n)))}
+        />
+      )}
     </div>
   );
 }
