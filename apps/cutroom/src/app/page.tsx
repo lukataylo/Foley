@@ -88,7 +88,7 @@ export default async function HomePage() {
         meta: `${s.voice_name} · ${relativeTime(s.last_activity)}`,
         href: `/walkthroughs/${s.id}`,
         variant: "default",
-        tone: "blue",
+        tone: "amber",
         thumbs,
       };
     }),

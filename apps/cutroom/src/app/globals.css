@@ -292,9 +292,10 @@ h2.section-label {
 
 .home {
   min-height: 100vh;
-  background: var(--bg-tinted);
+  background: linear-gradient(180deg, #f1eee5 0%, #f6f3ec 100%);
   padding: 56px 40px 96px;
 }
+[data-theme="dark"] .home { background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%); }
 .home-inner { max-width: 1180px; margin: 0 auto; }
 .home-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 56px; }
 .home-header .brand-mark {
