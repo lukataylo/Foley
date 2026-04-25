@@ -59,7 +59,12 @@ def ingest(
     force: bool = typer.Option(False, "--force", help="Re-capture even if fingerprint matches."),
     skip_narration: bool = typer.Option(False, "--skip-narration"),
 ) -> None:
-    """Run every step from walkthrough.yaml: capture clip + frame + narration."""
+    """Run every step from walkthrough.yaml: capture clip + frame + narration.
+
+    Resilient: per-step failures are logged in the summary table but never
+    abort the loop. The cutroom surfaces step.error from meta.json with a
+    retake button.
+    """
     wt_dir = _walkthrough_dir(walkthrough_id)
     wt = load_walkthrough(wt_dir)
 
@@ -68,19 +73,51 @@ def ingest(
     table.add_column("title")
     table.add_column("clip")
     table.add_column("narration")
+    table.add_column("warnings")
 
+    failed: list[tuple[str, str]] = []
     for step in wt.steps:
-        paths = capture_step(wt, step, settings.walkthroughs_dir, headed=headed, force=force)
+        try:
+            paths = capture_step(
+                wt, step, settings.walkthroughs_dir, headed=headed, force=force
+            )
+        except Exception as exc:
+            # Truly unexpected (not a Playwright error — those are caught inside).
+            failed.append((step.id, f"capture_step raised: {exc}"))
+            table.add_row(step.id, step.title, "[red]ERR[/]", "skipped", str(exc)[:60])
+            continue
+
+        # Read meta to surface warnings (best-effort).
+        warnings_count = 0
+        try:
+            meta = _json.loads((paths["meta"]).read_text())
+            warnings_count = len(meta.get("action_warnings", []))
+            if meta.get("error"):
+                failed.append((step.id, meta["error"]))
+        except Exception:
+            pass
 
         narration_status = "skipped"
         if not skip_narration:
-            synth_narration(step.narration, paths["narration"], voice_id=wt.brand.voice_id)
-            narration_status = f"{paths['narration'].stat().st_size}B"
+            try:
+                synth_narration(step.narration, paths["narration"], voice_id=wt.brand.voice_id)
+                narration_status = f"{paths['narration'].stat().st_size}B"
+            except Exception as exc:
+                narration_status = "[red]FAIL[/]"
+                failed.append((step.id, f"narrate: {exc}"))
 
-        clip_status = f"{paths['clip'].stat().st_size}B" if paths["clip"].exists() else "MISSING"
-        table.add_row(step.id, step.title, clip_status, narration_status)
+        clip_status = (
+            f"{paths['clip'].stat().st_size}B" if paths["clip"].exists() else "[red]MISSING[/]"
+        )
+        warning_cell = f"[yellow]{warnings_count}[/]" if warnings_count else ""
+        table.add_row(step.id, step.title, clip_status, narration_status, warning_cell)
 
     rprint(table)
+    if failed:
+        rprint(f"\n[yellow]ingest finished with {len(failed)} issue(s):[/]")
+        for sid, msg in failed:
+            rprint(f"  [yellow]·[/] {sid}: {msg[:200]}")
+        rprint("[dim]The master can still bake; retake individual steps from the editor.[/]")
 
 
 @app.command()

@@ -55,7 +55,35 @@ export default async function EditWalkthroughPage({
     notFound();
   }
 
-  const steps: ClientStep[] = (raw.steps ?? []).map((s) => {
+  // Best-effort: pull per-step capture warnings + errors out of meta.json so
+  // the editor can show "this step had selector misses" or "retake failed"
+  // badges without re-running anything.
+  const stepsRaw = raw.steps ?? [];
+  const metas = await Promise.all(
+    stepsRaw.map(async (s) => {
+      try {
+        const metaPath = path.join(
+          WALKTHROUGHS_DIR,
+          params.id,
+          "steps",
+          `${s.id}.meta.json`,
+        );
+        const txt = await readFile(metaPath, "utf8");
+        const m = JSON.parse(txt) as {
+          error?: string;
+          action_warnings?: Array<{ index: number; kind: string; message: string }>;
+        };
+        return {
+          captureError: m.error ?? null,
+          captureWarnings: m.action_warnings ?? [],
+        };
+      } catch {
+        return { captureError: null, captureWarnings: [] };
+      }
+    }),
+  );
+
+  const steps: ClientStep[] = stepsRaw.map((s, i) => {
     const actions = s.actions ?? [];
     const interaction = actions.find(
       (a) => a.kind === "click" || a.kind === "fill" || a.kind === "hover",
@@ -82,6 +110,8 @@ export default async function EditWalkthroughPage({
         ms: typeof a.ms === "number" ? a.ms : null,
       })),
       screenshotUrl: stepFramePath(params.id, s.id),
+      captureError: metas[i]?.captureError ?? null,
+      captureWarnings: metas[i]?.captureWarnings ?? [],
     };
   });
 

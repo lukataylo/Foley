@@ -20,6 +20,10 @@ export interface ClientStep {
   interaction: { kind: string; selector: string | null; value: string | null } | null;
   actions: ClientAction[];
   screenshotUrl: string;
+  /** Step-level capture failure from the last ingest run, if any. */
+  captureError?: string | null;
+  /** Per-action warnings from the last ingest run (selector miss, etc.). */
+  captureWarnings?: Array<{ index: number; kind: string; message: string }>;
 }
 
 interface Props {
@@ -314,8 +318,14 @@ interface StepCardProps {
 }
 
 function StepCard({ index, step, status, busy, onChange, onCommit, onDelete }: StepCardProps) {
+  const hasCaptureError = !!step.captureError;
+  const hasCaptureWarnings = (step.captureWarnings?.length ?? 0) > 0;
   return (
-    <article className={`editor-step ${busy ? "is-busy" : ""}`}>
+    <article
+      className={`editor-step ${busy ? "is-busy" : ""} ${
+        hasCaptureError ? "has-capture-error" : hasCaptureWarnings ? "has-capture-warning" : ""
+      }`}
+    >
       <aside className="step-thumb">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -327,6 +337,13 @@ function StepCard({ index, step, status, busy, onChange, onCommit, onDelete }: S
           }}
         />
         <div className="step-thumb-num">{String(index + 1).padStart(2, "0")}</div>
+        {hasCaptureError ? <div className="step-thumb-dot is-error" title={step.captureError ?? ""} /> : null}
+        {!hasCaptureError && hasCaptureWarnings ? (
+          <div
+            className="step-thumb-dot is-warning"
+            title={`${step.captureWarnings?.length} action(s) failed during the last capture — Retake to fix`}
+          />
+        ) : null}
       </aside>
 
       <div className="step-body">
@@ -348,6 +365,17 @@ function StepCard({ index, step, status, busy, onChange, onCommit, onDelete }: S
                   : ""}
           </span>
         </div>
+
+        {hasCaptureError ? (
+          <div className="step-capture-banner is-error">
+            ⚠ Last capture failed: {step.captureError}
+          </div>
+        ) : hasCaptureWarnings ? (
+          <div className="step-capture-banner is-warning">
+            ⚠ {step.captureWarnings!.length} action(s) failed:{" "}
+            {step.captureWarnings!.map((w) => `${w.kind}${w.message ? ` (${w.message.slice(0, 60)})` : ""}`).join(", ")}
+          </div>
+        ) : null}
 
         <ActionBreakdown step={step} />
 
