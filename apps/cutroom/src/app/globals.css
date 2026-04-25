@@ -1238,13 +1238,25 @@ div > .folder-card.placeholder { cursor: default; }
 /* Scope the takes-editor header away from the captured-walkthrough
    editor's `.editor-header` rule (which lives at .editor-page below
    and overrides margin/align/gap). Only target direct children of
-   the takes-editor's .editor wrapper. */
+   the takes-editor's .editor wrapper. Force the takes-editor's
+   intended properties since multiple rules cascade unscoped. */
 .editor > .editor-header {
   margin-bottom: 0;
   align-items: center;
+  justify-content: space-between;
   gap: 0;
   height: 56px;
+  padding: 0 20px;
 }
+.editor > .editor-header .left,
+.editor > .editor-header .right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* a.back at line ~2150 sets margin-bottom: 24px (for the captured
+   editor's hero); zero it inside the takes editor since header is fixed. */
+.editor > .editor-header a.back { margin: 0; }
 /* preview mode: drop the timeline, full stage takes over the middle row */
 .editor.mode-preview {
   grid-template-rows: 56px 1fr 0;
