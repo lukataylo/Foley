@@ -1857,6 +1857,17 @@ div > .folder-card.placeholder { cursor: default; }
   font: inherit;
 }
 .editor-stage .tabs button.on { background: var(--panel-2); color: var(--fg-2); }
+.editor-stage .tabs .caption-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  color: var(--fg-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
 
 .inspector {
   background: var(--panel);

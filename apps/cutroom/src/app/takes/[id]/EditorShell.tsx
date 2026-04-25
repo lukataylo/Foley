@@ -1153,22 +1153,18 @@ export function EditorShell({
                 <button onClick={() => setCanvasMode("video")} type="button">← Back to video</button>
               </>
             ) : (
-              <>
+              <label className="caption-switch">
+                <span>Captions</span>
                 <button
-                  className={!captionsOn ? "on" : ""}
-                  onClick={() => setCaptionsOn(false)}
                   type="button"
+                  className={`ci-toggle ${captionsOn ? "on" : ""}`}
+                  onClick={() => setCaptionsOn(!captionsOn)}
+                  aria-pressed={captionsOn}
+                  aria-label="Toggle captions overlay"
                 >
-                  Original
+                  <span className="ci-toggle-knob" />
                 </button>
-                <button
-                  className={captionsOn ? "on" : ""}
-                  onClick={() => setCaptionsOn(true)}
-                  type="button"
-                >
-                  Captions
-                </button>
-              </>
+              </label>
             )}
           </div>
         </section>
