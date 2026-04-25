@@ -1,0 +1,18 @@
+{
+  "id": "take-006",
+  "walkthrough_id": "v1",
+  "parent_take_id": "take-005",
+  "pr_number": 5,
+  "pr_title": "Compact sidebar in narrow viewports",
+  "director_note": "Re-shoot of PR #5 with the viewport pinned to 1280×800 so the sidebar collapse actually fires. board_overview and open_ticket clips updated; narration tweaked to call out the change.",
+  "created_at": "2026-04-24T14:30:11.443918Z",
+  "status": "ready",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "No sidebar.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "unchanged", "reason": "No sidebar.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "changed", "reason": "Sidebar now collapses to icons; narration adds a one-liner about the responsive layout.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "changed", "reason": "Icon-only sidebar visible behind the ticket panel; recapture required.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Action area unchanged.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Settings layout untouched.", "proposed_step": null}
+  ]
+}

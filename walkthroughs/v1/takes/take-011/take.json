@@ -1,0 +1,18 @@
+{
+  "id": "take-011",
+  "walkthrough_id": "v1",
+  "parent_take_id": "take-009",
+  "pr_number": 11,
+  "pr_title": "Tighten ticket card spacing",
+  "director_note": "Padding inside ticket cards drops from 16 to 12; gap between cards drops from 12 to 8. Subtle but visible in board_overview — recapture covers it.",
+  "created_at": "2026-04-24T15:48:22.117841Z",
+  "status": "ready",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "No board.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "unchanged", "reason": "No board.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "changed", "reason": "Card density visibly tighter; recapture so the new spacing reads on tape.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "unchanged", "reason": "Ticket panel padding untouched.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Unaffected.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Unaffected.", "proposed_step": null}
+  ]
+}

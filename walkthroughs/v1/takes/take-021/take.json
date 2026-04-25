@@ -1,0 +1,18 @@
+{
+  "id": "take-021",
+  "walkthrough_id": "v1",
+  "parent_take_id": "master",
+  "pr_number": 21,
+  "pr_title": "Add ticket priority field",
+  "director_note": "Adds a P0/P1/P2/P3 priority dropdown on the ticket detail panel. open_ticket needs a re-narrate so the new field is called out; the rest of the flow is untouched.",
+  "created_at": "2026-04-25T16:10:55.009811Z",
+  "status": "drafting",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "Brand intro.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "unchanged", "reason": "Auth flow.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "unchanged", "reason": "Priority isn't surfaced on cards in this PR.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "changed", "reason": "Priority dropdown is the new affordance — re-narrate to mention it; recapture covers the field.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Action area unchanged.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Settings unaffected.", "proposed_step": null}
+  ]
+}

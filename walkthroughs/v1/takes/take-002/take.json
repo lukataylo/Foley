@@ -1,0 +1,18 @@
+{
+  "id": "take-002",
+  "walkthrough_id": "v1",
+  "parent_take_id": null,
+  "pr_number": 2,
+  "pr_title": "Initial CTA color exploration",
+  "director_note": "First pass at warming up the primary button color. Sign-in CTA was the only changed surface, but the contrast came back too low against the dark sign-in card so the agent flagged the captured frame for retake.",
+  "created_at": "2026-04-23T09:14:02.118202Z",
+  "status": "rejected",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "No UI surface from this PR appears before sign-in.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "changed", "reason": "Primary CTA color shifted; the captured frame still shows the old hex.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "unchanged", "reason": "Board did not pick up the token in this revision.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "unchanged", "reason": "Ticket actions still use the secondary token.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Ship-it button keeps the existing accent.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Settings page untouched.", "proposed_step": null}
+  ]
+}

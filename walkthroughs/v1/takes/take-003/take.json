@@ -1,0 +1,18 @@
+{
+  "id": "take-003",
+  "walkthrough_id": "v1",
+  "parent_take_id": "take-002",
+  "pr_number": 3,
+  "pr_title": "Switch primary CTA to a deeper blue",
+  "director_note": "Iteration on PR #2. The contrast complaint is fixed by dropping the saturation on the dark theme and bumping luminosity on the light theme. Sign-in capture re-shot.",
+  "created_at": "2026-04-23T11:05:41.502771Z",
+  "status": "ready",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "Brand intro card unchanged.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "changed", "reason": "CTA token was the only surface — recaptured with the new deeper blue.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "unchanged", "reason": "Board still uses the old neutral chips.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "unchanged", "reason": "Ticket header unaffected.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Ship-it button keeps its own accent.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Settings layout untouched.", "proposed_step": null}
+  ]
+}

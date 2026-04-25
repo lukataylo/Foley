@@ -1,0 +1,18 @@
+{
+  "id": "take-009",
+  "walkthrough_id": "v1",
+  "parent_take_id": "take-006",
+  "pr_number": 9,
+  "pr_title": "Empty board state has a friendly tip",
+  "director_note": "When a project has zero tickets the board now shows an illustrated empty state with a 'Create your first ticket' CTA. Walkthrough doesn't reach this surface (board_overview always has tickets) but the agent surfaces it as an additive step suggestion.",
+  "created_at": "2026-04-24T17:22:48.901112Z",
+  "status": "ready",
+  "step_diffs": [
+    {"step_id": "intro", "status": "unchanged", "reason": "No board content.", "proposed_step": null},
+    {"step_id": "sign_in", "status": "unchanged", "reason": "Auth flow.", "proposed_step": null},
+    {"step_id": "board_overview", "status": "unchanged", "reason": "Walkthrough fixture has tickets seeded — empty state never renders here.", "proposed_step": null},
+    {"step_id": "open_ticket", "status": "unchanged", "reason": "Ticket detail unrelated.", "proposed_step": null},
+    {"step_id": "mark_done", "status": "unchanged", "reason": "Action area unaffected.", "proposed_step": null},
+    {"step_id": "settings", "status": "unchanged", "reason": "Settings unaffected.", "proposed_step": null}
+  ]
+}
