@@ -56,7 +56,7 @@ export default async function ComparePage({
       </div>
 
       <h2 style={{ marginTop: 28 }}>Per-segment identity</h2>
-      <div>
+      <div className="identity-rows">
         {stepIds.map((id) => {
           const a = aById[id];
           const b = bById[id];
@@ -64,8 +64,8 @@ export default async function ComparePage({
           const step = walkthrough.steps.find((s) => s.id === id);
           return (
             <div key={id} className="identity-row">
-              <span style={{ flex: 1 }}>{step?.title ?? id}</span>
-              <span className={same ? "ok" : "bad"} style={{ width: 220, textAlign: "right" }}>
+              <span className="name">{step?.title ?? id}</span>
+              <span className={`verdict ${same ? "ok" : "bad"}`}>
                 {same ? `byte-identical · ${a.segment_sha256.slice(0, 12)}…` : "different"}
               </span>
             </div>

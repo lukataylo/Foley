@@ -30,7 +30,9 @@ export default async function TakePage({ params }: { params: { id: string } }) {
         <div>
           <h1>{take.id}</h1>
           <p className="subtitle">
-            {take.pr_title ?? "canonical master"} · sha {manifest.master_sha256.slice(0, 12)}…
+            {take.pr_title ?? "canonical master"}
+            {" · "}
+            <span className="mono">sha {manifest.master_sha256.slice(0, 12)}…</span>
           </p>
         </div>
         <span className={`status status-${take.status}`}>{take.status}</span>
@@ -62,7 +64,9 @@ export default async function TakePage({ params }: { params: { id: string } }) {
         <div>
           <div className="summary-box">
             <div className="label">Director's note</div>
-            <div>{take.pr_title ? deriveSummary(take) : "Initial canonical master."}</div>
+            <div className="body">
+              {take.pr_title ? deriveSummary(take) : "Initial canonical master."}
+            </div>
           </div>
 
           <h2>Timeline</h2>

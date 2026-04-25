@@ -242,7 +242,8 @@ def test_agent(
     for d in verdict.step_diffs:
         if d.proposed_step is not None:
             rprint(f"\n[bold]{d.step_id}[/] proposed step:")
-            rprint(d.proposed_step.model_dump_json(indent=2, exclude_none=True))
+            # plain print: rich's markup parser eats `[...]` selectors otherwise
+            print(d.proposed_step.model_dump_json(indent=2, exclude_none=True))
 
 
 if __name__ == "__main__":

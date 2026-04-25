@@ -49,7 +49,7 @@ Reasoning rules:
 - Be precise about WHY in `reason` — a single short sentence, demoable, no hedging.
 - Use action `kind` values exactly: "goto", "click", "fill", "hover", "wait", "scroll", "press". For goto provide `url`. For click/hover provide `selector`. For fill provide `selector` and `value`. For wait provide `ms`. For press provide `value` (key name).
 
-You must classify EVERY existing step — call the `submit_verdict` tool exactly once with all step_diffs in a single submission."""
+You must classify EVERY existing step — call the `submit_verdict` tool exactly once with all step_diffs in a single submission. Do not return text — your entire response must be the single tool call."""
 
 
 def _verdict_tool_schema() -> dict:
@@ -138,7 +138,9 @@ def review_pr(
                 }
             ],
             tools=[tool],
-            tool_choice={"type": "tool", "name": "submit_verdict"},
+            # The API rejects forced tool_choice (`any`/`tool`) when thinking is on.
+            # Use `auto` and steer with the system prompt + only registering one tool.
+            tool_choice={"type": "auto"},
             messages=[{"role": "user", "content": user_content}],
         )
 
