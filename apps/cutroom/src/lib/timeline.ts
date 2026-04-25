@@ -107,15 +107,24 @@ export interface EditOverlay {
   clips: Clip[];
 }
 
-/** Default row a newly-added clip of this kind lands on. */
+/** Default row a newly-added clip of this kind lands on.
+ *
+ * Row 0 is the top of the timeline. We put video/voice/music on the bottom
+ * three so the user sees their content immediately when the editor opens
+ * with a fresh synth. New overlays (transition/caption/banana/typed) come
+ * in at row 0 — visually on top of the video, where overlays belong.
+ *
+ * Z-order in the canvas is determined separately by clip kind, not row, so
+ * the row index here is purely a visual organization affordance.
+ */
 export const DEFAULT_ROW: Record<ClipKind, number> = {
   banana: 0,
-  typed: 1,
-  transition: 2,
-  caption: 3,
-  video: 4,
-  voice: 5,
-  music: 6,
+  typed: 0,
+  transition: 0,
+  caption: 0,
+  video: 1,
+  voice: 2,
+  music: 3,
 };
 
 export const KIND_GLYPH: Record<ClipKind, string> = {
