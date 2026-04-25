@@ -86,6 +86,16 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
 
   const totalMs = walkthrough.steps.reduce((n, s) => n + s.duration_ms, 0);
 
+  // Sanitise the brand's optional custom CSS — disallow `<` so a string
+  // can't escape the <style> block, and cap at 20 KB.
+  const customCss = (() => {
+    const s = walkthrough.brand.custom_css;
+    if (!s) return null;
+    if (s.length > 20_000) return null;
+    if (s.includes("<")) return null;
+    return s;
+  })();
+
   return (
     <main
       className="docs"
@@ -94,6 +104,9 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
         ["--brand-accent" as string]: walkthrough.brand.palette_accent,
       }}
     >
+      {customCss ? (
+        <style data-brand-custom-css dangerouslySetInnerHTML={{ __html: customCss }} />
+      ) : null}
       <div className="docs-toolbar">
         <Link href={`/walkthroughs/${params.walkthrough}`} className="back" style={{ margin: 0 }}>
           ← {walkthrough.id === "v1" ? "Loop" : walkthrough.id}

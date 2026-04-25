@@ -39,6 +39,8 @@ export interface BrandConfig {
   palette_accent: string;
   pacing_wpm: number;
   intro_card_ms: number;
+  /** Optional CSS string injected into <style> on /docs/<id>. */
+  custom_css?: string | null;
 }
 
 export interface Walkthrough {

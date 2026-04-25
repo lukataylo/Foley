@@ -138,6 +138,15 @@ class BrandConfig(BaseModel):
     palette_accent: str = "#ffce4a"
     pacing_wpm: int = Field(default=170, ge=120, le=220)
     intro_card_ms: int = Field(default=1500, ge=0, le=6000)
+    custom_css: str | None = Field(
+        default=None,
+        max_length=20_000,
+        description=(
+            "Optional CSS string injected into <style> on /docs/<id>. "
+            "Lets brands tweak typography or background without forking "
+            "the cutroom. Sanity-capped at 20 KB."
+        ),
+    )
 
 
 class TargetApp(BaseModel):
