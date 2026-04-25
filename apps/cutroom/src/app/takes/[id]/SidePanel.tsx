@@ -16,6 +16,12 @@ interface Props {
   speed: number;    setSpeed: (n: number) => void;
   animIn: string;   setAnimIn: (s: string) => void;
   animOut: string;  setAnimOut: (s: string) => void;
+
+  aiReRunReview: () => Promise<void> | void;
+  aiEditNarration: () => void;
+  aiReNarrateSelected: () => Promise<void> | void;
+  aiLaptopMockup: () => Promise<void> | void;
+  aiBusy: string | null;
 }
 
 export function SidePanel(p: Props) {
@@ -24,7 +30,15 @@ export function SidePanel(p: Props) {
       {p.tab === "steps" && <StepsPanel tracks={p.tracks} selectedStepId={p.selectedStepId} onSelectStep={p.onSelectStep} />}
       {p.tab === "voice" && <VoicePanel {...p} />}
       {p.tab === "brand" && <BrandPanel {...p} />}
-      {p.tab === "ai" && <AIPanel />}
+      {p.tab === "ai" && (
+        <AIPanel
+          onReRunReview={p.aiReRunReview}
+          onEditNarration={p.aiEditNarration}
+          onReNarrateSelected={p.aiReNarrateSelected}
+          onLaptopMockup={p.aiLaptopMockup}
+          busy={p.aiBusy}
+        />
+      )}
     </aside>
   );
 }
@@ -139,34 +153,76 @@ function BrandPanel(p: Props) {
   );
 }
 
-function AIPanel() {
+function AIPanel({
+  onReRunReview,
+  onEditNarration,
+  onReNarrateSelected,
+  onLaptopMockup,
+  busy,
+}: {
+  onReRunReview: () => Promise<void> | void;
+  onEditNarration: () => void;
+  onReNarrateSelected: () => Promise<void> | void;
+  onLaptopMockup: () => Promise<void> | void;
+  busy: string | null;
+}) {
   return (
     <>
       <h3>AI tools</h3>
       <div className="group">
-        <div className="group-label">Director</div>
-        <button className="tool-tile" type="button">
-          <div className="tile-icon" style={{ background: "#34c77b" }}>↺</div>
+        <div className="group-label">Compose with Gemini · Nano Banana</div>
+        <button
+          className={`tool-tile ${busy === "laptop" ? "busy" : ""}`}
+          type="button"
+          onClick={() => onLaptopMockup()}
+          disabled={busy !== null}
+        >
+          <div className="tile-icon" style={{ background: "linear-gradient(135deg, #f5b740 0%, #f08394 100%)" }}>🍌</div>
           <div>
-            <div className="tile-title">Re-run review</div>
-            <div className="tile-sub">Re-classify steps with the latest agent</div>
+            <div className="tile-title">{busy === "laptop" ? "Composing…" : "Insert in laptop mockup"}</div>
+            <div className="tile-sub">Wrap the selected step's frame in a MacBook</div>
           </div>
         </button>
-        <button className="tool-tile" type="button">
+      </div>
+      <div className="group">
+        <div className="group-label">Director</div>
+        <button
+          className={`tool-tile ${busy === "rebake" ? "busy" : ""}`}
+          type="button"
+          onClick={() => onReRunReview()}
+          disabled={busy !== null}
+        >
+          <div className="tile-icon" style={{ background: "#34c77b" }}>↺</div>
+          <div>
+            <div className="tile-title">{busy === "rebake" ? "Rebaking…" : "Re-run review"}</div>
+            <div className="tile-sub">Re-take changed steps + reassemble master</div>
+          </div>
+        </button>
+        <button
+          className="tool-tile"
+          type="button"
+          onClick={onEditNarration}
+          disabled={busy !== null}
+        >
           <div className="tile-icon" style={{ background: "#0070f3" }}>✎</div>
           <div>
             <div className="tile-title">Edit narration</div>
-            <div className="tile-sub">Rewrite a step's voiceover text</div>
+            <div className="tile-sub">Rewrite the changed step's voiceover</div>
           </div>
         </button>
       </div>
       <div className="group">
         <div className="group-label">Voice</div>
-        <button className="tool-tile" type="button">
+        <button
+          className={`tool-tile ${busy === "renarrate" ? "busy" : ""}`}
+          type="button"
+          onClick={() => onReNarrateSelected()}
+          disabled={busy !== null}
+        >
           <div className="tile-icon" style={{ background: "#a855f7" }}>♪</div>
           <div>
-            <div className="tile-title">Re-narrate step</div>
-            <div className="tile-sub">Re-synthesize Charlotte for this step</div>
+            <div className="tile-title">{busy === "renarrate" ? "Re-narrating…" : "Re-narrate step"}</div>
+            <div className="tile-sub">Re-synthesize Charlotte for the selected step</div>
           </div>
         </button>
         <button className="tool-tile" type="button" disabled>

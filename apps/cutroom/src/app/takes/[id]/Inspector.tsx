@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Take } from "@/lib/types";
 import type { TrackEntry } from "./EditorShell";
@@ -13,6 +13,8 @@ interface Props {
   onPrev: () => void;
   onNext: () => void;
   takeId: string;
+  editTriggerCount?: number;
+  genaiPreviewUrl?: string | null;
   onDirectorActionStart: () => void;
   onDirectorActionEnd: () => void;
 }
@@ -25,12 +27,20 @@ export function Inspector({
   onPrev,
   onNext,
   takeId,
+  editTriggerCount,
+  genaiPreviewUrl,
   onDirectorActionStart,
   onDirectorActionEnd,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [draftNarration, setDraftNarration] = useState<string | null>(null);
+
+  // External "open edit narration" trigger from the AI tile.
+  useEffect(() => {
+    if (editTriggerCount && step) setDraftNarration(step.narration);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTriggerCount]);
 
   if (!step) {
     return (
@@ -169,6 +179,29 @@ export function Inspector({
           </>
         )}
       </div>
+
+      {genaiPreviewUrl ? (
+        <div style={{ marginTop: 18 }}>
+          <div className="group-label" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>🍌 Nano Banana</span>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={genaiPreviewUrl}
+            alt="Laptop mockup"
+            style={{
+              width: "100%",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "var(--panel-2)",
+              display: "block",
+            }}
+          />
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
+            Generated composite. Re-run the tile to refresh.
+          </div>
+        </div>
+      ) : null}
 
       <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button className="btn-secondary" type="button" onClick={onPrev} disabled={stepIndex <= 0}>← Prev</button>

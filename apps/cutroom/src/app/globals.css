@@ -741,7 +741,40 @@ div > .folder-card.placeholder { cursor: default; }
   overflow: hidden;
   position: relative;
 }
-.editor-stage .canvas video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.editor-stage .canvas video {
+  width: 100%; height: 100%; object-fit: contain; background: #000;
+  transition: opacity 60ms linear;
+}
+
+/* Captions overlay drawn in the bottom third of the canvas */
+.editor-stage .canvas .captions-overlay {
+  position: absolute;
+  left: 8%; right: 8%; bottom: 8%;
+  text-align: center;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.4;
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* Per-step animation in/out — applied as a class on .canvas during the
+   first/last 0.6s of the master so the user can preview the effect. */
+@keyframes anim-fade   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes anim-slide  { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes anim-zoom   { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.editor-stage .canvas.anim-in-fade   video { animation: anim-fade 600ms ease both; }
+.editor-stage .canvas.anim-in-slide  video { animation: anim-slide 600ms ease both; }
+.editor-stage .canvas.anim-in-zoom   video { animation: anim-zoom 600ms ease both; }
+.editor-stage .canvas.anim-out-fade  video { animation: anim-fade 600ms ease reverse both; }
+.editor-stage .canvas.anim-out-slide video { animation: anim-slide 600ms ease reverse both; }
+.editor-stage .canvas.anim-out-zoom  video { animation: anim-zoom 600ms ease reverse both; }
+
+.editor-side .tool-tile.busy { background: var(--panel); border-color: var(--link); }
+.editor-side .tool-tile:disabled { opacity: 0.6; cursor: not-allowed; }
 .editor-stage .tabs {
   display: inline-flex;
   border: 1px solid var(--border);

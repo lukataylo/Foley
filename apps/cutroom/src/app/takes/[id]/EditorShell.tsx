@@ -32,11 +32,17 @@ interface Props {
   masterUrl: string;
 }
 
-export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough, tracks, masterUrl }: Props) {
+export function EditorShell({
+  takeId,
+  walkthroughDisplayName,
+  take,
+  walkthrough,
+  tracks,
+  masterUrl,
+}: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Step start times relative to the master, in seconds.
   const totalDuration = useMemo(
     () => tracks.reduce((n, t) => n + t.duration_ms, 0) / 1000,
     [tracks],
@@ -51,7 +57,6 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
     return out;
   }, [tracks]);
 
-  // The first changed/added step is the "interesting" one — seed the inspector.
   const initialStep =
     tracks.find((t) => t.diff_status === "changed" || t.diff_status === "added")?.id ??
     tracks[0]?.id ??
@@ -61,11 +66,14 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
   const [railTab, setRailTab] = useState<RailTab>("steps");
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [zoom, setZoom] = useState(36); // px per second
+  const [zoom, setZoom] = useState(36);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const [editNarrationTrigger, setEditNarrationTrigger] = useState(0);
+  const [genaiByStep, setGenaiByStep] = useState<Record<string, string>>({});
 
-  // Editor state knobs (visual / wire-only for the demo surface).
+  // Editor state knobs — now actually wired through to the video element.
   const [volume, setVolume] = useState(100);
   const [fadeIn, setFadeIn] = useState(0);
   const [fadeOut, setFadeOut] = useState(0);
@@ -73,13 +81,33 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
   const [animIn, setAnimIn] = useState("none");
   const [animOut, setAnimOut] = useState("none");
 
-  // Sync video element with our state.
+  // volume + speed → video element
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     v.volume = Math.max(0, Math.min(1, volume / 100));
     v.playbackRate = speed;
   }, [volume, speed]);
+
+  // fade in / fade out — drive video opacity from currentTime
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let opacity = 1;
+    if (fadeIn > 0 && currentTime < fadeIn) {
+      opacity = Math.max(0, currentTime / fadeIn);
+    } else if (fadeOut > 0 && currentTime > totalDuration - fadeOut) {
+      opacity = Math.max(0, (totalDuration - currentTime) / fadeOut);
+    }
+    v.style.opacity = String(opacity);
+  }, [currentTime, fadeIn, fadeOut, totalDuration]);
+
+  // animation in/out — apply CSS class on the canvas during the first/last 0.6s
+  const animClass = (() => {
+    if (currentTime < 0.6 && animIn !== "none") return `anim-in-${animIn}`;
+    if (totalDuration - currentTime < 0.6 && animOut !== "none") return `anim-out-${animOut}`;
+    return "";
+  })();
 
   function onTimeUpdate() {
     const v = videoRef.current;
@@ -128,15 +156,91 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
     }
   }
 
+  // ─── AI tile handlers wired through to real director actions ────────────
+  async function aiReRunReview() {
+    setBusyAction("rebake");
+    try {
+      await fetch(`/api/director/rebake-take`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ take_id: takeId }),
+      });
+      // Refresh to surface the new master + segments.
+      router.refresh();
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function aiEditNarration() {
+    // Jump to the first CHANGED/ADDED step + ask the inspector to open edit mode.
+    const target = tracks.find((t) => t.diff_status === "changed" || t.diff_status === "added");
+    if (target) {
+      selectStep(target.id);
+      setEditNarrationTrigger((n) => n + 1);
+    }
+  }
+
+  async function aiReNarrateSelected() {
+    const step = tracks.find((t) => t.id === selectedStepId);
+    if (!step) return;
+    setBusyAction("renarrate");
+    try {
+      await fetch(`/api/director/renarrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ take_id: takeId, step_id: step.id }),
+      });
+      router.refresh();
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function aiLaptopMockup() {
+    const step = tracks.find((t) => t.id === selectedStepId);
+    if (!step) return;
+    setBusyAction("laptop");
+    try {
+      const res = await fetch(`/api/genai/laptop-mockup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walkthrough_id: walkthrough.id, step_id: step.id }),
+      });
+      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (json.ok && json.url) {
+        // Cache-bust so a re-run replaces the preview.
+        setGenaiByStep((m) => ({ ...m, [step.id]: `${json.url}?t=${Date.now()}` }));
+      } else {
+        alert(json.error ?? "Gemini call failed");
+      }
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  // captions text — what step is the playhead inside
+  const currentCaption = (() => {
+    if (!captionsOn) return null;
+    const t = currentTime * 1000;
+    for (let i = 0; i < tracks.length; i++) {
+      const start = stepStartsMs[i];
+      const end = start + tracks[i].duration_ms;
+      if (t >= start && t < end) return tracks[i].narration;
+    }
+    return null;
+  })();
+
   const selectedStep = tracks.find((t) => t.id === selectedStepId) ?? null;
   const selectedStepIdx = tracks.findIndex((t) => t.id === selectedStepId);
 
   return (
     <div className={`editor ${mode === "preview" ? "mode-preview" : "mode-edit"}`}>
-      {/* ─── header ─── */}
       <header className="editor-header">
         <div className="left">
-          <Link href={`/walkthroughs/${walkthrough.id}`} className="back" style={{ margin: 0 }}>← {walkthroughDisplayName}</Link>
+          <Link href={`/walkthroughs/${walkthrough.id}`} className="back" style={{ margin: 0 }}>
+            ← {walkthroughDisplayName}
+          </Link>
           <span className="editor-title">
             {takeId}
             <span className="meta">
@@ -177,7 +281,6 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
         </div>
       </header>
 
-      {/* ─── main: rail | side | stage | inspector ─── */}
       <div className="editor-main">
         <nav className="editor-rail">
           <RailButton id="steps"  glyph="⊞" active={railTab === "steps"} onClick={() => setRailTab("steps")}>Steps</RailButton>
@@ -198,10 +301,15 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
           speed={speed} setSpeed={setSpeed}
           animIn={animIn} setAnimIn={setAnimIn}
           animOut={animOut} setAnimOut={setAnimOut}
+          aiReRunReview={aiReRunReview}
+          aiEditNarration={aiEditNarration}
+          aiReNarrateSelected={aiReNarrateSelected}
+          aiLaptopMockup={aiLaptopMockup}
+          aiBusy={busyAction}
         />
 
         <section className="editor-stage">
-          <div className="canvas">
+          <div className={`canvas ${animClass}`}>
             <video
               ref={videoRef}
               src={masterUrl}
@@ -210,10 +318,25 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
               onPause={() => setIsPlaying(false)}
               preload="metadata"
             />
+            {currentCaption ? (
+              <div className="captions-overlay">{currentCaption}</div>
+            ) : null}
           </div>
           <div className="tabs">
-            <button className="on">Original</button>
-            <button>Captions</button>
+            <button
+              className={!captionsOn ? "on" : ""}
+              onClick={() => setCaptionsOn(false)}
+              type="button"
+            >
+              Original
+            </button>
+            <button
+              className={captionsOn ? "on" : ""}
+              onClick={() => setCaptionsOn(true)}
+              type="button"
+            >
+              Captions
+            </button>
           </div>
         </section>
 
@@ -225,12 +348,13 @@ export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough,
           onPrev={() => jumpStep(-1)}
           onNext={() => jumpStep(1)}
           takeId={takeId}
+          editTriggerCount={editNarrationTrigger}
+          genaiPreviewUrl={selectedStepId ? genaiByStep[selectedStepId] ?? null : null}
           onDirectorActionStart={() => setBusyAction("retake")}
           onDirectorActionEnd={() => setBusyAction(null)}
         />
       </div>
 
-      {/* ─── timeline ─── */}
       <Timeline
         tracks={tracks}
         stepStartsMs={stepStartsMs}
