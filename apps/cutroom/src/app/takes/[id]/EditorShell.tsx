@@ -121,7 +121,7 @@ export function EditorShell({
    *  a proposed block from the left rail. */
   const [canvasMode, setCanvasMode] = useState<"video" | "transitions" | "suggestion">("video");
   /** Bottom panel: clip timeline vs chronological changes view. */
-  const [bottomMode, setBottomMode] = useState<"timeline" | "changes">("timeline");
+  const [leftMode, setLeftMode] = useState<"suggestions" | "changes">("suggestions");
   const [previewSuggestion, setPreviewSuggestion] = useState<{
     title: string;
     narration: string;
@@ -1058,14 +1058,49 @@ export function EditorShell({
       </header>
 
       <div className="editor-main">
-        <SuggestionsPanel
-          walkthroughId={walkthrough.id}
-          selectedClipId={selectedClipId}
-          busy={busyAction !== null}
-          onPreview={previewSuggestionFromRail}
-          onInsert={insertSuggestionAsClip}
-          onAddStep={addNewStep}
-        />
+        <aside className="left-rail">
+          <div className="left-rail-bar">
+            <div className="bottom-tabs">
+              <button
+                type="button"
+                className={`bottom-tab ${leftMode === "suggestions" ? "active" : ""}`}
+                onClick={() => setLeftMode("suggestions")}
+              >
+                Suggestions
+              </button>
+              <button
+                type="button"
+                className={`bottom-tab ${leftMode === "changes" ? "active" : ""}`}
+                onClick={() => setLeftMode("changes")}
+              >
+                Changes
+              </button>
+            </div>
+          </div>
+          {leftMode === "suggestions" ? (
+            <SuggestionsPanel
+              walkthroughId={walkthrough.id}
+              selectedClipId={selectedClipId}
+              busy={busyAction !== null}
+              onPreview={previewSuggestionFromRail}
+              onInsert={insertSuggestionAsClip}
+              onAddStep={addNewStep}
+            />
+          ) : (
+            <ChangesTimeline
+              walkthroughId={walkthrough.id}
+              onPreview={(c) => previewSuggestionFromRail({
+                title: c.title, narration: c.narration, reason: c.reason,
+                status: c.status, pr_title: c.pr_title, pr_number: c.pr_number,
+                frame_url: c.frame_url,
+              })}
+              onInsert={(c) => insertSuggestionAsClip({
+                step_id: c.step_id, title: c.title, narration: c.narration,
+                duration_ms: c.duration_ms, frame_url: c.frame_url,
+              })}
+            />
+          )}
+        </aside>
 
         <section className="editor-stage">
           {canvasMode === "suggestion" && previewSuggestion ? (
@@ -1200,38 +1235,7 @@ export function EditorShell({
 
 
       <div className="bottom-pane">
-        <div className="bottom-pane-bar">
-          <div className="bottom-tabs">
-            <button
-              type="button"
-              className={`bottom-tab ${bottomMode === "timeline" ? "active" : ""}`}
-              onClick={() => setBottomMode("timeline")}
-            >
-              Timeline
-            </button>
-            <button
-              type="button"
-              className={`bottom-tab ${bottomMode === "changes" ? "active" : ""}`}
-              onClick={() => setBottomMode("changes")}
-            >
-              Changes
-            </button>
-          </div>
-        </div>
-        {bottomMode === "changes" ? (
-          <ChangesTimeline
-            walkthroughId={walkthrough.id}
-            onPreview={(c) => previewSuggestionFromRail({
-              title: c.title, narration: c.narration, reason: c.reason,
-              status: c.status, pr_title: c.pr_title, pr_number: c.pr_number,
-              frame_url: c.frame_url,
-            })}
-            onInsert={(c) => insertSuggestionAsClip({
-              step_id: c.step_id, title: c.title, narration: c.narration,
-              duration_ms: c.duration_ms, frame_url: c.frame_url,
-            })}
-          />
-        ) : overlay ? (
+        {overlay ? (
         <Timeline2
           overlay={overlay}
           sourceById={sourceById}

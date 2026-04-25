@@ -3989,6 +3989,39 @@ a.back:hover { color: var(--fg); }
   background: var(--panel);
   flex-shrink: 0;
 }
+.left-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  min-height: 0;
+  overflow: hidden;
+}
+.left-rail-bar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.left-rail > .sgx-panel,
+.left-rail > .changes-timeline {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* The rail wrapper owns the right border + bg now. */
+  border-right: 0;
+  background: transparent;
+}
+/* The Suggestions header has its own border-bottom; redundant against the
+   left-rail-bar above it. Keep the bar above and drop the inner one to
+   avoid double rules. */
+.left-rail > .sgx-panel .sgx-header,
+.left-rail > .changes-timeline .changes-header {
+  border-top: 0;
+}
 .bottom-tabs {
   display: inline-flex;
   gap: 2px;
