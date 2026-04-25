@@ -185,6 +185,41 @@ export function EditorClient({
     }
   }, [displayName, initialDisplayName, walkthroughId, router]);
 
+  const retakeStep = useCallback(
+    async (stepId: string) => {
+      setBusy(stepId);
+      try {
+        const r = await fetch(
+          `/api/walkthroughs/${walkthroughId}/steps/${stepId}/retake`,
+          { method: "POST" },
+        );
+        const data = await r.json();
+        if (!r.ok || !data.ok) {
+          alert(data?.message ?? `Retake failed (HTTP ${r.status})`);
+          return;
+        }
+        // Cache-bust the thumbnail and pull fresh meta (action_warnings,
+        // error) from the server.
+        setSteps((prev) =>
+          prev.map((s) =>
+            s.id === stepId
+              ? {
+                  ...s,
+                  screenshotUrl: `${s.screenshotUrl.split("?")[0]}?v=${Date.now()}`,
+                }
+              : s,
+          ),
+        );
+        router.refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Retake errored.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [walkthroughId, router],
+  );
+
   const persistOrder = useCallback(
     async (orderedIds: string[]) => {
       try {
@@ -404,6 +439,7 @@ export function EditorClient({
               onChange={(patch) => updateStepLocal(s.id, patch)}
               onCommit={(patch) => persistStep(s.id, patch)}
               onDelete={() => deleteStep(s.id)}
+              onRetake={() => retakeStep(s.id)}
             />
           ))
         )}
@@ -440,6 +476,7 @@ interface StepCardProps {
   onChange: (patch: Partial<ClientStep>) => void;
   onCommit: (patch: { title?: string; narration?: string; duration_ms?: number }) => void;
   onDelete: () => void;
+  onRetake: () => void;
 }
 
 function StepCard({
@@ -456,6 +493,7 @@ function StepCard({
   onChange,
   onCommit,
   onDelete,
+  onRetake,
 }: StepCardProps) {
   const hasCaptureError = !!step.captureError;
   const hasCaptureWarnings = (step.captureWarnings?.length ?? 0) > 0;
@@ -573,6 +611,15 @@ function StepCard({
             />
             <span className="suffix">ms</span>
           </label>
+          <button
+            type="button"
+            className="step-retake"
+            onClick={onRetake}
+            disabled={busy}
+            title="Re-run this step's Playwright capture and narration"
+          >
+            {busy ? "Retaking…" : "Retake"}
+          </button>
           <button
             type="button"
             className="step-delete"

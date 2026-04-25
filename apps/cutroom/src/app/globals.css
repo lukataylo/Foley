@@ -2720,6 +2720,22 @@ a.back:hover { color: var(--fg); }
 }
 .step-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.step-retake {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 7px;
+  font: inherit; font-size: 12px;
+  cursor: pointer;
+}
+.step-retake:hover:not(:disabled) {
+  color: var(--link, #0070f3);
+  border-color: rgba(0,112,243,0.45);
+  background: rgba(0,112,243,0.05);
+}
+.step-retake:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* render panel inside the editor */
 .render-panel {
   background: var(--panel);
