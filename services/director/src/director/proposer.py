@@ -128,10 +128,7 @@ def propose_steps(
 ) -> ProposedSteps:
     """Run the proposer. Pure function — does not touch disk."""
     configure_logfire()
-    if not settings.anthropic_api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY not set — propose-steps needs Claude to draft the walkthrough."
-        )
+    settings.require("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     target_url = dev_url or walkthrough.target_app.dev_url

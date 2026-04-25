@@ -42,6 +42,7 @@ def synth(
         if cache_path.exists():
             write_bytes_atomic(out_path, cache_path.read_bytes())
         else:
+            settings.require("ELEVENLABS_API_KEY")
             client = ElevenLabs(api_key=settings.elevenlabs_api_key)
             audio_iter = client.text_to_speech.convert(
                 voice_id=voice_id,

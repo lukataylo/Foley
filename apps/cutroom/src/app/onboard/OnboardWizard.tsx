@@ -128,12 +128,19 @@ export function OnboardWizard() {
       });
       clearInterval(stageTimer);
       if (!res.ok) {
-        // The scaffold is on disk — let the user open the studio anyway and
-        // tell them the auto-draft fell through.
-        const json = (await res.json().catch(() => ({}))) as { detail?: string };
-        setError(
-          `Auto-draft failed (${json.detail?.slice(0, 200) ?? "unknown"}). The scaffold is saved — you can edit walkthrough.yaml and try again.`,
-        );
+        // The scaffold is on disk either way — let the user open the studio
+        // and surface the most useful error we can.
+        const json = (await res.json().catch(() => ({}))) as {
+          message?: string;
+          missing_keys?: string[];
+          detail?: string;
+        };
+        const friendly =
+          json.message ??
+          (json.detail
+            ? `Auto-draft failed: ${json.detail.slice(0, 200)}.`
+            : "Auto-draft failed.");
+        setError(`${friendly} The scaffold is saved — open the studio to edit.`);
         setBootstrapMsg(`Walkthrough "${bootstrapJson.display_name}" is ready.`);
         setBootstrapHref(bootstrapJson.href);
         setStep("done");

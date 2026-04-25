@@ -126,6 +126,7 @@ def synth_continuous(wt: Walkthrough, walkthroughs_dir: Path) -> dict:
         chars=len(script),
         steps=len(slices),
     ):
+        settings.require("ELEVENLABS_API_KEY")
         client = ElevenLabs(api_key=settings.elevenlabs_api_key)
         # convert_with_timestamps returns base64 audio + alignment metadata.
         # The SDK uses snake_case attributes; some versions return a streaming

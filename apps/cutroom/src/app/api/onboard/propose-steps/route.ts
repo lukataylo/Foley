@@ -13,6 +13,7 @@ import { promisify } from "util";
 import path from "path";
 import { NextResponse } from "next/server";
 import { isValidWalkthroughId } from "@/lib/ids";
+import { directorErrorResponse } from "@/lib/director-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,15 +70,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, log: stdout.slice(-2000) });
   } catch (err) {
-    const e = err as { stderr?: Buffer | string; message?: string };
-    const stderr = typeof e.stderr === "string" ? e.stderr : e.stderr?.toString() ?? "";
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "propose_failed",
-        detail: stderr.slice(-2000) || e.message || "unknown",
-      },
-      { status: 500 },
-    );
+    return directorErrorResponse(err, "propose_failed");
   }
 }

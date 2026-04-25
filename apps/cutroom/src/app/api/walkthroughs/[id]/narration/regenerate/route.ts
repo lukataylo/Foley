@@ -17,6 +17,7 @@ import { readFile, stat } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { isValidWalkthroughId } from "@/lib/ids";
+import { directorErrorResponse } from "@/lib/director-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,12 +81,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       { cwd: REPO_ROOT, env, maxBuffer: 8 * 1024 * 1024 },
     );
   } catch (err) {
-    const e = err as { stderr?: Buffer | string; message?: string };
-    const stderr = typeof e.stderr === "string" ? e.stderr : e.stderr?.toString() ?? "";
-    return NextResponse.json(
-      { ok: false, error: "synth_failed", detail: stderr.slice(-2000) || e.message },
-      { status: 500 },
-    );
+    return directorErrorResponse(err, "synth_failed");
   }
 
   const dir = path.join(WALKTHROUGHS_DIR, params.id);

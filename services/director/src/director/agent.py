@@ -92,6 +92,7 @@ def review_pr(
 ) -> AgentVerdict:
     """Run the agent. Returns the parsed AgentVerdict."""
     configure_logfire()
+    settings.require("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     user_message_parts: list[str] = []
