@@ -762,16 +762,16 @@ div > .folder-card.placeholder { cursor: default; }
 }
 .doc-text-title {
   margin: 0 0 12px;
-  font-family: '"New York", "Cochin", Georgia, serif';
-  font-size: 26px;
-  font-weight: 600;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--fg-2);
 }
 .doc-text-body {
-  font-family: '"New York", "Cochin", Georgia, serif';
-  font-size: 14px;
-  line-height: 1.65;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
   color: var(--fg);
 }
 .doc-text-body p {
