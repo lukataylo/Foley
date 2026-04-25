@@ -1,0 +1,76 @@
+{
+  "id": "take-018",
+  "walkthrough_id": "v1",
+  "parent_take_id": "master",
+  "pr_number": 18,
+  "pr_title": "Show ticket counts in board column headers",
+  "director_note": "Column headers and board page header now display ticket counts, making the board_overview step visually different \u2014 the narration is updated to call out the new at-a-glance counts.",
+  "created_at": "2026-04-25T14:44:50.359441+00:00",
+  "status": "ready",
+  "draft": true,
+  "step_diffs": [
+    {
+      "step_id": "intro",
+      "status": "unchanged",
+      "reason": "Goes to /login and waits \u2014 no board or column headers are shown.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "sign_in",
+      "status": "unchanged",
+      "reason": "Entirely on the /login page; no board UI is rendered.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "board_overview",
+      "status": "changed",
+      "reason": "The board is prominently captured here: column headers now show ticket counts (e.g. 'Open (5)') and the page header shows a total count, so the captured frame and narration both need updating.",
+      "proposed_step": {
+        "id": "board_overview",
+        "title": "See the board",
+        "narration": "Every project lives on one board. Open, in progress, done \u2014 ticket counts right in the column headers give the team an at-a-glance view of the whole week, on one screen.",
+        "actions": [
+          {
+            "kind": "goto",
+            "url": "/"
+          },
+          {
+            "kind": "wait",
+            "ms": 1500
+          },
+          {
+            "kind": "hover",
+            "selector": "[data-column=doing]"
+          },
+          {
+            "kind": "wait",
+            "ms": 4500
+          }
+        ],
+        "duration_ms": 7500,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        }
+      }
+    },
+    {
+      "step_id": "open_ticket",
+      "status": "unchanged",
+      "reason": "Board is only briefly in frame before a ticket card is clicked; the narration and selector are unaffected by the header count change.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "mark_done",
+      "status": "unchanged",
+      "reason": "Navigates directly to /ticket/LOP-103 \u2014 no board column headers appear.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "settings",
+      "status": "unchanged",
+      "reason": "Navigates to /settings; no board UI is shown and no copy was changed.",
+      "proposed_step": null
+    }
+  ]
+}

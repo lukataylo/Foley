@@ -1,0 +1,5 @@
+{
+  "title": "Show ticket counts in board column headers",
+  "body": "Designers asked for at-a-glance counts. Each column header (Open, In progress, Done) now shows the number of tickets in parentheses. Pure presentation change — no model or routing changes.",
+  "number": 18
+}

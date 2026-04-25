@@ -338,5 +338,103 @@ def test_agent(
             print(d.proposed_step.model_dump_json(indent=2, exclude_none=True))
 
 
+@app.command("dry-review")
+def dry_review(
+    fixture: str = typer.Argument(..., help="Fixture dir under tests/fixtures/"),
+    walkthrough_id: str = typer.Argument("v1"),
+    parent_take: str = typer.Option("master", "--parent"),
+    take_id: str | None = typer.Option(None, "--take-id", help="override default take id"),
+) -> None:
+    """Run the agent and materialize a draft take from the verdict.
+
+    Skips the heavyweight retake/narrate/assemble pipeline. The new take
+    inherits the parent's master.mp4 and segments — what's new is the
+    step_diffs metadata, which the cutroom surfaces as 'a section to retake'.
+    Used to show end-to-end flow without spending capture/render time.
+    """
+    import json as _json
+    import shutil
+    from datetime import datetime, timezone
+
+    fixtures_root = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
+    fdir = fixtures_root / fixture
+    if not fdir.exists():
+        rprint(f"[red]no fixture[/]: {fdir}")
+        raise typer.Exit(1)
+
+    pr = _json.loads((fdir / "pr.json").read_text())
+    diff = (fdir / "pr.diff").read_text()
+    wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
+
+    rprint(f"[bold]dry-review[/] {fixture}: {pr.get('title', '')}")
+    verdict = run_agent(
+        wt, diff, pr_title=pr.get("title", ""), pr_body=pr.get("body", "")
+    )
+    rprint(f"\n[bold]verdict[/]: {verdict.summary}\n")
+    _print_verdict_table(verdict)
+
+    pr_number = int(pr.get("number") or 0)
+    tid = take_id or (f"take-{pr_number:03d}" if pr_number else f"take-{fixture}")
+
+    parent_dir = settings.walkthroughs_dir / wt.id / "takes" / parent_take
+    take_dir = settings.walkthroughs_dir / wt.id / "takes" / tid
+    if not parent_dir.exists():
+        rprint(f"[red]parent take missing[/]: {parent_dir}")
+        raise typer.Exit(1)
+    take_dir.mkdir(parents=True, exist_ok=True)
+    (take_dir / "segments").mkdir(exist_ok=True)
+
+    # Reuse the parent master + segments byte-for-byte. The take inherits the
+    # canonical video; the diff metadata is what's new.
+    for name in ("master.mp4", "manifest.json"):
+        src = parent_dir / name
+        if src.exists():
+            shutil.copy2(src, take_dir / name)
+    parent_segments = parent_dir / "segments"
+    if parent_segments.exists():
+        for f in parent_segments.iterdir():
+            if f.is_file():
+                shutil.copy2(f, take_dir / "segments" / f.name)
+
+    # Patch the manifest's take_id so the cutroom doesn't show stale.
+    manifest_path = take_dir / "manifest.json"
+    if manifest_path.exists():
+        m = _json.loads(manifest_path.read_text())
+        m["take_id"] = tid
+        manifest_path.write_text(_json.dumps(m, indent=2))
+
+    take = {
+        "id": tid,
+        "walkthrough_id": wt.id,
+        "parent_take_id": parent_take,
+        "pr_number": pr_number or None,
+        "pr_title": pr.get("title", ""),
+        "director_note": verdict.summary,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ready",
+        "draft": True,
+        "step_diffs": [
+            {
+                "step_id": d.step_id,
+                "status": d.status.value,
+                "reason": d.reason,
+                "proposed_step": (
+                    d.proposed_step.model_dump(mode="json", exclude_none=True)
+                    if d.proposed_step is not None
+                    else None
+                ),
+            }
+            for d in verdict.step_diffs
+        ],
+    }
+    (take_dir / "take.json").write_text(_json.dumps(take, indent=2))
+
+    changed = sum(1 for d in verdict.step_diffs if d.status.value in ("changed", "added"))
+    rprint(
+        f"\n[green]✓[/] wrote {tid} (draft) — {changed} step(s) flagged for retake"
+    )
+    rprint(f"  [dim]open http://localhost:3000/walkthroughs/{wt.id}[/]")
+
+
 if __name__ == "__main__":
     app()

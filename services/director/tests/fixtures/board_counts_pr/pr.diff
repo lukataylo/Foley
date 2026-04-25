@@ -1,0 +1,72 @@
+diff --git a/src/components/BoardColumn.tsx b/src/components/BoardColumn.tsx
+index a4d2c87..7f1b933 100644
+--- a/src/components/BoardColumn.tsx
++++ b/src/components/BoardColumn.tsx
+@@ -1,15 +1,16 @@
+ import { TicketCard } from "./TicketCard";
+ import type { Ticket } from "@/lib/types";
+
+ interface Props {
+   title: string;
+   tickets: Ticket[];
+ }
+
+ export function BoardColumn({ title, tickets }: Props) {
+   return (
+     <section className="board-column" data-testid={`column-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+-      <h3 className="board-column-title">{title}</h3>
++      <h3 className="board-column-title">
++        {title} <span className="board-column-count" data-testid="column-count">({tickets.length})</span>
++      </h3>
+       <ol className="board-column-list">
+         {tickets.map((t) => (
+           <TicketCard key={t.id} ticket={t} />
+         ))}
+       </ol>
+     </section>
+   );
+ }
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 9c0c19e..b4ae123 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -22,9 +22,9 @@ export default async function BoardPage() {
+   return (
+     <main className="board">
+       <header className="board-header">
+-        <h1>All tickets</h1>
++        <h1>All tickets <span className="board-total" data-testid="board-total">{tickets.length}</span></h1>
+         <button className="btn btn-primary" data-testid="new-ticket-button">+ New ticket</button>
+       </header>
+       <div className="board-grid">
+         <BoardColumn title="Open" tickets={open} />
+         <BoardColumn title="In progress" tickets={inProgress} />
+         <BoardColumn title="Done" tickets={done} />
+       </div>
+     </main>
+   );
+ }
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 12acb87..8bf2891 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -210,6 +210,18 @@ ol.board-column-list { list-style: none; padding: 0; margin: 0; display: flex; f
+ .board-column-title {
+   font-size: 13px;
+   font-weight: 600;
+   margin: 0 0 12px;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+   color: var(--muted);
+ }
++.board-column-count {
++  font-weight: 500;
++  color: var(--muted-2);
++  margin-left: 4px;
++}
++.board-total {
++  font-size: 14px;
++  color: var(--muted);
++  font-weight: 500;
++  margin-left: 8px;
++}
