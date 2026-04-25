@@ -1139,6 +1139,11 @@ div > .folder-card.placeholder { cursor: default; }
   overflow: hidden;
   transition: grid-template-rows 240ms ease;
 }
+/* Scope the takes-editor header away from the captured-walkthrough
+   editor's `.editor-header` rule (which lives at .editor-page below
+   and adds margin-bottom: 32px). Only target direct children of the
+   takes-editor's .editor wrapper. */
+.editor > .editor-header { margin-bottom: 0; }
 /* preview mode: drop the timeline, full stage takes over the middle row */
 .editor.mode-preview {
   grid-template-rows: 56px 1fr 0;
