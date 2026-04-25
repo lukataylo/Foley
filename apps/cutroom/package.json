@@ -1,0 +1,34 @@
+{
+  "name": "cutroom",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "remotion:studio": "remotion studio src/remotion/Root.tsx",
+    "remotion:render": "remotion render src/remotion/Root.tsx"
+  },
+  "dependencies": {
+    "next": "14.2.18",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.245",
+    "@remotion/cli": "4.0.245",
+    "@remotion/player": "4.0.245",
+    "@remotion/renderer": "4.0.245",
+    "zod": "3.23.8",
+    "js-yaml": "4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@types/js-yaml": "4.0.9",
+    "typescript": "5.6.3",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.18"
+  }
+}

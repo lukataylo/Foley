@@ -1,0 +1,38 @@
+# secrets
+SECRETS.md
+.env
+.env.*
+!.env.example
+
+# node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# remotion
+remotion-out/
+
+# generated walkthrough artifacts (keep structure, ignore binaries)
+walkthroughs/*/steps/*.mp4
+walkthroughs/*/steps/*.mp3
+walkthroughs/*/steps/*.png
+walkthroughs/*/steps/*.webm
+walkthroughs/*/takes/*/master.mp4
+walkthroughs/*/takes/*/segments/
+
+# scratch
+.DS_Store
+*.log
+.tmp/
+scratch/

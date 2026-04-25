@@ -1,0 +1,11 @@
+# Brand spec for the v1 walkthrough.
+# Every Take inherits this. Changing it forces a full re-narration.
+
+voice_id: XB0fDUnXU5powFXDhCwa     # ElevenLabs Charlotte (en-GB, soft)
+voice_name: Charlotte
+font_family: "SF Pro Text"
+palette_bg: "#0a0a0a"
+palette_fg: "#f5f5f5"
+palette_accent: "#5b8cff"
+pacing_wpm: 168
+intro_card_ms: 1500

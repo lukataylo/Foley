@@ -1,0 +1,16 @@
+{
+  "name": "foley",
+  "private": true,
+  "version": "0.0.1",
+  "description": "On-brand product walkthrough videos that maintain themselves from PRs.",
+  "packageManager": "pnpm@10.25.0",
+  "scripts": {
+    "cutroom": "pnpm --filter cutroom dev",
+    "build": "pnpm --filter cutroom build",
+    "director": "uv --directory services/director run director",
+    "smoke:voice": "uv --directory services/director run python -m director.narrator --smoke"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
