@@ -318,13 +318,16 @@ export function EditorShell({
   })();
   const activeZoomStepId = activeIdx >= 0 ? tracks[activeIdx].id : null;
   const activeZoom = activeZoomStepId ? stepZooms[activeZoomStepId] : null;
-  const videoTransform =
-    activeZoom?.enabled
-      ? {
-          transform: `scale(${activeZoom.factor})`,
-          transformOrigin: `${activeZoom.origin_x}% ${activeZoom.origin_y}%`,
-        }
-      : { transform: "none", transformOrigin: "50% 50%" };
+  const videoTransform = useMemo<React.CSSProperties>(
+    () =>
+      activeZoom?.enabled
+        ? {
+            transform: `scale(${activeZoom.factor})`,
+            transformOrigin: `${activeZoom.origin_x}% ${activeZoom.origin_y}%`,
+          }
+        : { transform: "none", transformOrigin: "50% 50%" },
+    [activeZoom?.enabled, activeZoom?.factor, activeZoom?.origin_x, activeZoom?.origin_y],
+  );
 
   function onTimeUpdate() {
     const v = videoRef.current;
@@ -349,6 +352,29 @@ export function EditorShell({
     if (!v) return;
     v.currentTime = Math.max(0, Math.min(totalDuration, seconds));
     setCurrentTime(v.currentTime);
+  }
+
+  // Pause-during-interaction: capture playback state when a scrub or drag
+  // starts, pause the video, then resume on release. Avoids the browser
+  // stuttering as we set currentTime on every pointermove.
+  const interactionWasPlaying = useRef(false);
+  function beginInteraction() {
+    const v = videoRef.current;
+    if (!v) return;
+    interactionWasPlaying.current = !v.paused;
+    if (!v.paused) {
+      v.pause();
+      setIsPlaying(false);
+    }
+  }
+  function endInteraction() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (interactionWasPlaying.current) {
+      void v.play();
+      setIsPlaying(true);
+    }
+    interactionWasPlaying.current = false;
   }
 
   function jumpStep(direction: -1 | 1) {
@@ -820,6 +846,8 @@ export function EditorShell({
           onJump={jumpStep}
           onZoom={(n) => setZoom(Math.max(12, Math.min(160, n)))}
           onAddClip={addClipOfKind}
+          onInteractionStart={beginInteraction}
+          onInteractionEnd={endInteraction}
         />
       ) : (
         <Timeline

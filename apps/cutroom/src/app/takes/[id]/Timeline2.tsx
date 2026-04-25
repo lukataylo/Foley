@@ -32,6 +32,9 @@ interface Props {
   onZoom: (n: number) => void;
   onJump: (dir: -1 | 1) => void;
   onAddClip: (kind: ClipKind) => void;
+  /** Pause video at scrub/drag start, resume at end. */
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 const LABEL_GUTTER = 64;
@@ -92,6 +95,7 @@ export function Timeline2(p: Props) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     setScrubbing(true);
+    p.onInteractionStart?.();
     p.onSeek(xToMs(e.clientX) / 1000);
   }
 
@@ -99,6 +103,7 @@ export function Timeline2(p: Props) {
     e.preventDefault();
     e.stopPropagation();
     p.onSelectClip(clip.id);
+    p.onInteractionStart?.();
     setDrag({
       clipId: clip.id,
       mode,
@@ -140,6 +145,7 @@ export function Timeline2(p: Props) {
     function onUp() {
       setScrubbing(false);
       setDrag(null);
+      p.onInteractionEnd?.();
     }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
