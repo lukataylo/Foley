@@ -2457,6 +2457,34 @@ a.back:hover { color: var(--fg); }
 .editor-load-error-hint { opacity: 0.85; }
 [data-theme="dark"] .editor-load-error { color: #ff9d92; }
 
+.editor-add-step-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 0 4px;
+}
+.editor-add-step {
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.editor-add-step:hover:not(:disabled) {
+  border-color: var(--link, #0070f3);
+  color: var(--fg-2);
+  background: rgba(0,112,243,0.04);
+}
+.editor-add-step:disabled { opacity: 0.5; cursor: not-allowed; }
+.editor-add-step-error {
+  color: #b13a30;
+  font-size: 12.5px;
+}
+[data-theme="dark"] .editor-add-step-error { color: #ff9d92; }
+
 .preflight-banner {
   background: rgba(245, 185, 74, 0.12);
   border-bottom: 1px solid rgba(245, 185, 74, 0.4);

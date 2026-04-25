@@ -107,3 +107,58 @@ export async function deleteStepScreenshot(id: string, stepId: string): Promise<
     /* missing file is fine */
   }
 }
+
+/** Pick the next free `step_<N>` id given the current step list. */
+export function nextStepId(existing: ReadonlyArray<RawStep>): string {
+  const used = new Set(existing.map((s) => s.id));
+  let n = existing.length + 1;
+  while (used.has(`step_${n}`)) n++;
+  return `step_${n}`;
+}
+
+/** Append a sensible-defaults step to walkthrough.yaml. Idempotent: if you
+ *  pass an explicit id that already exists, returns the existing entry
+ *  unchanged. Returns the appended step. */
+export async function appendStep(
+  id: string,
+  opts: { title?: string; narration?: string; duration_ms?: number; step_id?: string } = {},
+): Promise<RawStep> {
+  const raw = await readRaw(id);
+  const newId = opts.step_id ?? nextStepId(raw.steps);
+  if (raw.steps.some((s) => s.id === newId)) {
+    return raw.steps.find((s) => s.id === newId)!;
+  }
+  const step: RawStep = {
+    id: newId,
+    title: opts.title ?? "New step",
+    narration: opts.narration ?? "Describe what's on screen for this step.",
+    duration_ms: opts.duration_ms ?? 5000,
+    actions: [
+      { kind: "goto", url: "/" },
+      { kind: "wait", ms: opts.duration_ms ?? 4500 },
+    ],
+  };
+  raw.steps.push(step);
+  await writeRaw(id, raw);
+  return step;
+}
+
+/** Reorder steps to match the given id list. The set of ids must be exactly
+ *  the current set — we don't add or remove here. Returns the new order. */
+export async function reorderSteps(
+  id: string,
+  orderedIds: string[],
+): Promise<string[]> {
+  const raw = await readRaw(id);
+  const have = new Set(raw.steps.map((s) => s.id));
+  const wanted = new Set(orderedIds);
+  if (have.size !== wanted.size || [...have].some((s) => !wanted.has(s))) {
+    throw new Error(
+      `reorder ids must match: have [${[...have].sort().join(",")}], wanted [${[...wanted].sort().join(",")}]`,
+    );
+  }
+  const byId = new Map(raw.steps.map((s) => [s.id, s] as const));
+  raw.steps = orderedIds.map((sid) => byId.get(sid)!);
+  await writeRaw(id, raw);
+  return orderedIds;
+}

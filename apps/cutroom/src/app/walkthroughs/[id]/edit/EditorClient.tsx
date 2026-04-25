@@ -74,6 +74,7 @@ export function EditorClient({
   const [render, setRender] = useState<RenderPoll | null>(null);
   const [skipNarration, setSkipNarration] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [addStepError, setAddStepError] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mirror of the server's view of each step, keyed by step id. Updated only
@@ -181,6 +182,30 @@ export function EditorClient({
       setTitleStatus("error");
     }
   }, [displayName, initialDisplayName, walkthroughId, router]);
+
+  const addStep = useCallback(async () => {
+    setAddStepError(null);
+    setBusy("__add__");
+    try {
+      const r = await fetch(`/api/walkthroughs/${walkthroughId}/steps`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setAddStepError(data?.message ?? `HTTP ${r.status}`);
+        return;
+      }
+      // Server-side render of the editor reads meta.json + computed step
+      // shape; easier to refetch than to mirror the projection client-side.
+      router.refresh();
+    } catch (err) {
+      setAddStepError(err instanceof Error ? err.message : "network error");
+    } finally {
+      setBusy(null);
+    }
+  }, [walkthroughId, router]);
 
   const updateStepLocal = useCallback((id: string, patch: Partial<ClientStep>) => {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -305,8 +330,9 @@ export function EditorClient({
       <section className="editor-steps">
         {steps.length === 0 ? (
           <div className="editor-empty">
-            No steps in this walkthrough yet. Re-record from the Foley Recorder
-            extension to populate it.
+            No steps yet. Click <strong>+ Add step</strong> below, or run{" "}
+            <code>director propose-steps {walkthroughId}</code> to draft from
+            the dev URL.
           </div>
         ) : (
           steps.map((s, i) => (
@@ -322,6 +348,20 @@ export function EditorClient({
             />
           ))
         )}
+
+        <div className="editor-add-step-row">
+          <button
+            type="button"
+            className="editor-add-step"
+            disabled={!!busy}
+            onClick={addStep}
+          >
+            + Add step
+          </button>
+          {addStepError ? (
+            <span className="editor-add-step-error">{addStepError}</span>
+          ) : null}
+        </div>
       </section>
     </div>
   );
