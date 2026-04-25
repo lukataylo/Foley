@@ -1,0 +1,62 @@
+{
+  "docs": [
+    {
+      "id": "tour",
+      "title": "Tour of Loop",
+      "kind": "video",
+      "group": "Onboarding",
+      "summary": "A 60-second tour of how Loop tracks tickets, narrated by Charlotte.",
+      "video_take_id": "master",
+      "duration_s": 36,
+      "step_count": 6,
+      "updated_at": "2026-04-25T10:57:39.936Z"
+    },
+    {
+      "id": "inviting",
+      "title": "Inviting a teammate",
+      "kind": "steps",
+      "group": "Onboarding",
+      "summary": "Show new admins how to add their team to a workspace.",
+      "steps": [
+        { "caption": "Open Settings from the sidebar.",                   "image_url": "/walkthroughs/v1/steps/settings.png" },
+        { "caption": "Switch to the Members tab.",                        "image_url": "/walkthroughs/v1/steps/settings.png" },
+        { "caption": "Type the teammate's email and pick a role.",        "image_url": "/walkthroughs/v1/steps/settings.png" },
+        { "caption": "Click Invite — they'll get an email with a link.",  "image_url": "/walkthroughs/v1/steps/settings.png" }
+      ],
+      "updated_at": "2026-04-22T14:00:00Z"
+    },
+    {
+      "id": "pricing",
+      "title": "Pricing",
+      "kind": "text",
+      "group": "Plans & Billing",
+      "summary": "Loop is free for the first 5 teammates. After that, the Pro plan unlocks unlimited members, SSO, and audit logs.",
+      "word_count": 480,
+      "updated_at": "2026-04-25T07:30:00Z",
+      "body": "# Pricing\n\nLoop is free for the first 5 teammates. After that, our **Pro** plan unlocks unlimited members, SSO, and audit logs.\n\n## What's included\n\n- Unlimited tickets across all boards\n- Unlimited integrations (GitHub, Linear, Notion)\n- 30 days of activity history on Free, full history on Pro\n- Email support on Free, Slack support on Pro\n\n## How billing works\n\nWe bill monthly, per active member. An active member is anyone who logged in during the billing period. Cancel any time — you keep access until the end of the period."
+    },
+    {
+      "id": "faq",
+      "title": "FAQ",
+      "kind": "text",
+      "group": "Plans & Billing",
+      "summary": "How do I cancel? What happens to my data? Are exports supported? Answers to the common ones.",
+      "word_count": 320,
+      "updated_at": "2026-04-23T09:15:00Z",
+      "body": "# FAQ\n\n## How do I cancel?\n\nYou can cancel anytime from Settings → Billing. Your workspace stays active until the end of the current period.\n\n## What happens to my data when I cancel?\n\nNothing. Your tickets, comments, and members stay in place. We freeze the workspace to read-only after 30 days, and delete it after 12 months of inactivity.\n\n## Can I export my data?\n\nYes. Settings → Export gives you a JSON dump of every ticket, comment, and audit entry. The export is async — we email you a download link when it's ready.\n\n## Do you support SSO?\n\nSSO is available on the Pro plan. We support Google, Okta, and any SAML 2.0 IdP.\n\n## Where is my data stored?\n\nUS-East by default. EU residency is available on the Pro plan."
+    },
+    {
+      "id": "shipit",
+      "title": "Marking a ticket as Ship it",
+      "kind": "steps",
+      "group": "Tickets",
+      "summary": "Walk through closing a ticket with the new Ship it action.",
+      "steps": [
+        { "caption": "Open any ticket from the board.",         "image_url": "/walkthroughs/v1/steps/open_ticket.png" },
+        { "caption": "Hover the primary action button.",         "image_url": "/walkthroughs/v1/steps/mark_done.png" },
+        { "caption": "Click Ship it. The status flips to Done.", "image_url": "/walkthroughs/v1/steps/mark_done.png" }
+      ],
+      "updated_at": "2026-04-25T11:34:09.373Z"
+    }
+  ]
+}
