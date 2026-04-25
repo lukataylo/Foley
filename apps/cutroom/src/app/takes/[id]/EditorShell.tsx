@@ -8,6 +8,10 @@ import { TransitionSlide } from "@/components/TransitionSlide";
 import type { StepDiff, Take, Walkthrough } from "@/lib/types";
 import {
   defaultTransition,
+  migrateTransition,
+  placementsForLayout,
+  layoutDefaults,
+  type ScreenshotPlacement,
   type TransitionSpec,
 } from "@/lib/transitions";
 import { Timeline } from "./Timeline";
@@ -81,7 +85,9 @@ export function EditorShell({
   const [genaiByStep, setGenaiByStep] = useState<Record<string, string>>({});
 
   // ─── transitions ──────────────────────────────────────────────────────
-  const [transitions, setTransitions] = useState<TransitionSpec[]>(initialTransitions);
+  const [transitions, setTransitions] = useState<TransitionSpec[]>(
+    initialTransitions.map(migrateTransition),
+  );
   const [activeTransitionId, setActiveTransitionId] = useState<string | null>(
     initialTransitions[0]?.id ?? null,
   );
@@ -111,8 +117,10 @@ export function EditorShell({
   }
   function addTransition() {
     const t = defaultTransition();
-    // Seed with the first three step frames as default screenshots.
-    t.screenshot_step_ids = tracks.slice(0, 3).map((s) => s.id);
+    // Seed with the first three changed/added or just first three frames.
+    const interesting = tracks.filter((tr) => tr.diff_status === "changed" || tr.diff_status === "added");
+    const seedIds = (interesting.length >= 2 ? interesting : tracks).slice(0, 3).map((s) => s.id);
+    t.screenshots = placementsForLayout(t.layout, seedIds);
     setTransitions((curr) => {
       const next = [...curr, t];
       persistTransitions(next);
@@ -132,6 +140,67 @@ export function EditorShell({
     }
   }
 
+  // Re-snap all screenshots to the current layout's defaults.
+  function relayoutTransition(id: string, nextLayout: TransitionSpec["layout"]) {
+    setTransitions((curr) => {
+      const next = curr.map((t) => {
+        if (t.id !== id) return t;
+        const ids = t.screenshots.map((s) => s.step_id);
+        return {
+          ...t,
+          layout: nextLayout,
+          screenshots: placementsForLayout(nextLayout, ids),
+        };
+      });
+      persistTransitions(next);
+      return next;
+    });
+  }
+
+  function patchScreenshot(
+    transitionId: string,
+    index: number,
+    patch: Partial<ScreenshotPlacement>,
+  ) {
+    setTransitions((curr) => {
+      const next = curr.map((t) => {
+        if (t.id !== transitionId) return t;
+        const screenshots = t.screenshots.map((s, i) => (i === index ? { ...s, ...patch } : s));
+        return { ...t, screenshots };
+      });
+      persistTransitions(next);
+      return next;
+    });
+  }
+
+  function addScreenshotToTransition(transitionId: string, stepId: string) {
+    setTransitions((curr) => {
+      const next = curr.map((t) => {
+        if (t.id !== transitionId) return t;
+        // Use the next layout-default slot if available; else copy slot 0 with offset.
+        const defaults = layoutDefaults(t.layout);
+        const slot = defaults[t.screenshots.length] ?? { x: 30, y: 30, w: 36, rotation: 0, shadow: 70, z: 1 };
+        return {
+          ...t,
+          screenshots: [...t.screenshots, { step_id: stepId, ...slot }],
+        };
+      });
+      persistTransitions(next);
+      return next;
+    });
+  }
+
+  function removeScreenshotFromTransition(transitionId: string, index: number) {
+    setTransitions((curr) => {
+      const next = curr.map((t) => {
+        if (t.id !== transitionId) return t;
+        return { ...t, screenshots: t.screenshots.filter((_, i) => i !== index) };
+      });
+      persistTransitions(next);
+      return next;
+    });
+  }
+
   async function aiStylizeTransition() {
     if (!activeTransition) return;
     setBusyAction("stylize");
@@ -142,7 +211,7 @@ export function EditorShell({
         body: JSON.stringify({
           walkthrough_id: walkthrough.id,
           transition: activeTransition,
-          screenshot_step_ids: activeTransition.screenshot_step_ids,
+          screenshot_step_ids: activeTransition.screenshots.map((s) => s.step_id),
         }),
       });
       const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
@@ -397,6 +466,10 @@ export function EditorShell({
           onAddTransition={addTransition}
           onRemoveTransition={removeTransition}
           onUpdateTransition={updateTransition}
+          onRelayoutTransition={relayoutTransition}
+          onPatchScreenshot={patchScreenshot}
+          onAddScreenshot={addScreenshotToTransition}
+          onRemoveScreenshot={removeScreenshotFromTransition}
           onStylizeTransition={aiStylizeTransition}
           onReplayTransition={() => setTransitionResetKey((n) => n + 1)}
         />
@@ -406,9 +479,7 @@ export function EditorShell({
             <div className="canvas is-transition">
               <TransitionSlide
                 spec={activeTransition}
-                screenshotUrls={activeTransition.screenshot_step_ids
-                  .map((sid) => tracks.find((t) => t.id === sid)?.frame_url)
-                  .filter((url): url is string => Boolean(url))}
+                framesByStepId={Object.fromEntries(tracks.map((t) => [t.id, t.frame_url]))}
                 resetKey={`${activeTransition.id}-${transitionResetKey}-${activeTransition.text}-${activeTransition.subtext ?? ""}`}
               />
             </div>

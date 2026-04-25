@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Walkthrough } from "@/lib/types";
 import type { RailTab, TrackEntry } from "./EditorShell";
-import type { TransitionSpec } from "@/lib/transitions";
+import type { ScreenshotPlacement, TransitionSpec } from "@/lib/transitions";
 
 interface Props {
   tab: RailTab;
@@ -30,6 +31,10 @@ interface Props {
   onAddTransition: () => void;
   onRemoveTransition: (id: string) => void;
   onUpdateTransition: (id: string, patch: Partial<TransitionSpec>) => void;
+  onRelayoutTransition: (id: string, layout: TransitionSpec["layout"]) => void;
+  onPatchScreenshot: (transitionId: string, index: number, patch: Partial<ScreenshotPlacement>) => void;
+  onAddScreenshot: (transitionId: string, stepId: string) => void;
+  onRemoveScreenshot: (transitionId: string, index: number) => void;
   onStylizeTransition: () => Promise<void> | void;
   onReplayTransition: () => void;
 }
@@ -49,6 +54,10 @@ export function SidePanel(p: Props) {
           onAdd={p.onAddTransition}
           onRemove={p.onRemoveTransition}
           onUpdate={p.onUpdateTransition}
+          onRelayout={p.onRelayoutTransition}
+          onPatchScreenshot={p.onPatchScreenshot}
+          onAddScreenshot={p.onAddScreenshot}
+          onRemoveScreenshot={p.onRemoveScreenshot}
           onStylize={p.onStylizeTransition}
           onReplay={p.onReplayTransition}
           busy={p.aiBusy}
@@ -302,10 +311,15 @@ function TransitionsPanel(p: {
   onAdd: () => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<TransitionSpec>) => void;
+  onRelayout: (id: string, layout: TransitionSpec["layout"]) => void;
+  onPatchScreenshot: (transitionId: string, index: number, patch: Partial<ScreenshotPlacement>) => void;
+  onAddScreenshot: (transitionId: string, stepId: string) => void;
+  onRemoveScreenshot: (transitionId: string, index: number) => void;
   onStylize: () => Promise<void> | void;
   onReplay: () => void;
   busy: string | null;
 }) {
+  const [activeShotIdx, setActiveShotIdx] = useState(0);
   const active = p.transitions.find((t) => t.id === p.activeId) ?? null;
   return (
     <>
@@ -377,14 +391,18 @@ function TransitionsPanel(p: {
               <span className="lbl">Layout</span>
               <select
                 value={active.layout}
-                onChange={(e) => p.onUpdate(active.id, { layout: e.target.value as TransitionSpec["layout"] })}
+                onChange={(e) => p.onRelayout(active.id, e.target.value as TransitionSpec["layout"])}
               >
-                <option value="centered">centered</option>
-                <option value="hero-left">hero-left</option>
-                <option value="hero-right">hero-right</option>
+                <option value="scatter">scatter</option>
+                <option value="hero-cover-tl">hero · top-left</option>
+                <option value="hero-cover-tr">hero · top-right</option>
+                <option value="hero-cover-bl">hero · bottom-left</option>
+                <option value="hero-cover-br">hero · bottom-right</option>
+                <option value="split-vertical">split</option>
+                <option value="stack">stack</option>
                 <option value="grid">grid</option>
               </select>
-              <span className="val">{active.layout}</span>
+              <span className="val">{active.layout.replace("hero-cover-", "h-")}</span>
             </div>
             <div className="ctrl-row">
               <span className="lbl">Background</span>
@@ -392,13 +410,15 @@ function TransitionsPanel(p: {
                 value={active.bg}
                 onChange={(e) => p.onUpdate(active.id, { bg: e.target.value as TransitionSpec["bg"] })}
               >
-                <option value="gradient-purple">purple</option>
-                <option value="gradient-amber">amber</option>
-                <option value="gradient-graphite">graphite</option>
-                <option value="dark">solid dark</option>
-                <option value="light">solid light</option>
+                <option value="aurora-pink">aurora · pink</option>
+                <option value="aurora-blue">aurora · blue</option>
+                <option value="aurora-amber">aurora · amber</option>
+                <option value="aurora-mint">aurora · mint</option>
+                <option value="aurora-graphite">aurora · graphite</option>
+                <option value="void">void</option>
+                <option value="paper">paper</option>
               </select>
-              <span className="val">{active.bg.replace("gradient-", "")}</span>
+              <span className="val">{active.bg.replace("aurora-", "")}</span>
             </div>
             <div className="ctrl-row">
               <span className="lbl">Typed</span>
@@ -418,29 +438,65 @@ function TransitionsPanel(p: {
           </div>
 
           <div className="group">
-            <div className="group-label">Screenshots ({active.screenshot_step_ids.length})</div>
+            <div className="group-label">Screenshots ({active.screenshots.length})</div>
+
+            {/* Active screenshot picker — click to focus its placement controls */}
+            {active.screenshots.length > 0 ? (
+              <div className="ss-picker" style={{ marginBottom: 10 }}>
+                {active.screenshots.map((s, i) => {
+                  const t = p.tracks.find((tr) => tr.id === s.step_id);
+                  const isActive = i === activeShotIdx;
+                  return (
+                    <button
+                      key={`${s.step_id}-${i}`}
+                      type="button"
+                      className={`ss-tile ${isActive ? "on" : ""}`}
+                      onClick={() => setActiveShotIdx(i)}
+                      title={t?.title ?? s.step_id}
+                    >
+                      {t ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={t.frame_url} alt="" />
+                      ) : null}
+                      <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 10px" }}>
+                No screenshots yet. Add one from the strip below.
+              </p>
+            )}
+
+            {/* Placement controls for the active screenshot */}
+            {active.screenshots[activeShotIdx] ? (
+              <ScreenshotPlacementEditor
+                placement={active.screenshots[activeShotIdx]}
+                onChange={(patch) => p.onPatchScreenshot(active.id, activeShotIdx, patch)}
+                onRemove={() => {
+                  p.onRemoveScreenshot(active.id, activeShotIdx);
+                  setActiveShotIdx(0);
+                }}
+              />
+            ) : null}
+
+            {/* Strip of all step frames — click a tile to ADD it (multi-add allowed) */}
+            <div className="group-label" style={{ marginTop: 12 }}>Add from steps</div>
             <div className="ss-picker">
-              {p.tracks.map((t, i) => {
-                const on = active.screenshot_step_ids.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`ss-tile ${on ? "on" : ""}`}
-                    onClick={() => {
-                      const ids = on
-                        ? active.screenshot_step_ids.filter((x) => x !== t.id)
-                        : [...active.screenshot_step_ids, t.id];
-                      p.onUpdate(active.id, { screenshot_step_ids: ids });
-                    }}
-                    title={t.title}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={t.frame_url} alt="" />
-                    <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
-                  </button>
-                );
-              })}
+              {p.tracks.map((t, i) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="ss-tile"
+                  onClick={() => p.onAddScreenshot(active.id, t.id)}
+                  title={`Add ${t.title}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.frame_url} alt="" />
+                  <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -476,6 +532,57 @@ function TransitionsPanel(p: {
         </p>
       )}
     </>
+  );
+}
+
+function ScreenshotPlacementEditor(props: {
+  placement: ScreenshotPlacement;
+  onChange: (patch: Partial<ScreenshotPlacement>) => void;
+  onRemove: () => void;
+}) {
+  const { placement: p, onChange, onRemove } = props;
+  return (
+    <div
+      style={{
+        background: "var(--panel-2)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "10px 12px",
+        marginBottom: 6,
+      }}
+    >
+      <Slider label="X"        value={p.x}        min={-40} max={140} step={1}   unit="%" onChange={(v) => onChange({ x: v })} />
+      <Slider label="Y"        value={p.y}        min={-40} max={140} step={1}   unit="%" onChange={(v) => onChange({ y: v })} />
+      <Slider label="Width"    value={p.w}        min={10}  max={140} step={1}   unit="%" onChange={(v) => onChange({ w: v })} />
+      <Slider label="Rotation" value={p.rotation} min={-30} max={30}  step={1}   unit="°" onChange={(v) => onChange({ rotation: v })} />
+      <Slider label="Shadow"   value={p.shadow}   min={0}   max={100} step={1}   unit=""  onChange={(v) => onChange({ shadow: v })} />
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <button
+          className="btn-secondary"
+          type="button"
+          style={{ height: 26, padding: "0 8px", fontSize: 11.5 }}
+          onClick={() => onChange({ z: Math.max(1, p.z - 1) })}
+        >
+          Send back
+        </button>
+        <button
+          className="btn-secondary"
+          type="button"
+          style={{ height: 26, padding: "0 8px", fontSize: 11.5 }}
+          onClick={() => onChange({ z: p.z + 1 })}
+        >
+          Bring forward
+        </button>
+        <button
+          className="btn-secondary"
+          type="button"
+          style={{ height: 26, padding: "0 8px", fontSize: 11.5, marginLeft: "auto", color: "var(--diff-removed)" }}
+          onClick={onRemove}
+        >
+          Remove
+        </button>
+      </div>
+    </div>
   );
 }
 

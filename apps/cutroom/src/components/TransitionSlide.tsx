@@ -5,11 +5,9 @@ import type { TransitionSpec } from "@/lib/transitions";
 
 interface Props {
   spec: TransitionSpec;
-  /** Public URLs of the step frames to use as floating screenshots. */
-  screenshotUrls: string[];
-  /** Force-restart the typed animation when this prop changes. */
+  /** Map step_id → public PNG url. */
+  framesByStepId: Record<string, string>;
   resetKey?: string | number;
-  /** Override stylized image (bypasses bg + screenshots when set). */
   stylizedUrl?: string | null;
 }
 
@@ -20,16 +18,8 @@ const FONT_FAMILY: Record<string, string> = {
   display: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", sans-serif',
 };
 
-const BG: Record<string, string> = {
-  "dark":              "linear-gradient(180deg, #050507 0%, #0e0e14 100%)",
-  "light":             "linear-gradient(180deg, #ffffff 0%, #f0f0f4 100%)",
-  "gradient-purple":   "radial-gradient(ellipse at 30% 20%, #5b3eb8 0%, #1d1338 60%, #0a0612 100%)",
-  "gradient-amber":    "radial-gradient(ellipse at 70% 30%, #f5a623 0%, #b3540a 60%, #2c1408 100%)",
-  "gradient-graphite": "radial-gradient(ellipse at 50% 30%, #2a2a30 0%, #16161a 60%, #08080a 100%)",
-};
-
-export function TransitionSlide({ spec, screenshotUrls, resetKey, stylizedUrl }: Props) {
-  // If we have a stylized PNG from Nano Banana, just render that full-bleed.
+export function TransitionSlide({ spec, framesByStepId, resetKey, stylizedUrl }: Props) {
+  // Stylized PNG from Nano Banana takes over completely.
   if (stylizedUrl ?? spec.stylized_url) {
     return (
       <div
@@ -39,14 +29,10 @@ export function TransitionSlide({ spec, screenshotUrls, resetKey, stylizedUrl }:
     );
   }
 
-  const isLight = spec.bg === "light";
+  const isLight = spec.bg === "paper";
   const fg = isLight ? "#0a0a0a" : "#ffffff";
   const sub = isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)";
   const fontFamily = FONT_FAMILY[spec.font];
-  const bgImage = BG[spec.bg];
-
-  // Place each screenshot at a fixed offset / rotation per layout.
-  const positions = layoutPositions(spec.layout, screenshotUrls.length);
 
   const headline = spec.typed ? (
     <TypedText
@@ -61,22 +47,28 @@ export function TransitionSlide({ spec, screenshotUrls, resetKey, stylizedUrl }:
 
   return (
     <div
-      className={`transition-slide layout-${spec.layout} bg-${spec.bg}`}
-      style={{ background: bgImage, color: fg, fontFamily }}
+      className={`transition-slide bg-${spec.bg} layout-${spec.layout}`}
+      style={{ color: fg, fontFamily }}
     >
-      {screenshotUrls.map((url, i) => {
-        const pos = positions[i];
-        if (!pos) return null;
+      {/* aurora is composed via CSS pseudo-elements driven by .bg-* class */}
+      {spec.screenshots.map((p, i) => {
+        const url = framesByStepId[p.step_id];
+        if (!url) return null;
+        const blur = 0.18 + (p.shadow / 100) * 0.45;
+        const spread = 4 + (p.shadow / 100) * 30;
+        const yOff = 8 + (p.shadow / 100) * 22;
+        const shadow = `0 ${yOff}px ${spread + 30}px rgba(0,0,0,${(blur * 0.9).toFixed(2)}), 0 4px 14px rgba(0,0,0,${blur.toFixed(2)})`;
         return (
           <div
-            key={`${url}-${i}`}
+            key={`${p.step_id}-${i}`}
             className="ts-screenshot"
             style={{
-              left: `${pos.x}%`,
-              top: `${pos.y}%`,
-              width: `${pos.w}%`,
-              transform: `rotate(${pos.r}deg)`,
-              zIndex: pos.z,
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: `${p.w}%`,
+              transform: `rotate(${p.rotation}deg)`,
+              zIndex: p.z,
+              boxShadow: shadow,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -84,6 +76,9 @@ export function TransitionSlide({ spec, screenshotUrls, resetKey, stylizedUrl }:
           </div>
         );
       })}
+
+      {/* grain overlay drawn last so it sits above bg + screenshots */}
+      <div className="ts-grain" aria-hidden="true" />
 
       <div className="ts-text">
         <h1 style={{ color: fg }}>{headline}</h1>
@@ -93,39 +88,4 @@ export function TransitionSlide({ spec, screenshotUrls, resetKey, stylizedUrl }:
       </div>
     </div>
   );
-}
-
-function layoutPositions(layout: string, count: number): { x: number; y: number; w: number; r: number; z: number }[] {
-  // Positions in % relative to the slide. Up to 4 screenshots.
-  switch (layout) {
-    case "hero-left":
-      return [
-        { x: 5,  y: 18, w: 30, r: -3, z: 1 },
-        { x: 8,  y: 58, w: 26, r:  4, z: 2 },
-        { x: 38, y: 70, w: 22, r: -2, z: 3 },
-        { x: 65, y: 12, w: 24, r:  5, z: 1 },
-      ].slice(0, count);
-    case "hero-right":
-      return [
-        { x: 65, y: 18, w: 30, r:  3, z: 1 },
-        { x: 62, y: 58, w: 26, r: -4, z: 2 },
-        { x: 40, y: 70, w: 22, r:  2, z: 3 },
-        { x: 11, y: 12, w: 24, r: -5, z: 1 },
-      ].slice(0, count);
-    case "grid":
-      return [
-        { x: 8,  y: 12, w: 22, r:  0, z: 1 },
-        { x: 70, y: 12, w: 22, r:  0, z: 1 },
-        { x: 8,  y: 65, w: 22, r:  0, z: 1 },
-        { x: 70, y: 65, w: 22, r:  0, z: 1 },
-      ].slice(0, count);
-    case "centered":
-    default:
-      return [
-        { x: 4,  y: 8,  w: 22, r: -6, z: 1 },
-        { x: 74, y: 8,  w: 22, r:  5, z: 1 },
-        { x: 6,  y: 70, w: 22, r:  4, z: 1 },
-        { x: 72, y: 70, w: 22, r: -5, z: 1 },
-      ].slice(0, count);
-  }
 }
