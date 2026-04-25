@@ -22,7 +22,7 @@ from .captions import write_captions
 from .concat import assemble_master, diff_takes
 from .config import settings
 from .continuous_narration import synth_continuous
-from .github import fetch_pr_diff, fetch_pr_meta
+from .github import fetch_pr_diff, fetch_pr_meta, post_pr_comment
 from .logfire_setup import configure as configure_logfire
 from .models import StepDiff, StepStatus, TakeStatus
 from .narrator import synth as synth_narration
@@ -273,6 +273,9 @@ def review(
     pr_number: int,
     walkthrough_id: str = typer.Argument("v1"),
     parent_take: str = typer.Option("master", "--parent", help="Take to compare against."),
+    no_comment: bool = typer.Option(
+        False, "--no-comment", help="Skip posting a PR comment with the new take URL."
+    ),
 ) -> None:
     """Diff a PR, run the agent, retake affected steps, build a new take."""
     wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
@@ -291,14 +294,75 @@ def review(
 
     rprint(f"\n[bold]director's verdict[/]: {verdict.summary}\n")
     _print_verdict_table(verdict)
+    take_id = f"take-{pr_number:03d}"
     _retake_and_assemble(
         wt,
         verdict,
-        take_id=f"take-{pr_number:03d}",
+        take_id=take_id,
         parent_take=parent_take,
         pr_number=pr_number,
         pr_title=pr_meta.get("title", ""),
     )
+
+    if not no_comment:
+        try:
+            body = _format_pr_comment(
+                walkthrough_id=walkthrough_id,
+                take_id=take_id,
+                parent_take=parent_take,
+                verdict=verdict,
+            )
+            post_pr_comment(pr_number, body)
+            rprint("[green]✓[/] posted PR comment with the new take's compare URL")
+        except Exception as exc:
+            rprint(f"[yellow]warning[/]: PR comment failed ({exc}). Take is on disk.")
+
+
+def _format_pr_comment(
+    *,
+    walkthrough_id: str,
+    take_id: str,
+    parent_take: str,
+    verdict,
+) -> str:
+    """Render the markdown body Foley posts back to the PR after a review.
+
+    Header: which take was built, the agent's one-liner.
+    Diff table: per-step status pulled from the verdict.
+    Footer: cutroom URLs to inspect + approve, plus an embedded preview.gif
+    that GitHub renders inline (cached on disk by the cutroom's gif route).
+    """
+    base = settings.public_dashboard_url.rstrip("/")
+    lines: list[str] = []
+    lines.append(f"📼 **New walkthrough take ready**: `{take_id}`")
+    lines.append("")
+    lines.append(f"**Director's verdict** — {verdict.summary}")
+    lines.append("")
+
+    # Per-step status table.
+    lines.append("| Step | Status | Reason |")
+    lines.append("|---|---|---|")
+    icons = {"unchanged": "✓", "changed": "✎", "added": "＋", "removed": "−"}
+    for d in verdict.step_diffs:
+        status_value = d.status.value if hasattr(d.status, "value") else str(d.status)
+        icon = icons.get(status_value, "")
+        # Truncate long reasons so the table stays readable.
+        reason = (d.reason or "").replace("|", "\\|")
+        if len(reason) > 110:
+            reason = reason[:107] + "…"
+        lines.append(f"| `{d.step_id}` | {icon} {status_value} | {reason} |")
+    lines.append("")
+
+    compare_url = f"{base}/takes/{take_id}/compare/{parent_take}"
+    take_url = f"{base}/takes/{take_id}"
+    poster_url = f"{base}/api/walkthroughs/{walkthrough_id}/preview.gif?take={take_id}"
+
+    lines.append(f"→ [Compare {take_id} ↔ {parent_take}]({compare_url}) · [Open in cutroom]({take_url})")
+    lines.append("")
+    lines.append(f"![preview]({poster_url})")
+    lines.append("")
+    lines.append("_Foley · auto-generated walkthrough · approve from the cutroom to ship_")
+    return "\n".join(lines)
 
 
 def _print_verdict_table(verdict) -> None:

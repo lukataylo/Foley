@@ -52,4 +52,21 @@ def verify_webhook(secret: str, signature_header: str, body: bytes) -> bool:
     return hmac.compare_digest(expected, provided)
 
 
-__all__ = ["fetch_pr_diff", "fetch_pr_meta", "verify_webhook"]
+def post_pr_comment(pr_number: int, body: str, repo: str | None = None) -> None:
+    """Post a comment to a PR via the `gh` CLI.
+
+    Best-effort: if `gh` isn't authenticated or the PR is closed/locked we
+    raise so the caller can log the failure but the take itself is already
+    on disk — the user just won't see a comment.
+    """
+    repo = repo or settings.demo_app_repo
+    proc = subprocess.run(
+        ["gh", "pr", "comment", str(pr_number), "-R", repo, "--body", body],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"gh pr comment failed: {proc.stderr.strip()}")
+
+
+__all__ = ["fetch_pr_diff", "fetch_pr_meta", "post_pr_comment", "verify_webhook"]
