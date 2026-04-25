@@ -884,7 +884,7 @@ div > .folder-card.placeholder { cursor: default; }
 /* ─── doc view (read-only detail page) ─── */
 .doc-view {
   max-width: 760px;
-  margin: 0 auto;
+  margin: 0;
 }
 .doc-view-video video {
   width: 100%;
