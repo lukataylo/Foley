@@ -1170,21 +1170,23 @@ export function EditorShell({
 
 
       <div className="bottom-pane">
-        <div className="bottom-tabs">
-          <button
-            type="button"
-            className={`bottom-tab ${bottomMode === "timeline" ? "active" : ""}`}
-            onClick={() => setBottomMode("timeline")}
-          >
-            Timeline
-          </button>
-          <button
-            type="button"
-            className={`bottom-tab ${bottomMode === "changes" ? "active" : ""}`}
-            onClick={() => setBottomMode("changes")}
-          >
-            Changes
-          </button>
+        <div className="bottom-pane-bar">
+          <div className="bottom-tabs">
+            <button
+              type="button"
+              className={`bottom-tab ${bottomMode === "timeline" ? "active" : ""}`}
+              onClick={() => setBottomMode("timeline")}
+            >
+              Timeline
+            </button>
+            <button
+              type="button"
+              className={`bottom-tab ${bottomMode === "changes" ? "active" : ""}`}
+              onClick={() => setBottomMode("changes")}
+            >
+              Changes
+            </button>
+          </div>
         </div>
         {bottomMode === "changes" ? (
           <ChangesTimeline

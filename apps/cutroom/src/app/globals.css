@@ -3935,11 +3935,16 @@ a.back:hover { color: var(--fg); }
   min-height: 0;
   overflow: hidden;
 }
+.bottom-pane-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
 .bottom-tabs {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  z-index: 10;
   display: inline-flex;
   gap: 2px;
   padding: 2px;
