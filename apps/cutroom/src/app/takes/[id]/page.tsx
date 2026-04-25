@@ -65,7 +65,7 @@ export default async function TakePage({ params }: { params: { id: string } }) {
           <div className="summary-box">
             <div className="label">Director's note</div>
             <div className="body">
-              {take.pr_title ? deriveSummary(take) : "Initial canonical master."}
+              {take.director_note ?? (take.pr_title ? deriveSummary(take) : "Initial canonical master.")}
             </div>
           </div>
 

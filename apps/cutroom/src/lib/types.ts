@@ -62,6 +62,7 @@ export interface Take {
   parent_take_id: string | null;
   pr_number: number | null;
   pr_title: string | null;
+  director_note: string | null;
   created_at: string;
   status: "drafting" | "ready" | "approved" | "rejected";
   step_diffs: StepDiff[];

@@ -1,7 +1,7 @@
 {
   "step_id": "board_overview",
   "fingerprint": "fe80c3c8545d92c1",
-  "actual_duration_ms": 7164,
+  "actual_duration_ms": 7504,
   "declared_duration_ms": 7500,
   "viewport": {
     "width": 1440,

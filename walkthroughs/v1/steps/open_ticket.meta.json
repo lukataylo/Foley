@@ -1,7 +1,7 @@
 {
   "step_id": "open_ticket",
   "fingerprint": "caf30833cb0e1452",
-  "actual_duration_ms": 6089,
+  "actual_duration_ms": 5989,
   "declared_duration_ms": 6000,
   "viewport": {
     "width": 1440,

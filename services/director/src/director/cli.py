@@ -256,6 +256,7 @@ def _retake_and_assemble(
         parent_take_id=parent_take,
         pr_number=pr_number,
         pr_title=pr_title,
+        director_note=verdict.summary,
         status=TakeStatus.READY,
     )
     rprint(

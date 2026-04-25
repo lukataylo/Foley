@@ -1,8 +1,8 @@
 {
   "walkthrough_id": "v1",
-  "take_id": "master",
+  "take_id": "take-012",
   "master_path": "master.mp4",
-  "master_sha256": "65506b79afa94ccd0fa80ec3bfb3502fa51bc53adeff25fa5c04f2decc727cbf",
+  "master_sha256": "7c9e8922ebd160980c31e97dc15796f6ffc9e3b08977bfd005d7114ec213fafb",
   "segments": [
     {
       "step_id": "intro",
@@ -10,7 +10,7 @@
       "segment_path": "segments/intro.mp4",
       "segment_sha256": "11fedce0a59af4668bbba35ec8e4bc8aa6e5e6c79885cc052cff653cec8b07fd",
       "duration_ms": 5500,
-      "source": "rebuilt"
+      "source": "reused"
     },
     {
       "step_id": "sign_in",
@@ -18,7 +18,7 @@
       "segment_path": "segments/sign_in.mp4",
       "segment_sha256": "ce2834e48c58fa0f2e3bc36adc38733c636b7c581f6a6770d20bc4dc102bc0a9",
       "duration_ms": 5500,
-      "source": "rebuilt"
+      "source": "reused"
     },
     {
       "step_id": "board_overview",
@@ -26,7 +26,7 @@
       "segment_path": "segments/board_overview.mp4",
       "segment_sha256": "8ffb5148554d20f805cd3b7746a64f464c8c4fbe27c2b3aa1e5dc2273d303b46",
       "duration_ms": 7500,
-      "source": "rebuilt"
+      "source": "reused"
     },
     {
       "step_id": "open_ticket",
@@ -34,7 +34,7 @@
       "segment_path": "segments/open_ticket.mp4",
       "segment_sha256": "ff8f44e681967b3b3d7c0c6d13130bf995776be2ba120caa24c5a5577713123e",
       "duration_ms": 6000,
-      "source": "rebuilt"
+      "source": "reused"
     },
     {
       "step_id": "mark_done",
@@ -42,13 +42,21 @@
       "segment_path": "segments/mark_done.mp4",
       "segment_sha256": "18ac571c3c3d93b899b01a7c9a73f000bb20b733e675a3fd8999ff652fca6f99",
       "duration_ms": 5500,
-      "source": "rebuilt"
+      "source": "reused"
     },
     {
       "step_id": "settings",
       "fingerprint": "cc96fd00ce6f02b5",
       "segment_path": "segments/settings.mp4",
       "segment_sha256": "39d4c9f5fe21187174e4114ff327704ac0c6f4dabce1a7bb689f16a0a6dd74a2",
+      "duration_ms": 6500,
+      "source": "reused"
+    },
+    {
+      "step_id": "inbox",
+      "fingerprint": "240bdebb6968b31d",
+      "segment_path": "segments/inbox.mp4",
+      "segment_sha256": "a8a11e9e0da735f68ff46478dc2a7cd14b6932d3c8444d43f4162505020fa46b",
       "duration_ms": 6500,
       "source": "rebuilt"
     }

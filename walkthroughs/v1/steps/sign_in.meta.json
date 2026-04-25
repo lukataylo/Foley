@@ -1,7 +1,7 @@
 {
   "step_id": "sign_in",
   "fingerprint": "bbfe7babdc3ce929",
-  "actual_duration_ms": 4077,
+  "actual_duration_ms": 5162,
   "declared_duration_ms": 5500,
   "viewport": {
     "width": 1440,

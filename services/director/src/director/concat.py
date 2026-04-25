@@ -64,6 +64,11 @@ def _file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _copy_bytes(src: Path, dst: Path) -> None:
+    """Byte-for-byte copy. Preserves SHA-256 (the whole point of segment reuse)."""
+    dst.write_bytes(src.read_bytes())
+
+
 def _build_segment(clip: Path, narration: Path | None, dst: Path, duration_ms: int) -> None:
     """Mux narration onto a clip, padding to the step's declared duration."""
     duration_s = duration_ms / 1000.0
@@ -103,6 +108,7 @@ def assemble_master(
     parent_take_id: str | None = None,
     pr_number: int | None = None,
     pr_title: str | None = None,
+    director_note: str | None = None,
     status: TakeStatus = TakeStatus.READY,
 ) -> dict:
     """Assemble a master.mp4 from cached step artifacts. Returns the manifest dict."""
@@ -111,19 +117,43 @@ def assemble_master(
     segments_dir.mkdir(parents=True, exist_ok=True)
     master_path = out_dir / "master.mp4"
 
-    with span("concat.assemble_master", walkthrough_id=walkthrough.id, take_id=take_id, steps=len(walkthrough.steps)):
+    # For non-master takes, reuse the parent's segments byte-for-byte for any
+    # step the agent classified UNCHANGED. This is what makes the byte-identity
+    # claim hold — parent-take segments are immutable; we never re-encode them.
+    reuse_from_parent: dict[str, Path] = {}
+    if step_diffs is not None and parent_take_id is not None:
+        parent = take_dir(walkthroughs_dir, walkthrough.id, parent_take_id)
+        parent_segments = parent / "segments"
+        unchanged_ids = {d.step_id for d in step_diffs if d.status is StepStatus.UNCHANGED}
+        for sid in unchanged_ids:
+            candidate = parent_segments / f"{sid}.mp4"
+            if candidate.exists():
+                reuse_from_parent[sid] = candidate
+
+    with span(
+        "concat.assemble_master",
+        walkthrough_id=walkthrough.id,
+        take_id=take_id,
+        steps=len(walkthrough.steps),
+        reused=len(reuse_from_parent),
+    ):
         segment_entries: list[dict] = []
         concat_lines: list[str] = []
 
         for step in walkthrough.steps:
-            paths = step_artifact_paths(walkthroughs_dir, walkthrough.id, step.id)
-            if not paths["clip"].exists():
-                raise FileNotFoundError(
-                    f"missing clip for step {step.id}: {paths['clip']} — run `director ingest` first"
-                )
-
             seg_path = segments_dir / f"{step.id}.mp4"
-            _build_segment(paths["clip"], paths["narration"], seg_path, step.duration_ms)
+
+            if step.id in reuse_from_parent:
+                _copy_bytes(reuse_from_parent[step.id], seg_path)
+                source = "reused"
+            else:
+                paths = step_artifact_paths(walkthroughs_dir, walkthrough.id, step.id)
+                if not paths["clip"].exists():
+                    raise FileNotFoundError(
+                        f"missing clip for step {step.id}: {paths['clip']} — run `director ingest` first"
+                    )
+                _build_segment(paths["clip"], paths["narration"], seg_path, step.duration_ms)
+                source = "rebuilt"
 
             seg_sha = _file_sha256(seg_path)
             segment_entries.append(
@@ -133,6 +163,7 @@ def assemble_master(
                     "segment_path": str(seg_path.relative_to(out_dir)),
                     "segment_sha256": seg_sha,
                     "duration_ms": step.duration_ms,
+                    "source": source,
                 }
             )
             concat_lines.append(f"file '{seg_path.name}'")
@@ -175,6 +206,7 @@ def assemble_master(
         parent_take_id=parent_take_id,
         pr_number=pr_number,
         pr_title=pr_title,
+        director_note=director_note,
         status=status,
         step_diffs=step_diffs,
         master_path=manifest["master_path"],

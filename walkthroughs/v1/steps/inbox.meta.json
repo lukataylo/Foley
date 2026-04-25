@@ -1,0 +1,36 @@
+{
+  "step_id": "inbox",
+  "fingerprint": "240bdebb6968b31d",
+  "actual_duration_ms": 7359,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/inbox"
+    },
+    {
+      "kind": "wait",
+      "ms": 1500
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-notification=n1]"
+    },
+    {
+      "kind": "wait",
+      "ms": 1500
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-notification=n2]"
+    },
+    {
+      "kind": "wait",
+      "ms": 3000
+    }
+  ]
+}

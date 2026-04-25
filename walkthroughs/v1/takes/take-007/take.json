@@ -4,41 +4,42 @@
   "parent_take_id": "master",
   "pr_number": 7,
   "pr_title": "Rename 'Mark as done' to 'Ship it'",
-  "created_at": "2026-04-25T11:23:46.296806Z",
+  "director_note": "The 'Mark as done' button label changed to 'Ship it', so the mark_done step's captured clip and narration need to be retaken to reflect the new button text.",
+  "created_at": "2026-04-25T11:34:09.373820Z",
   "status": "ready",
   "step_diffs": [
     {
       "step_id": "intro",
       "status": "unchanged",
-      "reason": "This step only navigates to /login and waits — no button label is shown or referenced.",
+      "reason": "This step only navigates to /login and waits; no UI touched by the PR appears here.",
       "proposed_step": null
     },
     {
       "step_id": "sign_in",
       "status": "unchanged",
-      "reason": "The sign-in flow is unaffected by the button rename in TicketActions.tsx.",
+      "reason": "The sign-in flow is entirely unrelated to the renamed button.",
       "proposed_step": null
     },
     {
       "step_id": "board_overview",
       "status": "unchanged",
-      "reason": "The board overview shows columns and cards, not the ticket action button.",
+      "reason": "The board overview screen does not include the action button that was renamed.",
       "proposed_step": null
     },
     {
       "step_id": "open_ticket",
       "status": "unchanged",
-      "reason": "This step only opens a ticket card; the action button is not yet visible or interacted with.",
+      "reason": "Opening a ticket card navigates to the ticket detail but does not render or interact with the 'Ship it' button.",
       "proposed_step": null
     },
     {
       "step_id": "mark_done",
       "status": "changed",
-      "reason": "The clicked button now displays 'Ship it' instead of 'Mark as done', so the captured clip shows different label copy and the narration should reflect the product's new voice.",
+      "reason": "The button being hovered and clicked now reads 'Ship it' instead of 'Mark as done', so the captured clip would show stale text and the narration should be updated to match the new product voice.",
       "proposed_step": {
         "id": "mark_done",
         "title": "Move it forward",
-        "narration": "Hit 'Ship it' and the ticket is done. One click, no status menus, no friction.",
+        "narration": "Hit 'Ship it' to close a ticket in one click. No status menus, no friction.",
         "actions": [
           {
             "kind": "goto",
@@ -95,7 +96,7 @@
     {
       "step_id": "settings",
       "status": "unchanged",
-      "reason": "The settings screen is unaffected by the button rename in TicketActions.tsx.",
+      "reason": "The settings page is unrelated to the renamed button.",
       "proposed_step": null
     }
   ],

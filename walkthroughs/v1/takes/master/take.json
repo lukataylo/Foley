@@ -4,7 +4,8 @@
   "parent_take_id": null,
   "pr_number": null,
   "pr_title": null,
-  "created_at": "2026-04-25T10:58:13.495363Z",
+  "director_note": null,
+  "created_at": "2026-04-25T11:33:11.983051Z",
   "status": "approved",
   "step_diffs": [
     {

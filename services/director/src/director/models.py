@@ -213,6 +213,7 @@ class Take(BaseModel):
     parent_take_id: str | None = None
     pr_number: int | None = None
     pr_title: str | None = None
+    director_note: str | None = None  # one-line summary the agent emitted
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: TakeStatus = TakeStatus.DRAFTING
     step_diffs: list[StepDiff] = Field(default_factory=list)
