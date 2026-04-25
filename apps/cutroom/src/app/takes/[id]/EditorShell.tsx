@@ -316,8 +316,29 @@ export function EditorShell({
     }
     return -1;
   })();
-  const activeZoomStepId = activeIdx >= 0 ? tracks[activeIdx].id : null;
-  const activeZoom = activeZoomStepId ? stepZooms[activeZoomStepId] : null;
+
+  // Resolve active zoom — prefer the overlay video clip currently under the
+  // playhead (the new source of truth from the ClipInspector). Fall back to
+  // the legacy stepZooms for steps whose overlay isn't loaded yet.
+  const activeZoom = (() => {
+    if (overlay) {
+      const tMs = currentTime * 1000;
+      for (const c of overlay.clips) {
+        if (c.kind !== "video") continue;
+        if (tMs >= c.start_ms && tMs < c.start_ms + c.duration_ms && c.zoom_enabled) {
+          return {
+            enabled: true,
+            factor: c.zoom_factor,
+            origin_x: c.zoom_origin_x,
+            origin_y: c.zoom_origin_y,
+          };
+        }
+      }
+    }
+    const stepId = activeIdx >= 0 ? tracks[activeIdx].id : null;
+    return stepId ? stepZooms[stepId] ?? null : null;
+  })();
+
   const videoTransform = useMemo<React.CSSProperties>(
     () =>
       activeZoom?.enabled

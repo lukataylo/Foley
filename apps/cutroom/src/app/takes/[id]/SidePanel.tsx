@@ -135,30 +135,6 @@ function StepsPanel({
         ))}
       </div>
 
-      {sel ? (
-        <div className="group">
-          <div className="group-label">Zoom · {sel.title}</div>
-          <div className="ctrl-row">
-            <span className="lbl">Enabled</span>
-            <input
-              type="checkbox"
-              checked={Boolean(z?.enabled)}
-              onChange={(e) => onPatchStepZoom(sel.id, { enabled: e.target.checked })}
-              style={{ justifySelf: "start" }}
-            />
-            <span className="val">{z?.enabled ? "on" : "off"}</span>
-          </div>
-          <Slider label="Factor" value={z?.factor ?? 1.6} min={1} max={3} step={0.05} unit="x"
-            onChange={(v) => onPatchStepZoom(sel.id, { factor: v })} />
-          <Slider label="Origin X" value={z?.origin_x ?? 50} min={0} max={100} step={1} unit="%"
-            onChange={(v) => onPatchStepZoom(sel.id, { origin_x: v })} />
-          <Slider label="Origin Y" value={z?.origin_y ?? 50} min={0} max={100} step={1} unit="%"
-            onChange={(v) => onPatchStepZoom(sel.id, { origin_y: v })} />
-          <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "6px 0 0" }}>
-            Applies to the canvas while the playhead is inside this step.
-          </p>
-        </div>
-      ) : null}
     </>
   );
 }
