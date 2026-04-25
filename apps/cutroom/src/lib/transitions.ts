@@ -1,6 +1,8 @@
 // Transition spec + persistence. Transitions live alongside takes on disk
 // at walkthroughs/<wid>/takes/<tid>/transitions.json.
 
+export type TransitionKind = "title" | "angled-mockup" | "feature-zoom";
+
 export type TransitionFont = "serif" | "sans" | "mono" | "display";
 export type TransitionLayout =
   | "scatter"
@@ -30,14 +32,45 @@ export interface ScreenshotPlacement {
   z: number;        // stacking order (1..10)
 }
 
+/** Specs for the angled-mockup primitive — single screenshot tilted with
+ *  perspective, optionally sliding in from one side. */
+export interface AngledMockupSpec {
+  step_id: string;
+  rotate_x: number;   // degrees, around X axis (tilt forward/back)
+  rotate_y: number;   // degrees, around Y axis (turn left/right)
+  rotate_z: number;   // degrees, around Z axis (in-plane rotation)
+  reveal_from: "bottom" | "top" | "left" | "right";
+  scale: number;      // 0.5 .. 1.4
+  /** % of slide width — controls how big the mockup reads. */
+  width: number;      // 40 .. 130
+  /** Vertical anchor (0 = top of slide, 100 = bottom). */
+  anchor_y: number;   // 0..100
+}
+
+/** Specs for the feature-zoom primitive — zoom into a UI region with an
+ *  oversized cursor pointing at a feature. */
+export interface FeatureZoomSpec {
+  step_id: string;
+  zoom_x: number;        // 0..100, % of source frame (focal point)
+  zoom_y: number;        // 0..100
+  zoom_factor: number;   // 1.0 .. 4.0
+  cursor_x: number;      // 0..100, % of viewport
+  cursor_y: number;      // 0..100
+  cursor_label?: string; // optional badge near the cursor
+  cursor_size: number;   // 40..220 px
+}
+
 export interface TransitionSpec {
   id: string;
+  /** Discriminator — which primitive to render. Defaults to "title". */
+  kind: TransitionKind;
+
   text: string;
   subtext?: string;
   font: TransitionFont;
   layout: TransitionLayout;
   bg: TransitionBg;
-  /** New: full per-screenshot placement. */
+  /** "title" kind: per-screenshot placements. */
   screenshots: ScreenshotPlacement[];
   /** Legacy field — pre-1.x transitions stored just step ids. Loader migrates. */
   screenshot_step_ids?: string[];
@@ -45,15 +78,21 @@ export interface TransitionSpec {
   typed_strings?: string[];
   duration_ms: number;
   stylized_url?: string | null;
+
+  /** "angled-mockup" kind. */
+  angled?: AngledMockupSpec;
+  /** "feature-zoom" kind. */
+  feature?: FeatureZoomSpec;
 }
 
 export function newTransitionId(): string {
   return `t-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function defaultTransition(): TransitionSpec {
-  return {
+export function defaultTransition(kind: TransitionKind = "title"): TransitionSpec {
+  const base: TransitionSpec = {
     id: newTransitionId(),
+    kind,
     text: "Still manually maintaining videos?",
     subtext: "Let Foley keep them on-brand.",
     font: "display",
@@ -64,6 +103,36 @@ export function defaultTransition(): TransitionSpec {
     duration_ms: 4500,
     stylized_url: null,
   };
+  if (kind === "angled-mockup") {
+    base.text = "Take it for a spin";
+    base.subtext = "";
+    base.bg = "paper";
+    base.angled = {
+      step_id: "",
+      rotate_x: 14,
+      rotate_y: -22,
+      rotate_z: -3,
+      reveal_from: "bottom",
+      scale: 1.0,
+      width: 78,
+      anchor_y: 60,
+    };
+  } else if (kind === "feature-zoom") {
+    base.text = "Right where you'd expect it";
+    base.subtext = "";
+    base.bg = "aurora-pink";
+    base.feature = {
+      step_id: "",
+      zoom_x: 50,
+      zoom_y: 50,
+      zoom_factor: 2.2,
+      cursor_x: 50,
+      cursor_y: 50,
+      cursor_label: "click",
+      cursor_size: 100,
+    };
+  }
+  return base;
 }
 
 // ─── layout presets ─────────────────────────────────────────────────────────

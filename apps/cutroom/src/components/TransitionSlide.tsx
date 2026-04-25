@@ -1,6 +1,8 @@
 "use client";
 
 import { TypedText } from "./TypedText";
+import { AngledMockupSlide } from "./AngledMockupSlide";
+import { FeatureZoomSlide } from "./FeatureZoomSlide";
 import type { TransitionSpec } from "@/lib/transitions";
 
 interface Props {
@@ -27,6 +29,14 @@ export function TransitionSlide({ spec, framesByStepId, resetKey, stylizedUrl }:
         style={{ backgroundImage: `url(${stylizedUrl ?? spec.stylized_url})` }}
       />
     );
+  }
+
+  // Dispatch by primitive kind.
+  if (spec.kind === "angled-mockup") {
+    return <AngledMockupSlide spec={spec} framesByStepId={framesByStepId} resetKey={resetKey} />;
+  }
+  if (spec.kind === "feature-zoom") {
+    return <FeatureZoomSlide spec={spec} framesByStepId={framesByStepId} resetKey={resetKey} />;
   }
 
   const isLight = spec.bg === "paper";

@@ -12,8 +12,22 @@ import {
   placementsForLayout,
   layoutDefaults,
   type ScreenshotPlacement,
+  type TransitionKind,
   type TransitionSpec,
 } from "@/lib/transitions";
+
+export interface StepZoom {
+  enabled: boolean;
+  factor: number;     // 1.0 .. 3.0
+  origin_x: number;   // 0..100, % of viewport
+  origin_y: number;   // 0..100
+}
+export const DEFAULT_STEP_ZOOM: StepZoom = {
+  enabled: false,
+  factor: 1.6,
+  origin_x: 50,
+  origin_y: 50,
+};
 import { Timeline } from "./Timeline";
 import { Inspector } from "./Inspector";
 import { SidePanel } from "./SidePanel";
@@ -84,6 +98,15 @@ export function EditorShell({
   const [editNarrationTrigger, setEditNarrationTrigger] = useState(0);
   const [genaiByStep, setGenaiByStep] = useState<Record<string, string>>({});
 
+  // Per-step zoom (Steps panel). Demo-state only — not persisted.
+  const [stepZooms, setStepZooms] = useState<Record<string, StepZoom>>({});
+  function patchStepZoom(stepId: string, patch: Partial<StepZoom>) {
+    setStepZooms((curr) => ({
+      ...curr,
+      [stepId]: { ...DEFAULT_STEP_ZOOM, ...curr[stepId], ...patch },
+    }));
+  }
+
   // ─── transitions ──────────────────────────────────────────────────────
   const [transitions, setTransitions] = useState<TransitionSpec[]>(
     initialTransitions.map(migrateTransition),
@@ -115,12 +138,18 @@ export function EditorShell({
       return next;
     });
   }
-  function addTransition() {
-    const t = defaultTransition();
-    // Seed with the first three changed/added or just first three frames.
+  function addTransition(kind: TransitionKind = "title") {
+    const t = defaultTransition(kind);
     const interesting = tracks.filter((tr) => tr.diff_status === "changed" || tr.diff_status === "added");
     const seedIds = (interesting.length >= 2 ? interesting : tracks).slice(0, 3).map((s) => s.id);
-    t.screenshots = placementsForLayout(t.layout, seedIds);
+    if (kind === "title") {
+      t.screenshots = placementsForLayout(t.layout, seedIds);
+    } else if (kind === "angled-mockup" && t.angled) {
+      t.angled.step_id = seedIds[0] ?? tracks[0]?.id ?? "";
+    } else if (kind === "feature-zoom" && t.feature) {
+      const target = tracks.find((tr) => tr.diff_status === "changed") ?? tracks[0];
+      t.feature.step_id = target?.id ?? "";
+    }
     setTransitions((curr) => {
       const next = [...curr, t];
       persistTransitions(next);
@@ -261,6 +290,26 @@ export function EditorShell({
     if (totalDuration - currentTime < 0.6 && animOut !== "none") return `anim-out-${animOut}`;
     return "";
   })();
+
+  // Active step + its zoom config based on currentTime.
+  const activeIdx = (() => {
+    const t = currentTime * 1000;
+    for (let i = 0; i < tracks.length; i++) {
+      const start = stepStartsMs[i];
+      const end = start + tracks[i].duration_ms;
+      if (t >= start && t < end) return i;
+    }
+    return -1;
+  })();
+  const activeZoomStepId = activeIdx >= 0 ? tracks[activeIdx].id : null;
+  const activeZoom = activeZoomStepId ? stepZooms[activeZoomStepId] : null;
+  const videoTransform =
+    activeZoom?.enabled
+      ? {
+          transform: `scale(${activeZoom.factor})`,
+          transformOrigin: `${activeZoom.origin_x}% ${activeZoom.origin_y}%`,
+        }
+      : { transform: "none", transformOrigin: "50% 50%" };
 
   function onTimeUpdate() {
     const v = videoRef.current;
@@ -463,7 +512,9 @@ export function EditorShell({
           transitions={transitions}
           activeTransitionId={activeTransitionId}
           onSelectTransition={(id) => { setActiveTransitionId(id); setTransitionResetKey((n) => n + 1); }}
-          onAddTransition={addTransition}
+          onAddTransition={(kind) => addTransition(kind)}
+          stepZooms={stepZooms}
+          onPatchStepZoom={patchStepZoom}
           onRemoveTransition={removeTransition}
           onUpdateTransition={updateTransition}
           onRelayoutTransition={relayoutTransition}
@@ -484,7 +535,7 @@ export function EditorShell({
               />
             </div>
           ) : (
-            <div className={`canvas ${animClass}`}>
+            <div className={`canvas ${animClass} ${activeZoom?.enabled ? "step-zoomed" : ""}`}>
               <video
                 ref={videoRef}
                 src={masterUrl}
@@ -492,6 +543,7 @@ export function EditorShell({
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 preload="metadata"
+                style={videoTransform}
               />
               {currentCaption ? (
                 <div className="captions-overlay">{currentCaption}</div>

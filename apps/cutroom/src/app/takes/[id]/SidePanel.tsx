@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import type { Walkthrough } from "@/lib/types";
-import type { RailTab, TrackEntry } from "./EditorShell";
-import type { ScreenshotPlacement, TransitionSpec } from "@/lib/transitions";
+import type { RailTab, TrackEntry, StepZoom } from "./EditorShell";
+import type {
+  ScreenshotPlacement,
+  TransitionKind,
+  TransitionSpec,
+} from "@/lib/transitions";
 
 interface Props {
   tab: RailTab;
@@ -28,7 +32,9 @@ interface Props {
   transitions: TransitionSpec[];
   activeTransitionId: string | null;
   onSelectTransition: (id: string) => void;
-  onAddTransition: () => void;
+  onAddTransition: (kind: TransitionKind) => void;
+  stepZooms: Record<string, StepZoom>;
+  onPatchStepZoom: (stepId: string, patch: Partial<StepZoom>) => void;
   onRemoveTransition: (id: string) => void;
   onUpdateTransition: (id: string, patch: Partial<TransitionSpec>) => void;
   onRelayoutTransition: (id: string, layout: TransitionSpec["layout"]) => void;
@@ -42,7 +48,15 @@ interface Props {
 export function SidePanel(p: Props) {
   return (
     <aside className="editor-side">
-      {p.tab === "steps" && <StepsPanel tracks={p.tracks} selectedStepId={p.selectedStepId} onSelectStep={p.onSelectStep} />}
+      {p.tab === "steps" && (
+        <StepsPanel
+          tracks={p.tracks}
+          selectedStepId={p.selectedStepId}
+          onSelectStep={p.onSelectStep}
+          stepZooms={p.stepZooms}
+          onPatchStepZoom={p.onPatchStepZoom}
+        />
+      )}
       {p.tab === "voice" && <VoicePanel {...p} />}
       {p.tab === "brand" && <BrandPanel {...p} />}
       {p.tab === "transitions" && (
@@ -76,11 +90,21 @@ export function SidePanel(p: Props) {
   );
 }
 
-function StepsPanel({ tracks, selectedStepId, onSelectStep }: {
+function StepsPanel({
+  tracks,
+  selectedStepId,
+  onSelectStep,
+  stepZooms,
+  onPatchStepZoom,
+}: {
   tracks: TrackEntry[];
   selectedStepId: string | null;
   onSelectStep: (id: string) => void;
+  stepZooms: Record<string, StepZoom>;
+  onPatchStepZoom: (stepId: string, patch: Partial<StepZoom>) => void;
 }) {
+  const sel = tracks.find((t) => t.id === selectedStepId);
+  const z = selectedStepId ? stepZooms[selectedStepId] : undefined;
   return (
     <>
       <h3>Steps</h3>
@@ -89,7 +113,7 @@ function StepsPanel({ tracks, selectedStepId, onSelectStep }: {
         {tracks.map((t, i) => (
           <button
             key={t.id}
-            className={`tool-tile ${selectedStepId === t.id ? "" : ""}`}
+            className="tool-tile"
             style={{
               borderColor: selectedStepId === t.id ? "var(--link)" : undefined,
               background: selectedStepId === t.id ? "var(--panel)" : undefined,
@@ -102,11 +126,39 @@ function StepsPanel({ tracks, selectedStepId, onSelectStep }: {
             </div>
             <div>
               <div className="tile-title">{t.title}</div>
-              <div className="tile-sub">{t.diff_status}</div>
+              <div className="tile-sub">
+                {t.diff_status}
+                {stepZooms[t.id]?.enabled ? <span style={{ marginLeft: 6, color: "var(--link)" }}>· zoom {stepZooms[t.id].factor.toFixed(1)}×</span> : null}
+              </div>
             </div>
           </button>
         ))}
       </div>
+
+      {sel ? (
+        <div className="group">
+          <div className="group-label">Zoom · {sel.title}</div>
+          <div className="ctrl-row">
+            <span className="lbl">Enabled</span>
+            <input
+              type="checkbox"
+              checked={Boolean(z?.enabled)}
+              onChange={(e) => onPatchStepZoom(sel.id, { enabled: e.target.checked })}
+              style={{ justifySelf: "start" }}
+            />
+            <span className="val">{z?.enabled ? "on" : "off"}</span>
+          </div>
+          <Slider label="Factor" value={z?.factor ?? 1.6} min={1} max={3} step={0.05} unit="x"
+            onChange={(v) => onPatchStepZoom(sel.id, { factor: v })} />
+          <Slider label="Origin X" value={z?.origin_x ?? 50} min={0} max={100} step={1} unit="%"
+            onChange={(v) => onPatchStepZoom(sel.id, { origin_x: v })} />
+          <Slider label="Origin Y" value={z?.origin_y ?? 50} min={0} max={100} step={1} unit="%"
+            onChange={(v) => onPatchStepZoom(sel.id, { origin_y: v })} />
+          <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "6px 0 0" }}>
+            Applies to the canvas while the playhead is inside this step.
+          </p>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -308,7 +360,7 @@ function TransitionsPanel(p: {
   transitions: TransitionSpec[];
   activeId: string | null;
   onSelect: (id: string) => void;
-  onAdd: () => void;
+  onAdd: (kind: TransitionKind) => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<TransitionSpec>) => void;
   onRelayout: (id: string, layout: TransitionSpec["layout"]) => void;
@@ -347,14 +399,24 @@ function TransitionsPanel(p: {
               >×</button>
             </div>
           ))}
-          <button className="btn-secondary" type="button" onClick={p.onAdd} style={{ marginTop: 6 }}>
-            + New transition
-          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 8 }}>
+            <button className="btn-secondary" type="button" onClick={() => p.onAdd("title")}        style={{ fontSize: 11.5, justifyContent: "center" }}>+ Title</button>
+            <button className="btn-secondary" type="button" onClick={() => p.onAdd("angled-mockup")} style={{ fontSize: 11.5, justifyContent: "center" }}>+ Angled</button>
+            <button className="btn-secondary" type="button" onClick={() => p.onAdd("feature-zoom")}  style={{ fontSize: 11.5, justifyContent: "center" }}>+ Feature</button>
+          </div>
         </div>
       </div>
 
       {active ? (
         <>
+          <div className="group">
+            <div className="group-label">Kind</div>
+            <div style={{ color: "var(--fg)", fontSize: 13, padding: "6px 0" }}>
+              {active.kind === "angled-mockup" ? "Angled mockup reveal"
+                : active.kind === "feature-zoom" ? "Feature zoom"
+                : "Title slide"}
+            </div>
+          </div>
           <div className="group">
             <div className="group-label">Headline</div>
             <textarea
@@ -437,6 +499,24 @@ function TransitionsPanel(p: {
             </div>
           </div>
 
+          {active.kind === "angled-mockup" && active.angled ? (
+            <AngledMockupControls
+              tracks={p.tracks}
+              spec={active.angled}
+              onPatch={(patch) => p.onUpdate(active.id, { angled: { ...active.angled!, ...patch } })}
+              onReplay={p.onReplay}
+            />
+          ) : null}
+          {active.kind === "feature-zoom" && active.feature ? (
+            <FeatureZoomControls
+              tracks={p.tracks}
+              spec={active.feature}
+              onPatch={(patch) => p.onUpdate(active.id, { feature: { ...active.feature!, ...patch } })}
+              onReplay={p.onReplay}
+            />
+          ) : null}
+
+          {active.kind === "title" ? (
           <div className="group">
             <div className="group-label">Screenshots ({active.screenshots.length})</div>
 
@@ -499,6 +579,7 @@ function TransitionsPanel(p: {
               ))}
             </div>
           </div>
+          ) : null}
 
           <div className="group">
             <div className="group-label">Stylize with Gemini · Nano Banana</div>
@@ -531,6 +612,128 @@ function TransitionsPanel(p: {
           Pick a transition above or create a new one.
         </p>
       )}
+    </>
+  );
+}
+
+function AngledMockupControls(p: {
+  tracks: TrackEntry[];
+  spec: NonNullable<TransitionSpec["angled"]>;
+  onPatch: (patch: Partial<NonNullable<TransitionSpec["angled"]>>) => void;
+  onReplay: () => void;
+}) {
+  return (
+    <>
+      <div className="group">
+        <div className="group-label">Source frame</div>
+        <div className="ss-picker">
+          {p.tracks.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`ss-tile ${p.spec.step_id === t.id ? "on" : ""}`}
+              onClick={() => p.onPatch({ step_id: t.id })}
+              title={t.title}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={t.frame_url} alt="" />
+              <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="group">
+        <div className="group-label">Tilt</div>
+        <Slider label="Rotate X"  value={p.spec.rotate_x}  min={-45} max={45} step={1} unit="°" onChange={(v) => p.onPatch({ rotate_x: v })} />
+        <Slider label="Rotate Y"  value={p.spec.rotate_y}  min={-45} max={45} step={1} unit="°" onChange={(v) => p.onPatch({ rotate_y: v })} />
+        <Slider label="Rotate Z"  value={p.spec.rotate_z}  min={-30} max={30} step={1} unit="°" onChange={(v) => p.onPatch({ rotate_z: v })} />
+        <Slider label="Width"     value={p.spec.width}     min={40}  max={130} step={1} unit="%" onChange={(v) => p.onPatch({ width: v })} />
+        <Slider label="Anchor Y"  value={p.spec.anchor_y}  min={0}   max={100} step={1} unit="%" onChange={(v) => p.onPatch({ anchor_y: v })} />
+        <div className="ctrl-row">
+          <span className="lbl">Reveal</span>
+          <select
+            value={p.spec.reveal_from}
+            onChange={(e) => p.onPatch({ reveal_from: e.target.value as "bottom" | "top" | "left" | "right" })}
+          >
+            <option value="bottom">from bottom</option>
+            <option value="top">from top</option>
+            <option value="left">from left</option>
+            <option value="right">from right</option>
+          </select>
+          <button
+            className="btn-secondary"
+            type="button"
+            style={{ height: 28, padding: "0 10px", fontSize: 12 }}
+            onClick={p.onReplay}
+          >Replay</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function FeatureZoomControls(p: {
+  tracks: TrackEntry[];
+  spec: NonNullable<TransitionSpec["feature"]>;
+  onPatch: (patch: Partial<NonNullable<TransitionSpec["feature"]>>) => void;
+  onReplay: () => void;
+}) {
+  return (
+    <>
+      <div className="group">
+        <div className="group-label">Source frame</div>
+        <div className="ss-picker">
+          {p.tracks.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`ss-tile ${p.spec.step_id === t.id ? "on" : ""}`}
+              onClick={() => p.onPatch({ step_id: t.id })}
+              title={t.title}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={t.frame_url} alt="" />
+              <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="group">
+        <div className="group-label">Zoom</div>
+        <Slider label="Origin X" value={p.spec.zoom_x}      min={0}   max={100} step={1} unit="%" onChange={(v) => p.onPatch({ zoom_x: v })} />
+        <Slider label="Origin Y" value={p.spec.zoom_y}      min={0}   max={100} step={1} unit="%" onChange={(v) => p.onPatch({ zoom_y: v })} />
+        <Slider label="Factor"   value={p.spec.zoom_factor} min={1}   max={4}   step={0.05} unit="x" onChange={(v) => p.onPatch({ zoom_factor: v })} />
+      </div>
+      <div className="group">
+        <div className="group-label">Cursor</div>
+        <Slider label="Cursor X"   value={p.spec.cursor_x}    min={0}  max={100} step={1} unit="%" onChange={(v) => p.onPatch({ cursor_x: v })} />
+        <Slider label="Cursor Y"   value={p.spec.cursor_y}    min={0}  max={100} step={1} unit="%" onChange={(v) => p.onPatch({ cursor_y: v })} />
+        <Slider label="Size"       value={p.spec.cursor_size} min={40} max={220} step={1} unit="px" onChange={(v) => p.onPatch({ cursor_size: v })} />
+        <div className="ctrl-row" style={{ gridTemplateColumns: "70px 1fr 60px" }}>
+          <span className="lbl">Label</span>
+          <input
+            type="text"
+            value={p.spec.cursor_label ?? ""}
+            placeholder="(no label)"
+            onChange={(e) => p.onPatch({ cursor_label: e.target.value })}
+            style={{
+              padding: "6px 9px",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              background: "var(--panel-2)",
+              color: "var(--fg)",
+              font: "inherit",
+              fontSize: 13,
+            }}
+          />
+          <button
+            className="btn-secondary"
+            type="button"
+            style={{ height: 28, padding: "0 10px", fontSize: 12 }}
+            onClick={p.onReplay}
+          >Replay</button>
+        </div>
+      </div>
     </>
   );
 }
