@@ -31,7 +31,7 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
-import { FeaturesPanel } from "./FeaturesPanel";
+import { SuggestionsPanel } from "./SuggestionsPanel";
 import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
 import type { MusicClip } from "@/lib/timeline";
 import { ClipInspector } from "./ClipInspector";
@@ -107,8 +107,18 @@ export function EditorShell({
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
   /** Canvas mode — video preview by default, transitions preview when the
-   *  user opens the transitions feature. (Replaces the legacy 5-tab rail.) */
-  const [canvasMode, setCanvasMode] = useState<"video" | "transitions">("video");
+   *  user opens the transitions feature, suggestion preview when previewing
+   *  a proposed block from the left rail. */
+  const [canvasMode, setCanvasMode] = useState<"video" | "transitions" | "suggestion">("video");
+  const [previewSuggestion, setPreviewSuggestion] = useState<{
+    title: string;
+    narration: string;
+    reason: string;
+    status: "added" | "changed";
+    pr_title: string | null;
+    pr_number: number | null;
+    frame_url: string | null;
+  } | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(36);
@@ -570,10 +580,24 @@ export function EditorShell({
           text: "New caption", align: "bottom",
         };
       } else if (kind === "transition") {
+        // Spawn a fresh TransitionSpec too so the inspector has real fields
+        // to edit. This is the "typed text transition" the user asked for.
+        const t = defaultTransition("title");
+        t.text = "New title";
+        t.subtext = "Edit me in the inspector";
+        const interesting = tracks.filter((tr) => tr.diff_status === "changed" || tr.diff_status === "added");
+        const seedIds = (interesting.length >= 2 ? interesting : tracks).slice(0, 3).map((s) => s.id);
+        t.screenshots = placementsForLayout(t.layout, seedIds);
+        setTransitions((curr) => {
+          const next = [...curr, t];
+          persistTransitions(next);
+          return next;
+        });
+        setActiveTransitionId(t.id);
         clip = {
           id: nextClipId("trans"), kind: "transition", row,
-          start_ms: startMs, duration_ms: 2000, fade_in_ms: 300, fade_out_ms: 300, volume: 1,
-          transition_id: transitions[0]?.id ?? "",
+          start_ms: startMs, duration_ms: 3000, fade_in_ms: 300, fade_out_ms: 300, volume: 1,
+          transition_id: t.id,
         };
       } else if (kind === "video") {
         const stepId = tracks[0]?.id ?? "";
@@ -648,6 +672,51 @@ export function EditorShell({
     setMusicErrorByClip((m) => ({ ...m, [clipId]: null }));
   }
 
+  // ─── suggestion preview/insert ───────────────────────────────────────
+  function previewSuggestionFromRail(s: {
+    title: string; narration: string; reason: string;
+    status: "added" | "changed"; pr_title: string | null;
+    pr_number: number | null; frame_url: string | null;
+  }) {
+    setPreviewSuggestion(s);
+    setCanvasMode("suggestion");
+    // Briefly auto-dismiss so the canvas returns to playback after a beat.
+    window.setTimeout(() => {
+      setCanvasMode((m) => (m === "suggestion" ? "video" : m));
+    }, 7000);
+  }
+  function insertSuggestionAsClip(s: {
+    step_id: string; title: string; narration: string; duration_ms: number;
+  }) {
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      // Find the latest end time so we append.
+      let end = 0;
+      for (const c of curr.clips) end = Math.max(end, c.start_ms + c.duration_ms);
+      const startMs = end;
+      const id = nextClipId(`v-${s.step_id}`);
+      const next = addClipPure(curr, {
+        id,
+        kind: "video",
+        row: DEFAULT_ROW.video,
+        step_id: s.step_id,
+        start_ms: startMs,
+        duration_ms: s.duration_ms,
+        fade_in_ms: 0,
+        fade_out_ms: 0,
+        volume: 1.0,
+        zoom_enabled: false,
+        zoom_factor: 1.6,
+        zoom_origin_x: 50,
+        zoom_origin_y: 50,
+        match_source_length: false,
+      });
+      setSelectedClipId(id);
+      persistOverlay(next);
+      return next;
+    });
+  }
+
   async function generateBananaClip(clipId: string) {
     if (!overlay) return;
     const f = overlay.clips.find((c) => c.id === clipId);
@@ -674,6 +743,20 @@ export function EditorShell({
       setBusyAction(null);
     }
   }
+
+  // Keyboard: Delete or Backspace on a selected clip removes it.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedClipId) {
+        e.preventDefault();
+        removeClipState(selectedClipId);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedClipId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Source frames keyed by step_id, for thumbnails in clip blocks.
   const sourceById = useMemo(() => {
@@ -754,27 +837,45 @@ export function EditorShell({
       </header>
 
       <div className="editor-main">
-        <FeaturesPanel
-          masterUrl={masterUrl}
+        <SuggestionsPanel
+          walkthroughId={walkthrough.id}
           selectedClipId={selectedClipId}
           busy={busyAction !== null}
-          onAddBanana={() => addClipOfKind("banana")}
-          onAddTyped={() => addClipOfKind("typed")}
-          onAddMusic={() => addClipOfKind("music")}
-          onAddCaption={() => addClipOfKind("caption")}
-          onOpenTransitions={() => {
-            const t = transitions[0] ?? null;
-            if (t) setActiveTransitionId(t.id);
-            else addTransition("title");
-            setCanvasMode("transitions");
-          }}
-          onRetakeSelected={() => aiReRunReview()}
-          onRenarrateSelected={() => aiReNarrateSelected()}
-          onOpenWatching={() => router.push(`/walkthroughs/${walkthrough.id}`)}
+          onPreview={previewSuggestionFromRail}
+          onInsert={insertSuggestionAsClip}
         />
 
         <section className="editor-stage">
-          {canvasMode === "transitions" && activeTransition ? (
+          {canvasMode === "suggestion" && previewSuggestion ? (
+            <div className="canvas is-suggestion-preview">
+              <div
+                className="suggestion-canvas-bg"
+                style={previewSuggestion.frame_url ? { backgroundImage: `url(${previewSuggestion.frame_url})` } : undefined}
+              />
+              <div className="suggestion-canvas-shade" />
+              <div className="suggestion-canvas-card">
+                <span className={`sgx-status sgx-status-${previewSuggestion.status}`}>
+                  {previewSuggestion.status === "added" ? "NEW BLOCK" : "PROPOSED UPDATE"}
+                </span>
+                <h2>{previewSuggestion.title}</h2>
+                {previewSuggestion.pr_title ? (
+                  <div className="suggestion-canvas-pr">
+                    {previewSuggestion.pr_number ? `#${previewSuggestion.pr_number} · ` : ""}
+                    {previewSuggestion.pr_title}
+                  </div>
+                ) : null}
+                <p className="suggestion-canvas-narration">{previewSuggestion.narration}</p>
+                <p className="suggestion-canvas-reason">{previewSuggestion.reason}</p>
+                <button
+                  className="suggestion-canvas-back"
+                  onClick={() => setCanvasMode("video")}
+                  type="button"
+                >
+                  ← Back to video
+                </button>
+              </div>
+            </div>
+          ) : canvasMode === "transitions" && activeTransition ? (
             <div className="canvas is-transition">
               <TransitionSlide
                 spec={activeTransition}
@@ -848,6 +949,13 @@ export function EditorShell({
               onGenerateMusic={generateMusicClip}
               musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
               onApplyMusicSuggestion={applyMusicSuggestion}
+              transitions={transitions}
+              onUpdateTransition={updateTransition}
+              onOpenTransitionInCanvas={(id) => {
+                setActiveTransitionId(id);
+                setTransitionResetKey((n) => n + 1);
+                setCanvasMode("transitions");
+              }}
               busy={busyAction !== null}
             />
           ) : (

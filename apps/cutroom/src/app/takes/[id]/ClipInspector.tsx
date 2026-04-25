@@ -6,6 +6,7 @@
 
 import { type Clip, findClip, type EditOverlay } from "@/lib/timeline";
 import type { TrackEntry } from "./EditorShell";
+import type { TransitionSpec } from "@/lib/transitions";
 
 interface Props {
   overlay: EditOverlay;
@@ -19,6 +20,12 @@ interface Props {
   onGenerateMusic: (id: string) => void;
   musicError?: { message: string; suggestion: string | null } | null;
   onApplyMusicSuggestion?: (id: string, suggestion: string) => void;
+  /** Look up the linked transition spec for a transition clip. */
+  transitions?: TransitionSpec[];
+  /** Patch a transition's spec by id. */
+  onUpdateTransition?: (id: string, patch: Partial<TransitionSpec>) => void;
+  /** Open the full transition preview/editor (canvas swap). */
+  onOpenTransitionInCanvas?: (id: string) => void;
   busy?: boolean;
 }
 
@@ -61,7 +68,14 @@ export function ClipInspector(p: Props) {
           onApplySuggestion={p.onApplyMusicSuggestion}
         />
       )}
-      {clip.kind === "transition" && <TransitionBody clip={clip} />}
+      {clip.kind === "transition" && (
+        <TransitionBody
+          clip={clip}
+          transitions={p.transitions ?? []}
+          onUpdateTransition={p.onUpdateTransition}
+          onOpenInCanvas={p.onOpenTransitionInCanvas}
+        />
+      )}
       {clip.kind === "caption" && <CaptionBody clip={clip} onPatch={p.onPatch} />}
       {clip.kind === "banana" && <BananaBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateBanana} busy={p.busy} sourceById={p.sourceById} />}
       {clip.kind === "typed" && <TypedBody clip={clip} onPatch={p.onPatch} />}
@@ -304,17 +318,96 @@ function MusicBody({
   );
 }
 
-function TransitionBody({ clip }: { clip: Clip & { kind: "transition" } }) {
+function TransitionBody({
+  clip,
+  transitions,
+  onUpdateTransition,
+  onOpenInCanvas,
+}: {
+  clip: Clip & { kind: "transition" };
+  transitions: TransitionSpec[];
+  onUpdateTransition?: (id: string, patch: Partial<TransitionSpec>) => void;
+  onOpenInCanvas?: (id: string) => void;
+}) {
+  const spec = transitions.find((t) => t.id === clip.transition_id);
+  if (!spec || !onUpdateTransition) {
+    return (
+      <Section title="Transition">
+        <Row label="Refers to"><span className="ci-mono">{clip.transition_id || "(none)"}</span></Row>
+      </Section>
+    );
+  }
   return (
     <>
-      <Section title="Transition">
-        <Row label="Refers to"><span className="ci-mono">{clip.transition_id}</span></Row>
+      <Section title="Headline">
+        <Row label="Text">
+          <TextInput value={spec.text ?? ""} onChange={(v) => onUpdateTransition(spec.id, { text: v })} />
+        </Row>
+        <Row label="Subtext">
+          <TextInput value={spec.subtext ?? ""} onChange={(v) => onUpdateTransition(spec.id, { subtext: v })} />
+        </Row>
       </Section>
-      <p className="ci-help">
-        Transition style (font, layout, screenshots) is edited from the
-        Transitions rail tab. Drag the clip on the timeline to change when
-        it plays.
-      </p>
+      <Section title="Style">
+        <Row label="Kind">
+          <select
+            value={spec.kind}
+            onChange={(e) => onUpdateTransition(spec.id, { kind: e.target.value as TransitionSpec["kind"] })}
+          >
+            <option value="title">Title</option>
+            <option value="angled-mockup">Angled mockup</option>
+            <option value="feature-zoom">Feature zoom</option>
+          </select>
+        </Row>
+        <Row label="Font">
+          <select
+            value={spec.font}
+            onChange={(e) => onUpdateTransition(spec.id, { font: e.target.value as TransitionSpec["font"] })}
+          >
+            <option value="display">Display</option>
+            <option value="sans">Sans</option>
+            <option value="serif">Serif</option>
+            <option value="mono">Mono</option>
+          </select>
+        </Row>
+        <Row label="Background">
+          <select
+            value={spec.bg}
+            onChange={(e) => onUpdateTransition(spec.id, { bg: e.target.value as TransitionSpec["bg"] })}
+          >
+            <option value="aurora-amber">Aurora amber</option>
+            <option value="aurora-pink">Aurora pink</option>
+            <option value="aurora-blue">Aurora blue</option>
+            <option value="aurora-mint">Aurora mint</option>
+            <option value="aurora-graphite">Aurora graphite</option>
+            <option value="void">Void</option>
+            <option value="paper">Paper</option>
+          </select>
+        </Row>
+        {spec.kind === "title" ? (
+          <Row label="Layout">
+            <select
+              value={spec.layout ?? "scatter"}
+              onChange={(e) => onUpdateTransition(spec.id, { layout: e.target.value as TransitionSpec["layout"] })}
+            >
+              <option value="scatter">Scatter</option>
+              <option value="stack">Stack</option>
+              <option value="grid">Grid</option>
+              <option value="split-vertical">Split vertical</option>
+              <option value="hero-cover-tl">Hero cover ↖</option>
+              <option value="hero-cover-tr">Hero cover ↗</option>
+              <option value="hero-cover-bl">Hero cover ↙</option>
+              <option value="hero-cover-br">Hero cover ↘</option>
+            </select>
+          </Row>
+        ) : null}
+      </Section>
+      {onOpenInCanvas ? (
+        <div className="ci-actions">
+          <button className="ci-btn ci-btn-ghost" onClick={() => onOpenInCanvas(spec.id)} type="button">
+            Preview in canvas →
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
