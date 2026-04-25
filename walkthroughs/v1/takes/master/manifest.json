@@ -2,7 +2,7 @@
   "walkthrough_id": "v1",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "65506b79afa94ccd0fa80ec3bfb3502fa51bc53adeff25fa5c04f2decc727cbf",
+  "master_sha256": "511b4bbb0d88006620ba92984bcf0981bb28e080fb4066815fcb3d4248fdd1a2",
   "segments": [
     {
       "step_id": "intro",
@@ -52,5 +52,11 @@
       "duration_ms": 6500,
       "source": "rebuilt"
     }
-  ]
+  ],
+  "baked": {
+    "intro_png": "/Users/lukadadiani/Documents/Foley/walkthroughs/v1/genai/transition-demo.png",
+    "outro_png": "/Users/lukadadiani/Documents/Foley/walkthroughs/v1/genai/transition-outro.png",
+    "intro_duration_s": 3.5,
+    "outro_duration_s": 3.0
+  }
 }

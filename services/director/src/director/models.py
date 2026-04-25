@@ -153,6 +153,7 @@ class Walkthrough(BaseModel):
 
     id: str = Field(pattern=r"^[a-z0-9_-]+$")
     version: int = Field(ge=1)
+    display_name: str | None = None
     target_app: TargetApp
     brand: BrandConfig
     steps: list[Step] = Field(min_length=1)

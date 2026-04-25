@@ -16,6 +16,7 @@ from rich.table import Table
 
 from . import __version__
 from .agent import review_pr as run_agent
+from .bake_master import bake_master
 from .concat import assemble_master, diff_takes
 from .config import settings
 from .github import fetch_pr_diff, fetch_pr_meta
@@ -107,6 +108,34 @@ def master(
     rprint(
         f"[green]master[/] {walkthrough_id}/{take_id}: "
         f"{len(manifest['segments'])} segments, sha256={manifest['master_sha256'][:12]}…"
+    )
+
+
+@app.command("bake-master")
+def bake_master_cmd(
+    walkthrough_id: str = typer.Argument("v1"),
+    intro: Path | None = typer.Option(None, "--intro", help="PNG to use as the intro slide."),
+    outro: Path | None = typer.Option(None, "--outro", help="PNG to use as the outro slide."),
+    intro_s: float = typer.Option(3.0, "--intro-duration"),
+    outro_s: float = typer.Option(3.0, "--outro-duration"),
+    take_id: str = typer.Option("master", "--take"),
+) -> None:
+    """Bake intro/outro PNG bookends into the take's master.mp4 with fades."""
+    if intro is None and outro is None:
+        rprint("[red]nothing to do[/]: pass --intro and/or --outro")
+        raise typer.Exit(1)
+    result = bake_master(
+        settings.walkthroughs_dir,
+        walkthrough_id,
+        intro_png=intro.resolve() if intro else None,
+        outro_png=outro.resolve() if outro else None,
+        intro_duration_s=intro_s,
+        outro_duration_s=outro_s,
+        take_id=take_id,
+    )
+    rprint(
+        f"[green]baked[/] {walkthrough_id}/{take_id}: "
+        f"sha {result['master_sha256'][:12]}…"
     )
 
 
