@@ -5,10 +5,67 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { listTakes, loadWalkthrough, stepFramePath, takePublicPath } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
+
+const DASHBOARD_URL =
+  process.env.NEXT_PUBLIC_DASHBOARD_URL ??
+  process.env.PUBLIC_DASHBOARD_URL ??
+  "http://localhost:3000";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { walkthrough: string };
+}): Promise<Metadata> {
+  let walkthrough;
+  try {
+    walkthrough = await loadWalkthrough(params.walkthrough);
+  } catch {
+    return { title: "Foley walkthrough" };
+  }
+  const totalMs = walkthrough.steps.reduce((n, s) => n + s.duration_ms, 0);
+  const product = walkthrough.target_app.repo.split("/")[1] ?? walkthrough.id;
+  const title = `A tour of ${product} · Foley`;
+  const description = `${walkthrough.steps.length} steps · ${(totalMs / 1000).toFixed(0)}s · narrated by ${walkthrough.brand.voice_name}.`;
+  const poster = `${DASHBOARD_URL}/api/walkthroughs/${params.walkthrough}/poster`;
+  const masterMp4 = `${DASHBOARD_URL}/walkthroughs/${params.walkthrough}/takes/master/master.mp4`;
+  const pageUrl = `${DASHBOARD_URL}/docs/${params.walkthrough}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: pageUrl,
+      type: "video.other",
+      images: [{ url: poster, width: 1440, height: 900, alt: title }],
+      videos: [
+        { url: masterMp4, type: "video/mp4", width: 1440, height: 900 },
+      ],
+    },
+    twitter: {
+      card: "player",
+      title,
+      description,
+      images: [poster],
+      players: [{ playerUrl: masterMp4, streamUrl: masterMp4, width: 1440, height: 900 }],
+    },
+    other: {
+      // oEmbed responder lives at /api/oembed?url=<page>
+      "oembed-link": `${DASHBOARD_URL}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
+    },
+    alternates: {
+      types: {
+        "application/json+oembed": `${DASHBOARD_URL}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
+      },
+    },
+  };
+}
 
 export default async function DocsPage({ params }: { params: { walkthrough: string } }) {
   let walkthrough, masterTakeId;
