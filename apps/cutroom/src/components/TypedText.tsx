@@ -18,6 +18,8 @@ interface Props {
   cursorChar?: string;
   /** Re-runs the animation when this changes — pass currentTime or a key. */
   resetKey?: string | number;
+  /** When true, freezes the animation in place. */
+  paused?: boolean;
 }
 
 export function TypedText({
@@ -30,6 +32,7 @@ export function TypedText({
   startDelay = 200,
   cursorChar = "|",
   resetKey,
+  paused = false,
 }: Props) {
   const elRef = useRef<HTMLSpanElement>(null);
   const typedRef = useRef<Typed | null>(null);
@@ -53,6 +56,14 @@ export function TypedText({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strings.join("|"), resetKey, loop, showCursor, typeSpeed, backSpeed, startDelay, cursorChar]);
+
+  // Pause / resume the in-flight animation when playback state flips.
+  useEffect(() => {
+    const t = typedRef.current;
+    if (!t) return;
+    if (paused) t.stop();
+    else t.start();
+  }, [paused]);
 
   return <span ref={elRef} className={className} />;
 }

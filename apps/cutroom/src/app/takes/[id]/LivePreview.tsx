@@ -88,8 +88,17 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     return candidates[0];
   }, [videos, tMs]);
 
-  // Active overlays
-  const activeTyped = useMemo(() => typeds.filter((c) => inRange(c, tMs)), [typeds, tMs]);
+  // Active overlays. A typed clip with a higher row index than the active
+  // video is "behind" it (row 0 = front in z-order) so we hide it; this
+  // mirrors how moving a typed clip below the video on the timeline reads.
+  const activeTyped = useMemo(
+    () => typeds.filter((c) => {
+      if (!inRange(c, tMs)) return false;
+      if (activeVideo && c.row > activeVideo.row) return false;
+      return true;
+    }),
+    [typeds, tMs, activeVideo],
+  );
   const activeCaption = useMemo(() => captions.find((c) => inRange(c, tMs)) ?? null, [captions, tMs]);
   const activeBanana = useMemo(() => bananas.find((c) => inRange(c, tMs)) ?? null, [bananas, tMs]);
 
@@ -260,6 +269,7 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             key={t.id}
             clip={t}
             tMs={tMs}
+            isPlaying={p.isPlaying}
             isSelected={p.selectedClipId === t.id}
             onPatch={p.onPatchClip}
           />
@@ -294,11 +304,13 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
 function TypedClipView({
   clip,
   tMs,
+  isPlaying,
   isSelected,
   onPatch,
 }: {
   clip: TypedClip;
   tMs: number;
+  isPlaying: boolean;
   isSelected: boolean;
   onPatch?: (id: string, patch: Partial<Clip>) => void;
 }) {
@@ -370,6 +382,7 @@ function TypedClipView({
           typeSpeed={clip.type_speed_ms}
           backSpeed={clip.back_speed_ms}
           resetKey={`${clip.id}-${tMs >= clip.start_ms ? "live" : "idle"}`}
+          paused={!isPlaying}
         />
       )}
     </div>
