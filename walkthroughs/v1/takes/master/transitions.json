@@ -1,0 +1,20 @@
+{
+  "transitions": [
+    {
+      "id": "t-stlsbf",
+      "text": "Still manually maintaining videos?",
+      "subtext": "Let Foley keep them on-brand.",
+      "font": "display",
+      "layout": "centered",
+      "bg": "gradient-amber",
+      "screenshot_step_ids": [
+        "intro",
+        "sign_in",
+        "board_overview"
+      ],
+      "typed": true,
+      "duration_ms": 4500,
+      "stylized_url": null
+    }
+  ]
+}

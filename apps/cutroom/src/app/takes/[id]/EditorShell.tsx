@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TransitionSlide } from "@/components/TransitionSlide";
 import type { StepDiff, Take, Walkthrough } from "@/lib/types";
+import {
+  defaultTransition,
+  type TransitionSpec,
+} from "@/lib/transitions";
 import { Timeline } from "./Timeline";
 import { Inspector } from "./Inspector";
 import { SidePanel } from "./SidePanel";
@@ -21,7 +26,7 @@ export interface TrackEntry {
   segment_sha256: string | null;
 }
 
-export type RailTab = "steps" | "voice" | "brand" | "ai";
+export type RailTab = "steps" | "voice" | "brand" | "transitions" | "ai";
 
 interface Props {
   takeId: string;
@@ -30,6 +35,7 @@ interface Props {
   walkthrough: Walkthrough;
   tracks: TrackEntry[];
   masterUrl: string;
+  initialTransitions?: TransitionSpec[];
 }
 
 export function EditorShell({
@@ -39,6 +45,7 @@ export function EditorShell({
   walkthrough,
   tracks,
   masterUrl,
+  initialTransitions = [],
 }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -72,6 +79,83 @@ export function EditorShell({
   const [captionsOn, setCaptionsOn] = useState(false);
   const [editNarrationTrigger, setEditNarrationTrigger] = useState(0);
   const [genaiByStep, setGenaiByStep] = useState<Record<string, string>>({});
+
+  // ─── transitions ──────────────────────────────────────────────────────
+  const [transitions, setTransitions] = useState<TransitionSpec[]>(initialTransitions);
+  const [activeTransitionId, setActiveTransitionId] = useState<string | null>(
+    initialTransitions[0]?.id ?? null,
+  );
+  const [transitionResetKey, setTransitionResetKey] = useState(0);
+  const activeTransition = transitions.find((t) => t.id === activeTransitionId) ?? null;
+
+  // Persist transitions to disk whenever they change. Debounced via a small
+  // dirty flag so rapid edits don't hammer the API.
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistTransitions = useCallback((next: TransitionSpec[]) => {
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      void fetch(`/api/takes/${takeId}/transitions`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transitions: next }),
+      });
+    }, 350);
+  }, [takeId]);
+
+  function updateTransition(id: string, patch: Partial<TransitionSpec>) {
+    setTransitions((curr) => {
+      const next = curr.map((t) => (t.id === id ? { ...t, ...patch } : t));
+      persistTransitions(next);
+      return next;
+    });
+  }
+  function addTransition() {
+    const t = defaultTransition();
+    // Seed with the first three step frames as default screenshots.
+    t.screenshot_step_ids = tracks.slice(0, 3).map((s) => s.id);
+    setTransitions((curr) => {
+      const next = [...curr, t];
+      persistTransitions(next);
+      return next;
+    });
+    setActiveTransitionId(t.id);
+    setRailTab("transitions");
+  }
+  function removeTransition(id: string) {
+    setTransitions((curr) => {
+      const next = curr.filter((t) => t.id !== id);
+      persistTransitions(next);
+      return next;
+    });
+    if (activeTransitionId === id) {
+      setActiveTransitionId(null);
+    }
+  }
+
+  async function aiStylizeTransition() {
+    if (!activeTransition) return;
+    setBusyAction("stylize");
+    try {
+      const res = await fetch(`/api/genai/stylize-transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walkthrough_id: walkthrough.id,
+          transition: activeTransition,
+          screenshot_step_ids: activeTransition.screenshot_step_ids,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (json.ok && json.url) {
+        const stylized = `${json.url}?t=${Date.now()}`;
+        updateTransition(activeTransition.id, { stylized_url: stylized });
+      } else {
+        alert(json.error ?? "Gemini call failed");
+      }
+    } finally {
+      setBusyAction(null);
+    }
+  }
 
   // Editor state knobs — now actually wired through to the video element.
   const [volume, setVolume] = useState(100);
@@ -283,10 +367,11 @@ export function EditorShell({
 
       <div className="editor-main">
         <nav className="editor-rail">
-          <RailButton id="steps"  glyph="⊞" active={railTab === "steps"} onClick={() => setRailTab("steps")}>Steps</RailButton>
-          <RailButton id="voice"  glyph="♪" active={railTab === "voice"} onClick={() => setRailTab("voice")}>Voice</RailButton>
-          <RailButton id="brand"  glyph="◐" active={railTab === "brand"} onClick={() => setRailTab("brand")}>Brand</RailButton>
-          <RailButton id="ai"     glyph="✦" active={railTab === "ai"}    onClick={() => setRailTab("ai")}>AI</RailButton>
+          <RailButton id="steps"       glyph="⊞" active={railTab === "steps"}       onClick={() => setRailTab("steps")}>Steps</RailButton>
+          <RailButton id="voice"       glyph="♪" active={railTab === "voice"}       onClick={() => setRailTab("voice")}>Voice</RailButton>
+          <RailButton id="brand"       glyph="◐" active={railTab === "brand"}       onClick={() => setRailTab("brand")}>Brand</RailButton>
+          <RailButton id="transitions" glyph="⌁" active={railTab === "transitions"} onClick={() => setRailTab("transitions")}>Trans.</RailButton>
+          <RailButton id="ai"          glyph="✦" active={railTab === "ai"}          onClick={() => setRailTab("ai")}>AI</RailButton>
         </nav>
 
         <SidePanel
@@ -306,37 +391,66 @@ export function EditorShell({
           aiReNarrateSelected={aiReNarrateSelected}
           aiLaptopMockup={aiLaptopMockup}
           aiBusy={busyAction}
+          transitions={transitions}
+          activeTransitionId={activeTransitionId}
+          onSelectTransition={(id) => { setActiveTransitionId(id); setTransitionResetKey((n) => n + 1); }}
+          onAddTransition={addTransition}
+          onRemoveTransition={removeTransition}
+          onUpdateTransition={updateTransition}
+          onStylizeTransition={aiStylizeTransition}
+          onReplayTransition={() => setTransitionResetKey((n) => n + 1)}
         />
 
         <section className="editor-stage">
-          <div className={`canvas ${animClass}`}>
-            <video
-              ref={videoRef}
-              src={masterUrl}
-              onTimeUpdate={onTimeUpdate}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              preload="metadata"
-            />
-            {currentCaption ? (
-              <div className="captions-overlay">{currentCaption}</div>
-            ) : null}
-          </div>
+          {railTab === "transitions" && activeTransition ? (
+            <div className="canvas is-transition">
+              <TransitionSlide
+                spec={activeTransition}
+                screenshotUrls={activeTransition.screenshot_step_ids
+                  .map((sid) => tracks.find((t) => t.id === sid)?.frame_url)
+                  .filter((url): url is string => Boolean(url))}
+                resetKey={`${activeTransition.id}-${transitionResetKey}-${activeTransition.text}-${activeTransition.subtext ?? ""}`}
+              />
+            </div>
+          ) : (
+            <div className={`canvas ${animClass}`}>
+              <video
+                ref={videoRef}
+                src={masterUrl}
+                onTimeUpdate={onTimeUpdate}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                preload="metadata"
+              />
+              {currentCaption ? (
+                <div className="captions-overlay">{currentCaption}</div>
+              ) : null}
+            </div>
+          )}
           <div className="tabs">
-            <button
-              className={!captionsOn ? "on" : ""}
-              onClick={() => setCaptionsOn(false)}
-              type="button"
-            >
-              Original
-            </button>
-            <button
-              className={captionsOn ? "on" : ""}
-              onClick={() => setCaptionsOn(true)}
-              type="button"
-            >
-              Captions
-            </button>
+            {railTab === "transitions" && activeTransition ? (
+              <>
+                <button className="on" type="button">Live</button>
+                <button onClick={() => setTransitionResetKey((n) => n + 1)} type="button">Replay typing</button>
+              </>
+            ) : (
+              <>
+                <button
+                  className={!captionsOn ? "on" : ""}
+                  onClick={() => setCaptionsOn(false)}
+                  type="button"
+                >
+                  Original
+                </button>
+                <button
+                  className={captionsOn ? "on" : ""}
+                  onClick={() => setCaptionsOn(true)}
+                  type="button"
+                >
+                  Captions
+                </button>
+              </>
+            )}
           </div>
         </section>
 

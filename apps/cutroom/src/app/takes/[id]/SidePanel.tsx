@@ -2,6 +2,7 @@
 
 import type { Walkthrough } from "@/lib/types";
 import type { RailTab, TrackEntry } from "./EditorShell";
+import type { TransitionSpec } from "@/lib/transitions";
 
 interface Props {
   tab: RailTab;
@@ -22,6 +23,15 @@ interface Props {
   aiReNarrateSelected: () => Promise<void> | void;
   aiLaptopMockup: () => Promise<void> | void;
   aiBusy: string | null;
+
+  transitions: TransitionSpec[];
+  activeTransitionId: string | null;
+  onSelectTransition: (id: string) => void;
+  onAddTransition: () => void;
+  onRemoveTransition: (id: string) => void;
+  onUpdateTransition: (id: string, patch: Partial<TransitionSpec>) => void;
+  onStylizeTransition: () => Promise<void> | void;
+  onReplayTransition: () => void;
 }
 
 export function SidePanel(p: Props) {
@@ -30,6 +40,20 @@ export function SidePanel(p: Props) {
       {p.tab === "steps" && <StepsPanel tracks={p.tracks} selectedStepId={p.selectedStepId} onSelectStep={p.onSelectStep} />}
       {p.tab === "voice" && <VoicePanel {...p} />}
       {p.tab === "brand" && <BrandPanel {...p} />}
+      {p.tab === "transitions" && (
+        <TransitionsPanel
+          tracks={p.tracks}
+          transitions={p.transitions}
+          activeId={p.activeTransitionId}
+          onSelect={p.onSelectTransition}
+          onAdd={p.onAddTransition}
+          onRemove={p.onRemoveTransition}
+          onUpdate={p.onUpdateTransition}
+          onStylize={p.onStylizeTransition}
+          onReplay={p.onReplayTransition}
+          busy={p.aiBusy}
+        />
+      )}
       {p.tab === "ai" && (
         <AIPanel
           onReRunReview={p.aiReRunReview}
@@ -267,6 +291,191 @@ function PaletteRow({ k, hex }: { k: string; hex: string }) {
       <span style={{ height: 22, borderRadius: 4, background: hex, border: "1px solid var(--border)" }} />
       <span className="val">{hex}</span>
     </div>
+  );
+}
+
+function TransitionsPanel(p: {
+  tracks: TrackEntry[];
+  transitions: TransitionSpec[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<TransitionSpec>) => void;
+  onStylize: () => Promise<void> | void;
+  onReplay: () => void;
+  busy: string | null;
+}) {
+  const active = p.transitions.find((t) => t.id === p.activeId) ?? null;
+  return (
+    <>
+      <h3>Transitions</h3>
+      <div className="group">
+        <div className="group-label">{p.transitions.length} on this take</div>
+        <div className="tx-list">
+          {p.transitions.map((t) => (
+            <div
+              key={t.id}
+              className={`tx-row ${t.id === p.activeId ? "active" : ""}`}
+              onClick={() => p.onSelect(t.id)}
+              role="button"
+            >
+              <div className="tx-thumb">⌁</div>
+              <div>
+                <div className="tx-title">{t.text || "(empty)"}</div>
+                <div className="tx-sub">{t.layout} · {t.bg} · {t.font}{t.typed ? " · typed" : ""}</div>
+              </div>
+              <button
+                className="tx-x"
+                type="button"
+                onClick={(e) => { e.stopPropagation(); p.onRemove(t.id); }}
+                aria-label="Remove transition"
+              >×</button>
+            </div>
+          ))}
+          <button className="btn-secondary" type="button" onClick={p.onAdd} style={{ marginTop: 6 }}>
+            + New transition
+          </button>
+        </div>
+      </div>
+
+      {active ? (
+        <>
+          <div className="group">
+            <div className="group-label">Headline</div>
+            <textarea
+              rows={2}
+              value={active.text}
+              onChange={(e) => p.onUpdate(active.id, { text: e.target.value })}
+              placeholder="Big bold sentence"
+            />
+            <div className="group-label" style={{ marginTop: 14 }}>Subhead</div>
+            <textarea
+              rows={2}
+              value={active.subtext ?? ""}
+              onChange={(e) => p.onUpdate(active.id, { subtext: e.target.value })}
+              placeholder="Optional supporting line"
+            />
+          </div>
+
+          <div className="group">
+            <div className="group-label">Style</div>
+            <div className="ctrl-row">
+              <span className="lbl">Font</span>
+              <select
+                value={active.font}
+                onChange={(e) => p.onUpdate(active.id, { font: e.target.value as TransitionSpec["font"] })}
+              >
+                <option value="display">display</option>
+                <option value="sans">sans</option>
+                <option value="serif">serif</option>
+                <option value="mono">mono</option>
+              </select>
+              <span className="val">{active.font}</span>
+            </div>
+            <div className="ctrl-row">
+              <span className="lbl">Layout</span>
+              <select
+                value={active.layout}
+                onChange={(e) => p.onUpdate(active.id, { layout: e.target.value as TransitionSpec["layout"] })}
+              >
+                <option value="centered">centered</option>
+                <option value="hero-left">hero-left</option>
+                <option value="hero-right">hero-right</option>
+                <option value="grid">grid</option>
+              </select>
+              <span className="val">{active.layout}</span>
+            </div>
+            <div className="ctrl-row">
+              <span className="lbl">Background</span>
+              <select
+                value={active.bg}
+                onChange={(e) => p.onUpdate(active.id, { bg: e.target.value as TransitionSpec["bg"] })}
+              >
+                <option value="gradient-purple">purple</option>
+                <option value="gradient-amber">amber</option>
+                <option value="gradient-graphite">graphite</option>
+                <option value="dark">solid dark</option>
+                <option value="light">solid light</option>
+              </select>
+              <span className="val">{active.bg.replace("gradient-", "")}</span>
+            </div>
+            <div className="ctrl-row">
+              <span className="lbl">Typed</span>
+              <input
+                type="checkbox"
+                checked={active.typed}
+                onChange={(e) => p.onUpdate(active.id, { typed: e.target.checked })}
+                style={{ justifySelf: "start" }}
+              />
+              <button
+                className="btn-secondary"
+                type="button"
+                style={{ height: 28, padding: "0 10px", fontSize: 12 }}
+                onClick={p.onReplay}
+              >Replay</button>
+            </div>
+          </div>
+
+          <div className="group">
+            <div className="group-label">Screenshots ({active.screenshot_step_ids.length})</div>
+            <div className="ss-picker">
+              {p.tracks.map((t, i) => {
+                const on = active.screenshot_step_ids.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`ss-tile ${on ? "on" : ""}`}
+                    onClick={() => {
+                      const ids = on
+                        ? active.screenshot_step_ids.filter((x) => x !== t.id)
+                        : [...active.screenshot_step_ids, t.id];
+                      p.onUpdate(active.id, { screenshot_step_ids: ids });
+                    }}
+                    title={t.title}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={t.frame_url} alt="" />
+                    <span className="ss-num">{String(i + 1).padStart(2, "0")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="group">
+            <div className="group-label">Stylize with Gemini · Nano Banana</div>
+            <button
+              className={`tool-tile ${p.busy === "stylize" ? "busy" : ""}`}
+              type="button"
+              onClick={() => p.onStylize()}
+              disabled={p.busy !== null}
+            >
+              <div className="tile-icon" style={{ background: "linear-gradient(135deg, #f5b740 0%, #f08394 100%)" }}>🍌</div>
+              <div>
+                <div className="tile-title">{p.busy === "stylize" ? "Stylizing…" : "Stylize this slide"}</div>
+                <div className="tile-sub">Compose text + screenshots into a polished frame</div>
+              </div>
+            </button>
+            {active.stylized_url ? (
+              <button
+                className="btn-secondary"
+                type="button"
+                onClick={() => p.onUpdate(active.id, { stylized_url: null })}
+                style={{ marginTop: 8 }}
+              >
+                Revert to draft
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p style={{ color: "var(--muted)", fontSize: 13 }}>
+          Pick a transition above or create a new one.
+        </p>
+      )}
+    </>
   );
 }
 

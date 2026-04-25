@@ -3,6 +3,8 @@
 // hands everything to <EditorShell/> (client) for the interactive surface.
 
 import { notFound } from "next/navigation";
+import { promises as fs } from "fs";
+import path from "path";
 import {
   loadManifest,
   loadStepWaveform,
@@ -13,6 +15,7 @@ import {
 } from "@/lib/fs";
 import { EditorShell } from "./EditorShell";
 import type { Step } from "@/lib/types";
+import type { TransitionSpec } from "@/lib/transitions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +68,23 @@ export default async function TakePage({ params }: { params: { id: string } }) {
   // Friendly title for the back-link. Matches the home's TITLECASE map.
   const displayName = walkthrough.id === "v1" ? "Loop" : walkthrough.id.replace(/[-_]/g, " ");
 
+  // Load existing transitions from disk if present.
+  let initialTransitions: TransitionSpec[] = [];
+  try {
+    const transFile = path.resolve(
+      process.cwd(),
+      "../..",
+      "walkthroughs",
+      walkthrough.id,
+      "takes",
+      params.id,
+      "transitions.json",
+    );
+    const raw = await fs.readFile(transFile, "utf8");
+    const parsed = JSON.parse(raw) as { transitions?: TransitionSpec[] };
+    initialTransitions = parsed.transitions ?? [];
+  } catch { /* fine — none on disk yet */ }
+
   return (
     <EditorShell
       takeId={params.id}
@@ -73,6 +93,7 @@ export default async function TakePage({ params }: { params: { id: string } }) {
       walkthrough={walkthrough}
       tracks={trackData}
       masterUrl={takePublicPath(walkthrough.id, params.id, "master.mp4")}
+      initialTransitions={initialTransitions}
     />
   );
 }
