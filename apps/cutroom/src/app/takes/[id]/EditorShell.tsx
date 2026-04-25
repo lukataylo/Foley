@@ -32,7 +32,7 @@ import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
 import { FeaturesPanel } from "./FeaturesPanel";
-import { MusicMixer } from "./MusicMixer";
+import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
 import type { MusicClip } from "@/lib/timeline";
 import { ClipInspector } from "./ClipInspector";
 import {
@@ -82,6 +82,7 @@ export function EditorShell({
 }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const musicMixerRef = useRef<MusicMixerHandle>(null);
 
   const totalDuration = useMemo(
     () => tracks.reduce((n, t) => n + t.duration_ms, 0) / 1000,
@@ -784,8 +785,9 @@ export function EditorShell({
                 ref={videoRef}
                 src={masterUrl}
                 onTimeUpdate={onTimeUpdate}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
+                onPlay={() => { setIsPlaying(true); musicMixerRef.current?.syncPlay(); }}
+                onPause={() => { setIsPlaying(false); musicMixerRef.current?.syncPause(); }}
+                onSeeked={(e) => musicMixerRef.current?.syncSeek((e.currentTarget as HTMLVideoElement).currentTime)}
                 preload="metadata"
                 controls
                 style={videoTransform}
@@ -794,6 +796,7 @@ export function EditorShell({
                 <div className="captions-overlay">{currentCaption}</div>
               ) : null}
               <MusicMixer
+                ref={musicMixerRef}
                 clips={musicClipsForMix}
                 currentTime={currentTime}
                 isPlaying={isPlaying}

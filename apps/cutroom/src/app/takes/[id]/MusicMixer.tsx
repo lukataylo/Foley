@@ -6,8 +6,16 @@
 // <audio> per music clip and sync them to the master video's playback
 // state. The user hears narration + music exactly as the export will.
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type { MusicClip } from "@/lib/timeline";
+
+export interface MusicMixerHandle {
+  /** Imperative play — call from the video's onPlay handler so the
+   *  click gesture extends to the audio elements (autoplay safety). */
+  syncPlay: () => void;
+  syncPause: () => void;
+  syncSeek: (sec: number) => void;
+}
 
 interface Props {
   clips: MusicClip[];
@@ -18,8 +26,43 @@ interface Props {
   isPlaying: boolean;
 }
 
-export function MusicMixer({ clips, currentTime, isPlaying }: Props) {
+export const MusicMixer = forwardRef<MusicMixerHandle, Props>(function MusicMixer(
+  { clips, currentTime, isPlaying },
+  handleRef,
+) {
   const refs = useRef<Record<string, HTMLAudioElement | null>>({});
+
+  useImperativeHandle(handleRef, () => ({
+    syncPlay() {
+      for (const m of clips) {
+        const a = refs.current[m.id];
+        if (!a || !m.asset_url) continue;
+        const startS = m.start_ms / 1000;
+        const endS = startS + m.duration_ms / 1000;
+        if (currentTime >= startS && currentTime < endS) {
+          a.currentTime = Math.max(0, currentTime - startS);
+          void a.play().catch(() => {});
+        }
+      }
+    },
+    syncPause() {
+      for (const m of clips) {
+        const a = refs.current[m.id];
+        if (a && !a.paused) a.pause();
+      }
+    },
+    syncSeek(sec: number) {
+      for (const m of clips) {
+        const a = refs.current[m.id];
+        if (!a || !m.asset_url) continue;
+        const startS = m.start_ms / 1000;
+        const endS = startS + m.duration_ms / 1000;
+        const inRange = sec >= startS && sec < endS;
+        if (inRange) a.currentTime = Math.max(0, sec - startS);
+        else if (!a.paused) a.pause();
+      }
+    },
+  }), [clips, currentTime]);
 
   // Keep each audio element in sync with the master.
   useEffect(() => {
@@ -70,4 +113,4 @@ export function MusicMixer({ clips, currentTime, isPlaying }: Props) {
       )}
     </div>
   );
-}
+});
