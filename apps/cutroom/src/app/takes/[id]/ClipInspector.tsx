@@ -16,6 +16,7 @@ interface Props {
   onRetake: (stepId: string) => void;
   onRenarrate: (stepId: string) => void;
   onGenerateBanana: (id: string) => void;
+  onGenerateMusic: (id: string) => void;
   busy?: boolean;
 }
 
@@ -48,7 +49,7 @@ export function ClipInspector(p: Props) {
 
       {clip.kind === "video" && <VideoBody clip={clip} onPatch={p.onPatch} onRetake={p.onRetake} busy={p.busy} />}
       {clip.kind === "voice" && <VoiceBody clip={clip} onPatch={p.onPatch} onRenarrate={p.onRenarrate} busy={p.busy} />}
-      {clip.kind === "music" && <MusicBody clip={clip} onPatch={p.onPatch} />}
+      {clip.kind === "music" && <MusicBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateMusic} busy={p.busy} />}
       {clip.kind === "transition" && <TransitionBody clip={clip} />}
       {clip.kind === "caption" && <CaptionBody clip={clip} onPatch={p.onPatch} />}
       {clip.kind === "banana" && <BananaBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateBanana} busy={p.busy} sourceById={p.sourceById} />}
@@ -209,18 +210,49 @@ function VoiceBody({
 function MusicBody({
   clip,
   onPatch,
+  onGenerate,
+  busy,
 }: {
   clip: Clip & { kind: "music" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
+  onGenerate: (id: string) => void;
+  busy?: boolean;
 }) {
   return (
     <>
+      <Section title="Generate from prompt">
+        <Row label="Prompt">
+          <TextArea
+            value={clip.prompt ?? ""}
+            onChange={(v) => onPatch(clip.id, { prompt: v })}
+            placeholder="warm cinematic ambient, soft piano + light strings, no drums"
+          />
+        </Row>
+      </Section>
+      <div className="ci-actions">
+        <button
+          className="ci-btn ci-btn-primary"
+          disabled={busy || !clip.prompt}
+          onClick={() => onGenerate(clip.id)}
+        >
+          🎵 {clip.asset_url ? "Re-generate" : "Generate"}
+        </button>
+      </div>
+      {clip.asset_url ? (
+        <audio
+          controls
+          src={clip.asset_url}
+          className="ci-audio-preview"
+          style={{ width: "100%", marginTop: 8 }}
+        />
+      ) : (
+        <p className="ci-help">
+          ElevenLabs Music. Length matches the clip's duration ({(clip.duration_ms / 1000).toFixed(0)}s).
+        </p>
+      )}
       <Section title="Track">
         <Row label="Label">
           <TextInput value={clip.label} onChange={(v) => onPatch(clip.id, { label: v })} />
-        </Row>
-        <Row label="Asset URL">
-          <TextInput value={clip.asset_url} onChange={(v) => onPatch(clip.id, { asset_url: v })} />
         </Row>
         <Row label="Loop">
           <Toggle checked={clip.loop} onChange={(v) => onPatch(clip.id, { loop: v })} />

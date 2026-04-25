@@ -57,6 +57,10 @@ export interface MusicClip extends ClipBase {
   asset_url: string;
   label: string;
   loop: boolean;
+  /** Prompt used to generate this track (if AI-generated). */
+  prompt?: string;
+  /** Duration of the generated track in ms — informational only. */
+  generated_duration_ms?: number;
 }
 
 export interface TransitionClip extends ClipBase {

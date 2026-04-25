@@ -545,6 +545,35 @@ export function EditorShell({
     });
   }
 
+  async function generateMusicClip(clipId: string) {
+    if (!overlay) return;
+    const f = overlay.clips.find((c) => c.id === clipId);
+    if (!f || f.kind !== "music" || !f.prompt) return;
+    setBusyAction("music");
+    try {
+      const res = await fetch(`/api/music/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walkthrough_id: walkthrough.id,
+          prompt: f.prompt,
+          duration_ms: f.duration_ms,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string; duration_ms?: number };
+      if (json.ok && json.url) {
+        patchClipState(clipId, {
+          asset_url: `${json.url}?t=${Date.now()}`,
+          generated_duration_ms: json.duration_ms ?? f.duration_ms,
+        });
+      } else {
+        alert(json.error ?? "Music generation failed");
+      }
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function generateBananaClip(clipId: string) {
     if (!overlay) return;
     const f = overlay.clips.find((c) => c.id === clipId);
@@ -701,6 +730,7 @@ export function EditorShell({
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 preload="metadata"
+                controls
                 style={videoTransform}
               />
               {currentCaption ? (
@@ -746,6 +776,7 @@ export function EditorShell({
               onRetake={(stepId) => { setSelectedStepId(stepId); aiReRunReview(); }}
               onRenarrate={(stepId) => { setSelectedStepId(stepId); aiReNarrateSelected(); }}
               onGenerateBanana={generateBananaClip}
+              onGenerateMusic={generateMusicClip}
               busy={busyAction !== null}
             />
           ) : (
