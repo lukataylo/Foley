@@ -6,7 +6,7 @@
 // overlays. Replaces the master.mp4 video preview so the user sees
 // what's actually on the timeline, not the baked file.
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type {
   BananaClip,
   CaptionClip,
@@ -48,6 +48,7 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
 ) {
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+  const [missingSrc, setMissingSrc] = useState<Record<string, boolean>>({});
   const tMs = p.currentTime * 1000;
 
   // Partition clips by kind once per overlay.
@@ -182,9 +183,12 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             key={v.id}
             ref={(el) => { videoRefs.current[v.id] = el; }}
             src={`/walkthroughs/${p.walkthroughId}/steps/${v.step_id}.mp4`}
+            poster={v.poster_url ?? undefined}
             preload="metadata"
             playsInline
             muted={activeVideo?.id !== v.id}
+            onError={() => setMissingSrc((m) => (m[v.id] ? m : { ...m, [v.id]: true }))}
+            onLoadedMetadata={() => setMissingSrc((m) => (m[v.id] ? { ...m, [v.id]: false } : m))}
             onTimeUpdate={(e) => {
               if (activeVideo?.id !== v.id) return;
               const local = (e.currentTarget as HTMLVideoElement).currentTime;
@@ -195,6 +199,33 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             className={`live-video ${activeVideo?.id === v.id ? "live-video-active" : ""}`}
           />
         ))}
+
+        {/* Suggestion fallback — when the active video has no recorded mp4
+            yet, show its still + narration so the user can preview the
+            block before retake. */}
+        {activeVideo && missingSrc[activeVideo.id] && (activeVideo.poster_url || activeVideo.placeholder_text) ? (
+          <div className="live-video-placeholder">
+            {activeVideo.poster_url ? (
+              <div
+                className="live-video-placeholder-bg"
+                style={{ backgroundImage: `url(${activeVideo.poster_url})` }}
+              />
+            ) : null}
+            <div className="live-video-placeholder-shade" />
+            <div className="live-video-placeholder-card">
+              <div className="live-video-placeholder-tag">NEEDS RETAKE</div>
+              <div className="live-video-placeholder-title">{activeVideo.step_id}</div>
+              {activeVideo.placeholder_text ? (
+                <p className="live-video-placeholder-narration">{activeVideo.placeholder_text}</p>
+              ) : null}
+              <div className="live-video-placeholder-help">
+                Source <span className="ci-mono">{activeVideo.step_id}.mp4</span> isn&apos;t recorded yet.
+                Run a retake to capture it.
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {videos.length === 0 ? (
           <div className="live-preview-empty">
             No video clips on the timeline. Use <strong>+ Add</strong> to drop one in.

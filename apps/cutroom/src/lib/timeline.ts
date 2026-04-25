@@ -45,6 +45,10 @@ export interface VideoClip extends ClipBase {
   zoom_origin_x: number;
   zoom_origin_y: number;
   match_source_length: boolean;
+  /** Fallback still shown when the source mp4 isn't recorded yet (suggestions). */
+  poster_url?: string | null;
+  /** Narration overlay shown over the poster while the step is unrecorded. */
+  placeholder_text?: string | null;
 }
 
 export interface VoiceClip extends ClipBase {

@@ -86,10 +86,6 @@ export function EditorShell({
   const musicMixerRef = useRef<MusicMixerHandle>(null);
   const livePreviewRef = useRef<LivePreviewHandle>(null);
 
-  const totalDuration = useMemo(
-    () => tracks.reduce((n, t) => n + t.duration_ms, 0) / 1000,
-    [tracks],
-  );
   const stepStartsMs = useMemo(() => {
     const out: number[] = [];
     let acc = 0;
@@ -108,6 +104,18 @@ export function EditorShell({
   const [selectedStepId, setSelectedStepId] = useState<string | null>(initialStep);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
+
+  // Timeline length = max(sum of tracks, last overlay clip end). The overlay
+  // tail matters when a user inserts a suggestion past the master's end —
+  // without this the playhead can never reach the new clip.
+  const totalDuration = useMemo(() => {
+    const tracksMs = tracks.reduce((n, t) => n + t.duration_ms, 0);
+    let overlayEndMs = 0;
+    for (const c of overlay?.clips ?? []) {
+      overlayEndMs = Math.max(overlayEndMs, c.start_ms + c.duration_ms);
+    }
+    return Math.max(tracksMs, overlayEndMs) / 1000;
+  }, [tracks, overlay]);
   /** Canvas mode — video preview by default, transitions preview when the
    *  user opens the transitions feature, suggestion preview when previewing
    *  a proposed block from the left rail. */
@@ -821,6 +829,7 @@ export function EditorShell({
   }
   function insertSuggestionAsClip(s: {
     step_id: string; title: string; narration: string; duration_ms: number;
+    frame_url?: string | null;
   }) {
     setOverlay((curr) => {
       if (!curr) return curr;
@@ -844,6 +853,8 @@ export function EditorShell({
         zoom_origin_x: 50,
         zoom_origin_y: 50,
         match_source_length: false,
+        poster_url: s.frame_url ?? null,
+        placeholder_text: s.narration ?? null,
       });
       setSelectedClipId(id);
       commitOverlay(next, curr);
@@ -1207,7 +1218,7 @@ export function EditorShell({
             })}
             onInsert={(c) => insertSuggestionAsClip({
               step_id: c.step_id, title: c.title, narration: c.narration,
-              duration_ms: c.duration_ms,
+              duration_ms: c.duration_ms, frame_url: c.frame_url,
             })}
           />
         ) : overlay ? (
