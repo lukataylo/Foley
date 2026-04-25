@@ -567,6 +567,11 @@ export function EditorShell({
   const [, forceRender] = useState(0);
   const bumpRender = () => forceRender((n) => n + 1);
 
+  // Cache-buster for narration mp3s — bumped after a successful re-narrate
+  // so the LivePreview's <audio> tags re-fetch the new bytes.
+  const [assetVersion, setAssetVersion] = useState(0);
+  const bumpAssets = () => setAssetVersion((n) => n + 1);
+
   function commitOverlay(next: EditOverlay, prev: EditOverlay | null) {
     if (prev) {
       undoStack.current.push(prev);
@@ -1087,6 +1092,7 @@ export function EditorShell({
                   currentTime={currentTime}
                   isPlaying={isPlaying}
                   videoStyle={videoTransform}
+                  assetVersion={assetVersion}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);
@@ -1147,6 +1153,8 @@ export function EditorShell({
             overlay={overlay ?? { version: 2, clips: [] }}
             selectedClipId={selectedClipId}
             sourceById={sourceById}
+            walkthroughId={walkthrough.id}
+            brandVoiceId={walkthrough.brand?.voice_id ?? null}
             onPatch={patchClipState}
             onRemove={removeClipState}
             onRetake={(stepId) => { setSelectedStepId(stepId); aiReRunReview(); }}
@@ -1163,6 +1171,7 @@ export function EditorShell({
               setCanvasMode("transitions");
             }}
             onEditStep={editStepInYaml}
+            onAssetRefresh={bumpAssets}
             busy={busyAction !== null}
           />
         </div>

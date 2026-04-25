@@ -4,6 +4,7 @@
 // kind-specific controls. All edits flow through onPatch / onAction up to
 // EditorShell.
 
+import { useState } from "react";
 import { type Clip, findClip, type EditOverlay } from "@/lib/timeline";
 import type { TrackEntry } from "./EditorShell";
 import type { TransitionSpec } from "@/lib/transitions";
@@ -12,6 +13,8 @@ interface Props {
   overlay: EditOverlay;
   selectedClipId: string | null;
   sourceById: Record<string, TrackEntry>;
+  walkthroughId: string;
+  brandVoiceId?: string | null;
   onPatch: (id: string, patch: Partial<Clip>) => void;
   onRemove: (id: string) => void;
   onRetake: (stepId: string) => void;
@@ -28,8 +31,25 @@ interface Props {
   onOpenTransitionInCanvas?: (id: string) => void;
   /** Edit the underlying step in walkthrough.yaml — title/narration/duration. */
   onEditStep?: (stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) => void;
+  /** Bump cache-buster for narration mp3s after successful re-synth. */
+  onAssetRefresh?: () => void;
   busy?: boolean;
 }
+
+// Curated ElevenLabs voice presets. The full list is huge; these are the
+// voices most likely to read product walkthrough narration well.
+const VOICE_PRESETS: { id: string; name: string; flavor: string }[] = [
+  { id: "XB0fDUnXU5powFXDhCwa", name: "Charlotte", flavor: "British, warm" },
+  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", flavor: "American, narrator" },
+  { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi", flavor: "American, strong" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella", flavor: "American, friendly" },
+  { id: "MF3mGyEYCl7XYWbV9V6O", name: "Elli", flavor: "American, emotional" },
+  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", flavor: "American, deep" },
+  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", flavor: "American, well-rounded" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", flavor: "American, deep" },
+  { id: "VR6AewLTigWG4xSOukaG", name: "Arnold", flavor: "American, crisp" },
+  { id: "yoZ06aMxZJJ28mfd3POQ", name: "Sam", flavor: "American, raspy" },
+];
 
 export function ClipInspector(p: Props) {
   if (!p.selectedClipId) {
@@ -70,11 +90,14 @@ export function ClipInspector(p: Props) {
       )}
       {clip.kind === "voice" && (
         <VoiceBody
+          key={clip.id}
           clip={clip}
           onPatch={p.onPatch}
-          onRenarrate={p.onRenarrate}
           onEditStep={p.onEditStep}
           sourceById={p.sourceById}
+          walkthroughId={p.walkthroughId}
+          brandVoiceId={p.brandVoiceId}
+          onAssetRefresh={p.onAssetRefresh}
           busy={p.busy}
         />
       )}
@@ -245,56 +268,125 @@ function VideoBody({
 function VoiceBody({
   clip,
   onPatch,
-  onRenarrate,
   onEditStep,
   sourceById,
+  walkthroughId,
+  brandVoiceId,
+  onAssetRefresh,
   busy,
 }: {
   clip: Clip & { kind: "voice" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
-  onRenarrate: (stepId: string) => void;
   onEditStep?: (stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) => void;
   sourceById: Record<string, TrackEntry>;
+  walkthroughId: string;
+  brandVoiceId?: string | null;
+  onAssetRefresh?: () => void;
   busy?: boolean;
 }) {
   const src = sourceById[clip.step_id];
+  const defaultVoice = brandVoiceId ?? VOICE_PRESETS[0].id;
+  const [scriptDraft, setScriptDraft] = useState<string>(src?.narration ?? "");
+  const [voiceId, setVoiceId] = useState<string>(defaultVoice);
+  const [synthing, setSynthing] = useState(false);
+  const [synthError, setSynthError] = useState<string | null>(null);
+
+  async function handleRenarrate() {
+    setSynthing(true);
+    setSynthError(null);
+    try {
+      const res = await fetch(
+        `/api/walkthroughs/${walkthroughId}/steps/${clip.step_id}/narrate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ narration: scriptDraft, voice_id: voiceId }),
+        },
+      );
+      const json = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok || !(json as { ok?: boolean }).ok) {
+        throw new Error((json as { error?: string }).error ?? `synth ${res.status}`);
+      }
+      // Persist the script back into walkthrough.yaml so the rest of the
+      // editor sees the same source-of-truth narration.
+      if (onEditStep && scriptDraft !== src?.narration) {
+        onEditStep(clip.step_id, { narration: scriptDraft });
+      }
+      onAssetRefresh?.();
+    } catch (err) {
+      setSynthError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSynthing(false);
+    }
+  }
+
+  const presetMatch = VOICE_PRESETS.find((v) => v.id === voiceId);
+
   return (
     <>
       <Section title="Source">
         <Row label="Step"><span className="ci-mono">{clip.step_id}</span></Row>
       </Section>
-      {onEditStep && src ? (
-        <Section title="Narration script">
-          <Row label="Text">
-            <TextArea
-              value={src.narration}
-              onChange={(v) => onEditStep(clip.step_id, { narration: v })}
-            />
-          </Row>
-        </Section>
+
+      <Section title="Script">
+        <textarea
+          className="ci-textarea ci-textarea-tall"
+          value={scriptDraft}
+          rows={5}
+          placeholder="What the narrator should say…"
+          onChange={(e) => setScriptDraft(e.target.value)}
+        />
+      </Section>
+
+      <Section title="Voice">
+        <Row label="Preset">
+          <select
+            className="ci-select"
+            value={presetMatch ? voiceId : "__custom"}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v !== "__custom") setVoiceId(v);
+            }}
+          >
+            {VOICE_PRESETS.map((v) => (
+              <option key={v.id} value={v.id}>{v.name} — {v.flavor}</option>
+            ))}
+            {!presetMatch ? <option value="__custom">Custom ({voiceId.slice(0, 8)}…)</option> : null}
+          </select>
+        </Row>
+        <Row label="Voice ID">
+          <TextInput value={voiceId} onChange={(v) => setVoiceId(v.trim())} />
+        </Row>
+      </Section>
+
+      <div className="ci-actions">
+        <button
+          className="ci-btn ci-btn-primary"
+          disabled={busy || synthing || !scriptDraft.trim() || !voiceId}
+          onClick={handleRenarrate}
+        >
+          🎤 {synthing ? "Synthesizing…" : "Re-narrate"}
+        </button>
+      </div>
+
+      {synthError ? (
+        <div className="ci-music-error">
+          <strong>Couldn&apos;t re-narrate.</strong>
+          <span>{synthError}</span>
+        </div>
       ) : null}
-      <Section title="Audio">
+
+      <Section title="Mix">
         <Row label="Volume">
           <Slider min={0} max={1.5} step={0.05} value={clip.volume}
             onChange={(v) => onPatch(clip.id, { volume: v })} suffix="x" />
         </Row>
-        <Row label="Fade in">
-          <Slider min={0} max={3} step={0.05} value={clip.fade_in_ms / 1000}
-            onChange={(v) => onPatch(clip.id, { fade_in_ms: Math.round(v * 1000) })} suffix="s" />
-        </Row>
-        <Row label="Fade out">
-          <Slider min={0} max={3} step={0.05} value={clip.fade_out_ms / 1000}
-            onChange={(v) => onPatch(clip.id, { fade_out_ms: Math.round(v * 1000) })} suffix="s" />
-        </Row>
       </Section>
-      <div className="ci-actions">
-        <button className="ci-btn ci-btn-primary" disabled={busy} onClick={() => onRenarrate(clip.step_id)}>
-          🎤 Re-narrate with ElevenLabs
-        </button>
-      </div>
+
       <p className="ci-help">
-        Re-narrate regenerates the .narration.mp3 from the script above.
-        Hash-cached, so identical text returns instantly.
+        ElevenLabs Turbo v2.5. Editing the script and clicking Re-narrate
+        rewrites <span className="ci-mono">{clip.step_id}.narration.mp3</span> in place
+        and updates the script in walkthrough.yaml.
       </p>
     </>
   );

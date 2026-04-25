@@ -33,6 +33,8 @@ interface Props {
   currentTime: number;
   isPlaying: boolean;
   videoStyle?: React.CSSProperties;
+  /** Bumped after asset re-synth so audio/video src= queries bust cache. */
+  assetVersion?: number;
   onTimeUpdate: (t: number) => void;
   onPlayStateChange: (playing: boolean) => void;
 }
@@ -243,9 +245,9 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
       <div style={{ display: "none" }}>
         {voices.map((vo) => (
           <audio
-            key={vo.id}
+            key={`${vo.id}-${p.assetVersion ?? 0}`}
             ref={(el) => { audioRefs.current[vo.id] = el; }}
-            src={`/walkthroughs/${p.walkthroughId}/steps/${vo.step_id}.narration.mp3`}
+            src={`/walkthroughs/${p.walkthroughId}/steps/${vo.step_id}.narration.mp3${p.assetVersion ? `?v=${p.assetVersion}` : ""}`}
             preload="auto"
           />
         ))}
