@@ -75,9 +75,10 @@ export default function WelcomePage() {
             tone="mint"
             num="02"
             label="CAPTURE"
-            title="Browser-native recording"
-            blurb="Our Chrome extension drives Playwright through your
-            product. Voice cloned with ElevenLabs. No setup."
+            title="Drafted, then captured"
+            blurb="Claude reads your landing page and drafts the steps.
+            Playwright captures each one. ElevenLabs narrates in your
+            cloned voice. No setup."
             icon={<CaptureIcon />}
           />
           <ExplainerCard

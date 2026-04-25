@@ -992,6 +992,13 @@ div > .folder-card.placeholder { cursor: default; }
 .sticky-lavender { background: var(--pastel-lavender); }
 .sticky-sky      { background: var(--pastel-sky); }
 .sticky-rose     { background: var(--pastel-rose); }
+
+.sticky-cta {
+  display: flex; flex-direction: column; gap: 6px;
+  /* Match the height range of MasterCard so the masonry doesn't reflow
+     when render kicks off. */
+  min-height: 180px;
+}
 .sticky-paper    { background: var(--pastel-paper); }
 
 .sticky h2 {

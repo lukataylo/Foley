@@ -79,7 +79,43 @@ export default async function WalkthroughDetailPage({
             created_at: t.created_at,
           }))}
         />
-      ) : null}
+      ) : wt.steps.length > 0 ? (
+        <div className="sticky sticky-mint sticky-cta">
+          <div className="sub-label">Drafted</div>
+          <h2 style={{ marginTop: 4 }}>Render the first take</h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.5 }}>
+            {wt.steps.length} step{wt.steps.length === 1 ? "" : "s"} are
+            written to <code>walkthrough.yaml</code>. Open the editor to
+            tweak narration or durations, then hit Render — Playwright will
+            capture each step against{" "}
+            <span className="mono">{wt.target_app.dev_url}</span>, ElevenLabs
+            will narrate, and ffmpeg will assemble the master.
+          </p>
+          <Link
+            href={`/walkthroughs/${params.id}/edit`}
+            className="btn-primary"
+            style={{ marginTop: 12, display: "inline-block" }}
+          >
+            Open editor →
+          </Link>
+        </div>
+      ) : (
+        <div className="sticky sticky-cream sticky-cta">
+          <div className="sub-label">Empty walkthrough</div>
+          <h2 style={{ marginTop: 4 }}>No steps yet</h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.5 }}>
+            Bootstrap from a repo and let Claude draft the first cut, or
+            record clicks via the Foley Recorder Chrome extension.
+          </p>
+          <Link
+            href="/onboard"
+            className="btn-primary"
+            style={{ marginTop: 12, display: "inline-block" }}
+          >
+            Onboard a project →
+          </Link>
+        </div>
+      )}
 
       <EditableBrand walkthroughId={params.id} brand={wt.brand} />
 
