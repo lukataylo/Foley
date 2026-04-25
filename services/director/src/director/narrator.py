@@ -10,6 +10,7 @@ from elevenlabs.client import ElevenLabs
 
 from .config import settings
 from .logfire_setup import span
+from .waveform import write_waveform
 
 
 def _cache_key(text: str, voice_id: str, model_id: str) -> str:
@@ -39,19 +40,27 @@ def synth(
     with span("narrator.synth", voice_id=voice_id, model=model_id, chars=len(text), key=key):
         if cache_path.exists():
             out_path.write_bytes(cache_path.read_bytes())
-            return out_path
+        else:
+            client = ElevenLabs(api_key=settings.elevenlabs_api_key)
+            audio_iter = client.text_to_speech.convert(
+                voice_id=voice_id,
+                model_id=model_id,
+                text=text,
+                output_format="mp3_44100_128",
+            )
+            data = b"".join(audio_iter)
+            cache_path.write_bytes(data)
+            out_path.write_bytes(data)
 
-        client = ElevenLabs(api_key=settings.elevenlabs_api_key)
-        audio_iter = client.text_to_speech.convert(
-            voice_id=voice_id,
-            model_id=model_id,
-            text=text,
-            output_format="mp3_44100_128",
-        )
-        data = b"".join(audio_iter)
-        cache_path.write_bytes(data)
-        out_path.write_bytes(data)
-        return out_path
+    # Write the sibling waveform JSON next to the mp3 so the cutroom can
+    # render the audio track without re-decoding on the client.
+    try:
+        write_waveform(out_path)
+    except Exception:
+        # Don't let waveform extraction block ingest — log and move on.
+        pass
+
+    return out_path
 
 
 def smoke() -> None:

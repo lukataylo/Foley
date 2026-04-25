@@ -31,6 +31,46 @@ export async function listWalkthroughIds(): Promise<string[]> {
   return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
 }
 
+export interface WalkthroughSummary {
+  id: string;
+  display_name: string;
+  step_count: number;
+  take_count: number;
+  voice_name: string;
+  last_activity: string | null; // ISO from latest take
+  total_duration_s: number;     // from canonical step durations
+}
+
+const TITLECASE: Record<string, string> = {
+  v1: "Loop",
+};
+
+export async function listWalkthroughSummaries(): Promise<WalkthroughSummary[]> {
+  const ids = await listWalkthroughIds();
+  const out: WalkthroughSummary[] = [];
+  for (const id of ids) {
+    try {
+      const wt = await loadWalkthrough(id);
+      const takes = await listTakes(id);
+      const last_activity = takes.length
+        ? [...takes].map((t) => t.created_at).sort().reverse()[0]
+        : null;
+      out.push({
+        id,
+        display_name: TITLECASE[id] ?? id.replace(/[-_]/g, " "),
+        step_count: wt.steps.length,
+        take_count: takes.length,
+        voice_name: wt.brand.voice_name,
+        last_activity,
+        total_duration_s: wt.steps.reduce((n, s) => n + s.duration_ms / 1000, 0),
+      });
+    } catch {
+      /* skip broken walkthroughs */
+    }
+  }
+  return out;
+}
+
 export async function loadWalkthrough(id: string): Promise<Walkthrough> {
   const dir = path.join(WALKTHROUGHS_DIR, id);
   const wtRaw = yaml.load(await readFile(path.join(dir, "walkthrough.yaml"), "utf8")) as Record<string, unknown>;
@@ -89,6 +129,30 @@ export async function setTakeStatus(
   take.status = status;
   await writeFile(file, JSON.stringify(take, null, 2));
   return take;
+}
+
+export interface StepWaveform {
+  duration_s: number;
+  sample_rate: number;
+  peaks: number[];
+}
+
+export async function loadStepWaveform(
+  walkthroughId: string,
+  stepId: string,
+): Promise<StepWaveform | null> {
+  const file = path.join(
+    WALKTHROUGHS_DIR,
+    walkthroughId,
+    "steps",
+    `${stepId}.waveform.json`,
+  );
+  try {
+    const raw = await readFile(file, "utf8");
+    return JSON.parse(raw) as StepWaveform;
+  } catch {
+    return null;
+  }
 }
 
 // Public path under /walkthroughs/... served by Next from public/walkthroughs.

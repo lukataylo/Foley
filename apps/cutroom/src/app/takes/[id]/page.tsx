@@ -1,13 +1,18 @@
-import Link from "next/link";
+// Timeline editor — Cerbro-style surface.
+// Server loads take + walkthrough + manifest + per-step waveforms, then
+// hands everything to <EditorShell/> (client) for the interactive surface.
+
 import { notFound } from "next/navigation";
 import {
   loadManifest,
+  loadStepWaveform,
   loadTake,
   loadWalkthrough,
-  stepFramePath,
+  publicPath,
   takePublicPath,
 } from "@/lib/fs";
-import { TakeActions } from "./TakeActions";
+import { EditorShell } from "./EditorShell";
+import type { Step } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,88 +26,50 @@ export default async function TakePage({ params }: { params: { id: string } }) {
     notFound();
   }
 
-  const stepById = Object.fromEntries(walkthrough.steps.map((s) => [s.id, s]));
+  // Reconstruct the effective Step list for THIS take by replacing CHANGED
+  // step entries with their proposed_step and inserting ADDED ones at the end.
+  const stepById = new Map(walkthrough.steps.map((s) => [s.id, s]));
+  for (const d of take.step_diffs) {
+    if (d.proposed_step && (d.status === "changed" || d.status === "added")) {
+      stepById.set(d.step_id, d.proposed_step as Step);
+    }
+  }
+  const stepIds = take.step_diffs.map((d) => d.step_id);
+  const steps: Step[] = stepIds
+    .map((id) => stepById.get(id))
+    .filter((s): s is Step => Boolean(s));
+
+  const waveforms = await Promise.all(
+    steps.map(async (s) => ({ id: s.id, wf: await loadStepWaveform("v1", s.id) })),
+  );
+
+  const segmentsByStep = Object.fromEntries(
+    manifest.segments.map((s) => [s.step_id, s]),
+  );
+  const stepDiffsByStep = Object.fromEntries(
+    take.step_diffs.map((d) => [d.step_id, d]),
+  );
+
+  const trackData = steps.map((s) => ({
+    id: s.id,
+    title: s.title,
+    narration: s.narration,
+    duration_ms: s.duration_ms,
+    diff_status: stepDiffsByStep[s.id]?.status ?? "unchanged",
+    diff_reason: stepDiffsByStep[s.id]?.reason ?? "",
+    frame_url: publicPath("v1", "steps", `${s.id}.png`),
+    waveform: waveforms.find((w) => w.id === s.id)?.wf ?? null,
+    segment_sha256: segmentsByStep[s.id]?.segment_sha256 ?? null,
+  }));
 
   return (
-    <main className="cutroom">
-      <Link href="/" className="back">← Dailies</Link>
-      <header className="cutroom-header">
-        <div>
-          <h1>{take.id}</h1>
-          <p className="subtitle">
-            {take.pr_title ?? "canonical master"}
-            {" · "}
-            <span className="mono">sha {manifest.master_sha256.slice(0, 12)}…</span>
-          </p>
-        </div>
-        <span className={`status status-${take.status}`}>{take.status}</span>
-      </header>
-
-      <div className="take-detail">
-        <div>
-          <div className="player">
-            <video src={takePublicPath("v1", params.id, "master.mp4")} controls preload="metadata" />
-            <div className="player-meta">
-              <span>{manifest.segments.length} segments</span>
-              <span>{(manifest.segments.reduce((n, s) => n + s.duration_ms, 0) / 1000).toFixed(1)}s</span>
-            </div>
-          </div>
-
-          <div className="actions-bar">
-            {take.status === "ready" && <TakeActions takeId={take.id} />}
-            {take.parent_take_id && (
-              <Link
-                href={`/takes/${take.id}/compare/${take.parent_take_id}`}
-                className="btn-secondary"
-              >
-                Compare with {take.parent_take_id}
-              </Link>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <div className="summary-box">
-            <div className="label">Director's note</div>
-            <div className="body">
-              {take.director_note ?? (take.pr_title ? deriveSummary(take) : "Initial canonical master.")}
-            </div>
-          </div>
-
-          <h2>Timeline</h2>
-          <ol className="timeline">
-            {take.step_diffs.map((d) => {
-              const step = d.proposed_step ?? stepById[d.step_id];
-              const title = step?.title ?? d.step_id;
-              return (
-                <li key={d.step_id} className={`step-block ${d.status}`}>
-                  <img src={stepFramePath("v1", d.step_id)} alt="" className="thumb" />
-                  <div>
-                    <div className="step-title">{title}</div>
-                    <div className="step-reason">{d.reason}</div>
-                  </div>
-                  <div className="step-actions">
-                    <span className={`pill pill-${d.status}`}>{d.status}</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </div>
-    </main>
+    <EditorShell
+      takeId={params.id}
+      take={take}
+      walkthrough={walkthrough}
+      manifest={manifest}
+      tracks={trackData}
+      masterUrl={takePublicPath("v1", params.id, "master.mp4")}
+    />
   );
-}
-
-function deriveSummary(take: Awaited<ReturnType<typeof loadTake>>): string {
-  const counts = take.step_diffs.reduce<Record<string, number>>(
-    (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
-    {},
-  );
-  const parts: string[] = [];
-  if (counts.changed) parts.push(`${counts.changed} changed`);
-  if (counts.added) parts.push(`${counts.added} added`);
-  if (counts.removed) parts.push(`${counts.removed} removed`);
-  if (counts.unchanged) parts.push(`${counts.unchanged} unchanged`);
-  return parts.join(" · ");
 }
