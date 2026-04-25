@@ -2,33 +2,38 @@
   "version": 1,
   "voice_id": "XB0fDUnXU5powFXDhCwa",
   "model_id": "eleven_turbo_v2_5",
-  "duration_ms": 34877,
-  "script": "Foley's Cutroom is where auto-generated walkthrough videos land after each pull request, ready for review. Each folder here is a live walkthrough, showing step count, take count, and how recently it was updated. Opening the Stateless Header Test shows all three steps Foley recorded, ready to inspect and approve. Steps appear in order, each with a thumbnail preview so you can verify what Foley captured before approving. Foley even maintains its own walkthrough \u2014 every project stays current as the product evolves with each new PR.",
+  "duration_ms": 42864,
+  "script": "This is Foley's Cutroom, the home base where your team reviews auto-generated product walkthrough videos. Each folder card represents one walkthrough. You can see the step count, number of takes, and who last touched it. Opening the Foley walkthrough brings up all five steps, each captured automatically from an incoming pull request. Scroll down to see each step's narration text, clip preview, and timing sitting side by side. Each take shows the recorded clip alongside its step title and narration, ready for your team to approve or re-generate. Once the take looks right, approving it here lets Foley publish the updated video and keep your docs current automatically.",
   "steps": [
     {
       "step_id": "intro",
       "start_ms": 0,
-      "end_ms": 6385
+      "end_ms": 6026
     },
     {
-      "step_id": "walkthrough_folders",
-      "start_ms": 6827,
-      "end_ms": 13607
+      "step_id": "browse_folders",
+      "start_ms": 6467,
+      "end_ms": 13247
     },
     {
       "step_id": "open_walkthrough",
-      "start_ms": 14211,
-      "end_ms": 20840
+      "start_ms": 13851,
+      "end_ms": 20596
     },
     {
-      "step_id": "inspect_steps",
-      "start_ms": 21281,
-      "end_ms": 27330
+      "step_id": "review_steps",
+      "start_ms": 21037,
+      "end_ms": 27271
     },
     {
-      "step_id": "foley_self_walkthrough",
-      "start_ms": 27714,
-      "end_ms": 34877
+      "step_id": "inspect_take",
+      "start_ms": 27654,
+      "end_ms": 34760
+    },
+    {
+      "step_id": "publish_flow",
+      "start_ms": 35143,
+      "end_ms": 42863
     }
   ]
 }

@@ -8,65 +8,77 @@ brand_ref: brand.yaml
 steps:
 - id: intro
   title: Welcome to Cutroom
-  narration: Foley's Cutroom is where auto-generated walkthrough videos land after each pull request,
-    ready for review.
+  narration: This is Foley's Cutroom, the home base where your team reviews auto-generated product walkthrough
+    videos.
   actions:
   - kind: goto
     url: /
   - kind: wait
     ms: 3500
-  duration_ms: 6000
+  duration_ms: 5500
   viewport:
     width: 1440
     height: 900
-- id: walkthrough_folders
-  title: Walkthrough folder grid
-  narration: Each folder here is a live walkthrough, showing step count, take count, and how recently
-    it was updated.
+- id: browse_folders
+  title: Browse walkthrough folders
+  narration: Each folder card represents one walkthrough. You can see the step count, number of takes,
+    and who last touched it.
   actions:
   - kind: scroll
     ms: 400
   - kind: wait
     ms: 2500
-  duration_ms: 6000
+  duration_ms: 6500
   viewport:
     width: 1440
     height: 900
 - id: open_walkthrough
   title: Open a walkthrough
-  narration: Opening the Stateless Header Test shows all three steps Foley recorded, ready to inspect
-    and approve.
+  narration: Opening the Foley walkthrough brings up all five steps, each captured automatically from
+    an incoming pull request.
   actions:
   - kind: goto
-    url: /walkthroughs/rec-localhost-20260425-143211
+    url: /walkthroughs/foley
   - kind: wait
     ms: 3000
   duration_ms: 6000
   viewport:
     width: 1440
     height: 900
-- id: inspect_steps
-  title: Inspect recorded steps
-  narration: Steps appear in order, each with a thumbnail preview so you can verify what Foley captured
-    before approving.
+- id: review_steps
+  title: Review steps and clips
+  narration: Scroll down to see each step's narration text, clip preview, and timing sitting side by side.
+  actions:
+  - kind: scroll
+    ms: 600
+  - kind: wait
+    ms: 2500
+  duration_ms: 5500
+  viewport:
+    width: 1440
+    height: 900
+- id: inspect_take
+  title: Inspect a take
+  narration: Each take shows the recorded clip alongside its step title and narration, ready for your
+    team to approve or re-generate.
   actions:
   - kind: scroll
     ms: 500
   - kind: wait
-    ms: 2800
+    ms: 3000
   duration_ms: 6500
   viewport:
     width: 1440
     height: 900
-- id: foley_self_walkthrough
-  title: Foley documents itself
-  narration: "Foley even maintains its own walkthrough \u2014 every project stays current as the product\
-    \ evolves with each new PR."
+- id: publish_flow
+  title: Approve and publish
+  narration: Once the take looks right, approving it here lets Foley publish the updated video and keep
+    your docs current automatically.
   actions:
-  - kind: goto
-    url: /walkthroughs/foley
+  - kind: scroll
+    ms: 500
   - kind: wait
-    ms: 3200
+    ms: 3000
   duration_ms: 6500
   viewport:
     width: 1440

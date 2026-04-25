@@ -1,7 +1,7 @@
 {
-  "step_id": "intro",
-  "fingerprint": "aa8d0cd95618615a",
-  "actual_duration_ms": 4590,
+  "step_id": "review_steps",
+  "fingerprint": "ecb06805d32d9131",
+  "actual_duration_ms": 2559,
   "declared_duration_ms": 5500,
   "viewport": {
     "width": 1440,
@@ -9,12 +9,12 @@
   },
   "actions": [
     {
-      "kind": "goto",
-      "url": "/"
+      "kind": "scroll",
+      "ms": 600
     },
     {
       "kind": "wait",
-      "ms": 3500
+      "ms": 2500
     }
   ]
 }

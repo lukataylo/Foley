@@ -1,0 +1,31 @@
+WEBVTT
+
+step-1-intro
+00:00:00.000 --> 00:00:06.026
+Welcome to Cutroom
+This is Foley's Cutroom, the home base where your team reviews auto-generated product walkthrough videos.
+
+step-2-browse_folders
+00:00:06.467 --> 00:00:13.247
+Browse walkthrough folders
+Each folder card represents one walkthrough. You can see the step count, number of takes, and who last touched it.
+
+step-3-open_walkthrough
+00:00:13.851 --> 00:00:20.596
+Open a walkthrough
+Opening the Foley walkthrough brings up all five steps, each captured automatically from an incoming pull request.
+
+step-4-review_steps
+00:00:21.037 --> 00:00:27.271
+Review steps and clips
+Scroll down to see each step's narration text, clip preview, and timing sitting side by side.
+
+step-5-inspect_take
+00:00:27.654 --> 00:00:34.760
+Inspect a take
+Each take shows the recorded clip alongside its step title and narration, ready for your team to approve or re-generate.
+
+step-6-publish_flow
+00:00:35.143 --> 00:00:42.863
+Approve and publish
+Once the take looks right, approving it here lets Foley publish the updated video and keep your docs current automatically.

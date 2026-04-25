@@ -5,7 +5,7 @@
   "pr_number": null,
   "pr_title": null,
   "director_note": null,
-  "created_at": "2026-04-25T19:54:22.080258Z",
+  "created_at": "2026-04-25T21:04:43.533026Z",
   "status": "approved",
   "step_diffs": [
     {
@@ -15,7 +15,7 @@
       "proposed_step": null
     },
     {
-      "step_id": "walkthrough_folders",
+      "step_id": "browse_folders",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null
@@ -27,13 +27,19 @@
       "proposed_step": null
     },
     {
-      "step_id": "inspect_steps",
+      "step_id": "review_steps",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null
     },
     {
-      "step_id": "foley_self_walkthrough",
+      "step_id": "inspect_take",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "publish_flow",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null

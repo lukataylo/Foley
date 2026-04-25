@@ -1,0 +1,20 @@
+{
+  "step_id": "browse_folders",
+  "fingerprint": "51bdad28ebf636db",
+  "actual_duration_ms": 2539,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "scroll",
+      "ms": 400
+    },
+    {
+      "kind": "wait",
+      "ms": 2500
+    }
+  ]
+}

@@ -2,45 +2,53 @@
   "walkthrough_id": "foley",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "48a86e98b8abf34d8212edc2abaed7e50befb6cc07a57a1ea84d1f8f67400065",
+  "master_sha256": "10991797b2369120033365c2b379f17b8bf80600d871e3433499dbac126593f1",
   "segments": [
     {
       "step_id": "intro",
-      "fingerprint": "004fdf7339882dc6",
+      "fingerprint": "aa8d0cd95618615a",
       "segment_path": "segments/intro.mp4",
-      "segment_sha256": "4aeaef6eda7e4a0ef316c5a82a7910096f62178de7aaf546deb8db061ca9ee95",
-      "duration_ms": 6000,
+      "segment_sha256": "593b8824652ef1d00e2137015c9458b61d3e2dad6d62c8d74f965f754eb4a61c",
+      "duration_ms": 5500,
       "source": "rebuilt"
     },
     {
-      "step_id": "walkthrough_folders",
-      "fingerprint": "38923f0eda981958",
-      "segment_path": "segments/walkthrough_folders.mp4",
-      "segment_sha256": "c6ef848df83a8a7036d5b4051d9ca1793935d5b2845d29be914a95a35cf6fafd",
-      "duration_ms": 6000,
-      "source": "rebuilt"
-    },
-    {
-      "step_id": "open_walkthrough",
-      "fingerprint": "06ac384a10ceac19",
-      "segment_path": "segments/open_walkthrough.mp4",
-      "segment_sha256": "b7f4d1bdfa3ebf0f4b48ece7cbe7e52cb82b0e48fc441159862d8ff1a55c0eb2",
-      "duration_ms": 6000,
-      "source": "rebuilt"
-    },
-    {
-      "step_id": "inspect_steps",
-      "fingerprint": "e0c9d8d137fb2185",
-      "segment_path": "segments/inspect_steps.mp4",
-      "segment_sha256": "ba4fb9ea3ef318c66bb32ef999dacc9e3ee25f4728a8644d99f2a2f45f89fe7a",
+      "step_id": "browse_folders",
+      "fingerprint": "51bdad28ebf636db",
+      "segment_path": "segments/browse_folders.mp4",
+      "segment_sha256": "aca23f9ebf3a09ac8004287571828c3cffe92a1d2e3900781122465b048dd0f6",
       "duration_ms": 6500,
       "source": "rebuilt"
     },
     {
-      "step_id": "foley_self_walkthrough",
-      "fingerprint": "ee0f70208ebebfbd",
-      "segment_path": "segments/foley_self_walkthrough.mp4",
-      "segment_sha256": "cd66f502b031ec76e4b9673f41ac0637750a25ada87d4680fee98f84bebe79a6",
+      "step_id": "open_walkthrough",
+      "fingerprint": "8d34c7372c012e49",
+      "segment_path": "segments/open_walkthrough.mp4",
+      "segment_sha256": "e218808a3d2fbba6386125ad1eee8469eb0e00ae6d29593205c4771424aab638",
+      "duration_ms": 6000,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "review_steps",
+      "fingerprint": "ecb06805d32d9131",
+      "segment_path": "segments/review_steps.mp4",
+      "segment_sha256": "1bc94d99f6f941ec369b2b4e01e9634584e97dc49263cbf7ba83e0e25dcc4f60",
+      "duration_ms": 5500,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "inspect_take",
+      "fingerprint": "9143996e7ef10c40",
+      "segment_path": "segments/inspect_take.mp4",
+      "segment_sha256": "ba80aa2876e3260f87cfa72a443a5f4a92216b2658bfd1508484362677220114",
+      "duration_ms": 6500,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "publish_flow",
+      "fingerprint": "755451df4aaef9cf",
+      "segment_path": "segments/publish_flow.mp4",
+      "segment_sha256": "b6c091760dd5f145d22da44e26fa01fbaa55049699b512db1cd0464ef3d5d317",
       "duration_ms": 6500,
       "source": "rebuilt"
     }

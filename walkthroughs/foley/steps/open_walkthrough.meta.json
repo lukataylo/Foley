@@ -1,7 +1,7 @@
 {
   "step_id": "open_walkthrough",
-  "fingerprint": "06ac384a10ceac19",
-  "actual_duration_ms": 4383,
+  "fingerprint": "8d34c7372c012e49",
+  "actual_duration_ms": 4014,
   "declared_duration_ms": 6000,
   "viewport": {
     "width": 1440,
@@ -10,7 +10,7 @@
   "actions": [
     {
       "kind": "goto",
-      "url": "/walkthroughs/rec-localhost-20260425-143211"
+      "url": "/walkthroughs/foley"
     },
     {
       "kind": "wait",

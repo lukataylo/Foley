@@ -1,0 +1,20 @@
+{
+  "step_id": "inspect_take",
+  "fingerprint": "9143996e7ef10c40",
+  "actual_duration_ms": 3074,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "scroll",
+      "ms": 500
+    },
+    {
+      "kind": "wait",
+      "ms": 3000
+    }
+  ]
+}
