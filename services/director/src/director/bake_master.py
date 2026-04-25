@@ -16,6 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .atomic_io import write_text_atomic
 from .concat import ENCODE_ARGS
 from .logfire_setup import span
 
@@ -125,7 +126,7 @@ def bake_master(
             shutil.copy2(master_path, backup)
 
         concat_list = work / "concat.txt"
-        concat_list.write_text("\n".join(f"file '{p.name}'" for p in inputs) + "\n")
+        write_text_atomic(concat_list, "\n".join(f"file '{p.name}'" for p in inputs) + "\n")
 
         new_master = work / "master.mp4"
         _ffmpeg([
@@ -151,7 +152,7 @@ def bake_master(
             "intro_duration_s": intro_duration_s if intro_png else None,
             "outro_duration_s": outro_duration_s if outro_png else None,
         }
-        manifest_path.write_text(json.dumps(manifest, indent=2))
+        write_text_atomic(manifest_path, json.dumps(manifest, indent=2))
 
     shutil.rmtree(work, ignore_errors=True)
     return {

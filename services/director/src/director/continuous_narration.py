@@ -24,6 +24,8 @@ from pathlib import Path
 
 from elevenlabs.client import ElevenLabs
 
+from .atomic_io import write_bytes_atomic, write_text_atomic
+
 from .config import settings
 from .logfire_setup import span
 from .models import Walkthrough
@@ -156,10 +158,10 @@ def synth_continuous(wt: Walkthrough, walkthroughs_dir: Path) -> dict:
             getattr(alignment, "character_end_times_seconds", []) or []
         )
 
-    mp3_path.write_bytes(audio_bytes)
+    write_bytes_atomic(mp3_path, audio_bytes)
 
     waveform = extract_waveform(mp3_path)
-    waveform_path.write_text(json.dumps(waveform))
+    write_text_atomic(waveform_path, json.dumps(waveform))
 
     duration_ms = int(round(waveform["duration_s"] * 1000))
     if ends_s:
@@ -176,7 +178,7 @@ def synth_continuous(wt: Walkthrough, walkthroughs_dir: Path) -> dict:
         "script": script,
         "steps": steps_ranges,
     }
-    timing_path.write_text(json.dumps(timing, indent=2))
+    write_text_atomic(timing_path, json.dumps(timing, indent=2))
 
     return timing
 

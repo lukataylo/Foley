@@ -2,6 +2,7 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { writeJsonAtomic } from "@/lib/atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -25,6 +26,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json();
   const out = file(params.id);
   await fs.mkdir(path.dirname(out), { recursive: true });
-  await fs.writeFile(out, JSON.stringify(body, null, 2));
+  await writeJsonAtomic(out, body);
   return NextResponse.json({ ok: true });
 }

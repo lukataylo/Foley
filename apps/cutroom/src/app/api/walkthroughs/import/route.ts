@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import { writeFileAtomic } from "@/lib/atomic-io";
 import path from "path";
 import yaml from "js-yaml";
 import { z } from "zod";
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
     ),
   };
 
-  await writeFile(
+  await writeFileAtomic(
     path.join(dir, "walkthrough.yaml"),
     [
       `# Imported by Foley Recorder on ${new Date().toISOString()}`,
@@ -131,10 +132,9 @@ export async function POST(req: Request) {
     ]
       .filter(Boolean)
       .join("\n"),
-    "utf8",
   );
 
-  await writeFile(path.join(dir, "brand.yaml"), defaultBrandYaml(), "utf8");
+  await writeFileAtomic(path.join(dir, "brand.yaml"), defaultBrandYaml());
 
   const url = `/walkthroughs/${id}/edit`;
   return NextResponse.json({ ok: true, id, url, mode: "new" }, { headers: corsHeaders() });
@@ -185,7 +185,7 @@ async function appendToExisting(payload: Payload, viewport: { width: number; hei
   }
   existing.steps = [...existingSteps, ...newSteps];
 
-  await writeFile(
+  await writeFileAtomic(
     yamlPath,
     [
       `# Steps appended by Foley Recorder on ${new Date().toISOString()}`,
@@ -195,7 +195,6 @@ async function appendToExisting(payload: Payload, viewport: { width: number; hei
     ]
       .filter(Boolean)
       .join("\n"),
-    "utf8",
   );
 
   return NextResponse.json(

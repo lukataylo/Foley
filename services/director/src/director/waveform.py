@@ -13,6 +13,8 @@ import json
 import math
 import struct
 import subprocess
+
+from .atomic_io import write_text_atomic
 from pathlib import Path
 
 # Granularity of the waveform shown in the cutroom timeline. 30 buckets/s gives
@@ -78,7 +80,7 @@ def write_waveform(mp3_path: Path, json_path: Path | None = None) -> Path:
                 mp3_path.name[: -len(".narration.mp3")] + ".waveform.json"
             )
     data = extract_waveform(mp3_path)
-    json_path.write_text(json.dumps(data))
+    write_text_atomic(json_path, json.dumps(data))
     return json_path
 
 

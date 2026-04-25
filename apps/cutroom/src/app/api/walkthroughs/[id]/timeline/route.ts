@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { readFile, mkdir } from "fs/promises";
 import path from "path";
 import { loadWalkthrough } from "@/lib/fs";
 import { migrateOverlay, synthesizeOverlay, type EditOverlay } from "@/lib/timeline";
+import { writeJsonAtomic } from "@/lib/atomic-io";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,6 @@ export async function PUT(
   }
   const file = pathFor(params.id);
   await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, JSON.stringify(overlay, null, 2), "utf8");
+  await writeJsonAtomic(file, overlay);
   return NextResponse.json({ ok: true });
 }

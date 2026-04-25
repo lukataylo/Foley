@@ -3,10 +3,11 @@
 // is the single funnel for those writes so we keep YAML round-trip predictable.
 
 import "server-only";
-import { readFile, writeFile, unlink } from "fs/promises";
+import { readFile, unlink } from "fs/promises";
 import path from "path";
 import yaml from "js-yaml";
 import { isValidStepId, isValidWalkthroughId } from "./ids";
+import { writeFileAtomic } from "./atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
@@ -96,7 +97,7 @@ export async function writeRaw(id: string, raw: RawWalkthrough): Promise<void> {
       ? `${header}${dumped}`
       : `${header}\n${dumped}`
     : dumped;
-  await writeFile(walkthroughPath(id), out, "utf8");
+  await writeFileAtomic(walkthroughPath(id), out);
 }
 
 export async function deleteStepScreenshot(id: string, stepId: string): Promise<void> {

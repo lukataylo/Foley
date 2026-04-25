@@ -19,6 +19,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page, sync_playwright
 
+from .atomic_io import write_text_atomic
 from .concat import ENCODE_ARGS
 from .logfire_setup import span
 from .models import Action, ActionKind, Step, Walkthrough, step_artifact_paths
@@ -136,7 +137,7 @@ def capture_step(
         "viewport": step.viewport.model_dump(),
         "actions": [a.model_dump(exclude_none=True) for a in step.actions],
     }
-    meta_path.write_text(json.dumps(meta, indent=2))
+    write_text_atomic(meta_path, json.dumps(meta, indent=2))
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return paths
 

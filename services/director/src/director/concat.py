@@ -20,6 +20,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from .atomic_io import write_json_atomic, write_text_atomic
 from .logfire_setup import span
 from .models import (
     StepDiff,
@@ -181,7 +182,7 @@ def assemble_master(
             concat_lines.append(f"file '{seg_path.name}'")
 
         concat_list = segments_dir / "concat.txt"
-        concat_list.write_text("\n".join(concat_lines) + "\n")
+        write_text_atomic(concat_list, "\n".join(concat_lines) + "\n")
 
         if use_continuous:
             # Concat silent-video segments to a temp file, then mix the
@@ -223,7 +224,7 @@ def assemble_master(
         "master_sha256": _file_sha256(master_path),
         "segments": segment_entries,
     }
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    write_json_atomic(out_dir / "manifest.json", manifest)
 
     # Write the Take record for the cutroom. Default: every existing step is
     # UNCHANGED — the initial master, or a re-bake of unchanged content.
@@ -247,7 +248,7 @@ def assemble_master(
         step_diffs=step_diffs,
         master_path=manifest["master_path"],
     )
-    (out_dir / "take.json").write_text(take.model_dump_json(indent=2))
+    write_text_atomic(out_dir / "take.json", take.model_dump_json(indent=2))
     return manifest
 
 

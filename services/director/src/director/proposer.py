@@ -25,6 +25,7 @@ import httpx
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from .atomic_io import write_text_atomic
 from .config import settings
 from .logfire_setup import configure as configure_logfire
 from .logfire_setup import span
@@ -225,7 +226,7 @@ def write_proposed_steps(
         "or rerun `director propose-steps <id>` to redraft.\n"
         + yaml.safe_dump(raw, sort_keys=False, width=100)
     )
-    yaml_path.write_text(new_text)
+    write_text_atomic(yaml_path, new_text)
 
 
 __all__ = ["ProposedSteps", "propose_steps", "write_proposed_steps"]

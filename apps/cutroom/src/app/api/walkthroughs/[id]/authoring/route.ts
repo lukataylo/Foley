@@ -1,8 +1,9 @@
 import "server-only";
-import { readFile, writeFile } from "fs/promises";
+import { readFile } from "fs/promises";
 import path from "path";
 import yaml from "js-yaml";
 import { NextRequest, NextResponse } from "next/server";
+import { writeFileAtomic } from "@/lib/atomic-io";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,6 @@ export async function PATCH(
     return NextResponse.json({ error: "unknown op" }, { status: 400 });
   }
 
-  await writeFile(file, yaml.dump(parsed, { lineWidth: 100 }), "utf8");
+  await writeFileAtomic(file, yaml.dump(parsed, { lineWidth: 100 }));
   return NextResponse.json({ ok: true, steps: parsed.steps.map((s) => s.id) });
 }

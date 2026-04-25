@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile, readdir } from "fs/promises";
+import { mkdir, readdir } from "fs/promises";
 import path from "path";
 import yaml from "js-yaml";
+import { writeFileAtomic, writeJsonAtomic } from "@/lib/atomic-io";
 
 export const dynamic = "force-dynamic";
 
@@ -88,28 +89,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ],
   };
 
-  await writeFile(
+  await writeFileAtomic(
     path.join(dir, "walkthrough.yaml"),
     "# Bootstrapped by Foley onboarding.\n" + yaml.dump(walkthrough, { lineWidth: 100 }),
-    "utf8",
   );
-  await writeFile(path.join(dir, "brand.yaml"), SEED_BRAND, "utf8");
+  await writeFileAtomic(path.join(dir, "brand.yaml"), SEED_BRAND);
 
   // Stamp a tiny "watching" config so the studio's pill knows what to display.
-  await writeFile(
-    path.join(dir, "watching.json"),
-    JSON.stringify(
-      {
-        repo: body.full_name,
-        branch: body.default_branch || "main",
-        connected_at: new Date().toISOString(),
-        last_check: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-    "utf8",
-  );
+  await writeJsonAtomic(path.join(dir, "watching.json"), {
+    repo: body.full_name,
+    branch: body.default_branch || "main",
+    connected_at: new Date().toISOString(),
+    last_check: new Date().toISOString(),
+  });
 
   return NextResponse.json({
     id: slug,

@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import { NextRequest, NextResponse } from "next/server";
+import { writeFileAtomic } from "@/lib/atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -55,7 +56,7 @@ export async function PUT(
   }
 
   const next = yaml.dump(current, { sortKeys: false, lineWidth: 100 });
-  await fs.writeFile(file, next);
+  await writeFileAtomic(file, next);
 
   return NextResponse.json({ ok: true, brand: current });
 }

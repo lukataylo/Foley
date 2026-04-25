@@ -2,10 +2,11 @@
 // directory the director writes to. State of record is on disk.
 
 import "server-only";
-import { readFile, readdir, stat, writeFile } from "fs/promises";
+import { readFile, readdir, stat } from "fs/promises";
 import path from "path";
 import yaml from "js-yaml";
 import type { Take, Walkthrough } from "./types";
+import { writeJsonAtomic } from "./atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
@@ -127,7 +128,7 @@ export async function setTakeStatus(
   const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "take.json");
   const take = JSON.parse(await readFile(file, "utf8")) as Take;
   take.status = status;
-  await writeFile(file, JSON.stringify(take, null, 2));
+  await writeJsonAtomic(file, take);
   return take;
 }
 

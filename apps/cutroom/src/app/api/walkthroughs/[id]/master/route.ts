@@ -2,6 +2,7 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { writeJsonAtomic } from "@/lib/atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -76,7 +77,7 @@ export async function POST(
     take.status = "approved";
     take.parent_take_id = null;
     take.promoted_from = take_id;
-    await fs.writeFile(takeJsonPath, JSON.stringify(take, null, 2));
+    await writeJsonAtomic(takeJsonPath, take);
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
   }
@@ -87,7 +88,7 @@ export async function POST(
     const raw = await fs.readFile(manifestPath, "utf8");
     const manifest = JSON.parse(raw);
     manifest.take_id = "master";
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+    await writeJsonAtomic(manifestPath, manifest);
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
   }

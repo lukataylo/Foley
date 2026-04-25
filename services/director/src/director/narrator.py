@@ -8,6 +8,7 @@ from pathlib import Path
 
 from elevenlabs.client import ElevenLabs
 
+from .atomic_io import write_bytes_atomic
 from .config import settings
 from .logfire_setup import span
 from .waveform import write_waveform
@@ -39,7 +40,7 @@ def synth(
 
     with span("narrator.synth", voice_id=voice_id, model=model_id, chars=len(text), key=key):
         if cache_path.exists():
-            out_path.write_bytes(cache_path.read_bytes())
+            write_bytes_atomic(out_path, cache_path.read_bytes())
         else:
             client = ElevenLabs(api_key=settings.elevenlabs_api_key)
             audio_iter = client.text_to_speech.convert(
@@ -49,8 +50,8 @@ def synth(
                 output_format="mp3_44100_128",
             )
             data = b"".join(audio_iter)
-            cache_path.write_bytes(data)
-            out_path.write_bytes(data)
+            write_bytes_atomic(cache_path, data)
+            write_bytes_atomic(out_path, data)
 
     # Write the sibling waveform JSON next to the mp3 so the cutroom can
     # render the audio track without re-decoding on the client.

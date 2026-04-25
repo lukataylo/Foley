@@ -13,6 +13,7 @@ import yaml from "js-yaml";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isValidWalkthroughId } from "@/lib/ids";
+import { writeJsonAtomic } from "@/lib/atomic-io";
 
 const execFileP = promisify(execFile);
 
@@ -56,7 +57,7 @@ async function readStatus(id: string): Promise<RenderStatus | null> {
 }
 
 async function writeStatus(id: string, s: RenderStatus): Promise<void> {
-  await writeFile(statusPath(id), JSON.stringify(s, null, 2), "utf8");
+  await writeJsonAtomic(statusPath(id), s);
 }
 
 async function countMp4Steps(id: string): Promise<number> {

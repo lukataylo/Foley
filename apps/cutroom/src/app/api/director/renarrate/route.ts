@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
+import { writeJsonAtomic } from "@/lib/atomic-io";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
         diff.proposed_step.narration = narration;
         diff.proposed_step.narration_hash = null;
       }
-      await fs.writeFile(takeFile, JSON.stringify(take, null, 2));
+      await writeJsonAtomic(takeFile, take);
     } catch (err) {
       if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
         return NextResponse.json({ error: "take not found" }, { status: 404 });

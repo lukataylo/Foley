@@ -16,6 +16,7 @@ from rich.table import Table
 
 from . import __version__
 from .agent import review_pr as run_agent
+from .atomic_io import write_text_atomic
 from .bake_master import bake_master
 from .concat import assemble_master, diff_takes
 from .config import settings
@@ -456,7 +457,7 @@ def dry_review(
     if manifest_path.exists():
         m = _json.loads(manifest_path.read_text())
         m["take_id"] = tid
-        manifest_path.write_text(_json.dumps(m, indent=2))
+        write_text_atomic(manifest_path, _json.dumps(m, indent=2))
 
     take = {
         "id": tid,
@@ -482,7 +483,7 @@ def dry_review(
             for d in verdict.step_diffs
         ],
     }
-    (take_dir / "take.json").write_text(_json.dumps(take, indent=2))
+    write_text_atomic(take_dir / "take.json", _json.dumps(take, indent=2))
 
     changed = sum(1 for d in verdict.step_diffs if d.status.value in ("changed", "added"))
     rprint(
