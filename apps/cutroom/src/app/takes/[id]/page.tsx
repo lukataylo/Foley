@@ -48,17 +48,17 @@ export default async function TakePage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {take.status === "ready" && (
-            <TakeActions takeId={take.id} />
-          )}
-
-          {take.parent_take_id && (
-            <p style={{ marginTop: 14 }}>
-              <Link href={`/takes/${take.id}/compare/${take.parent_take_id}`} className="back">
-                Compare with {take.parent_take_id} →
+          <div className="actions-bar">
+            {take.status === "ready" && <TakeActions takeId={take.id} />}
+            {take.parent_take_id && (
+              <Link
+                href={`/takes/${take.id}/compare/${take.parent_take_id}`}
+                className="btn-secondary"
+              >
+                Compare with {take.parent_take_id}
               </Link>
-            </p>
-          )}
+            )}
+          </div>
         </div>
 
         <div>

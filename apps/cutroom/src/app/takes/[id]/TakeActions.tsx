@@ -15,7 +15,7 @@ export function TakeActions({ takeId }: { takeId: string }) {
   }
 
   return (
-    <div className="actions-bar">
+    <>
       <button
         className="btn-primary"
         onClick={() => decide("approve")}
@@ -30,6 +30,6 @@ export function TakeActions({ takeId }: { takeId: string }) {
       >
         {busy === "reject" ? "Rejecting…" : "Send back"}
       </button>
-    </div>
+    </>
   );
 }
