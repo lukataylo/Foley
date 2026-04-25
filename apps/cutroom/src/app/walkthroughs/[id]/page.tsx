@@ -225,11 +225,9 @@ function ActivityTimeline({ takes }: { takes: ActivityTake[] }) {
               <span className="activity-when">{formatTime(t.created_at)}</span>
               <span className="activity-body">
                 <strong>{t.id}</strong>
-                {" "}
-                <span className={`status status-${t.status}`}>{t.status}</span>
-                {t.pr_title ? <> · {t.pr_title}</> : null}
+                {t.pr_title ? <span className="activity-detail"> · {t.pr_title}</span> : null}
                 {t.promoted_from ? (
-                  <> · <span style={{ color: "var(--muted)" }}>promoted from {t.promoted_from}</span></>
+                  <span className="activity-detail"> · promoted from {t.promoted_from}</span>
                 ) : null}
               </span>
             </div>

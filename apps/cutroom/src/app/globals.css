@@ -1097,29 +1097,38 @@ div > .folder-card.placeholder { cursor: default; }
 [data-theme="dark"] .activity-bucket-head::before { background: #ededed; }
 
 /* Each entry — single row with a smaller dot on the rail. */
+/* Defeat the global .status-ready / .status-approved background fill that
+   bleeds into the row when we tag it for dot color. The status pill inside
+   the row keeps its own colored bg via .status.status-ready etc. */
+.activity-row,
+.activity-row.status-drafting,
+.activity-row.status-ready,
+.activity-row.status-approved,
+.activity-row.status-rejected {
+  background: transparent;
+  color: var(--fg);
+}
+
 .activity-row {
   position: relative;
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 12.5px;
   line-height: 1.5;
-  padding: 5px 6px 5px 0;
-  border-radius: 6px;
+  padding: 4px 0;
   white-space: nowrap;
   overflow: hidden;
-  margin-left: -4px;
-  padding-left: 4px;
 }
 .activity-row::before {
   content: "";
   position: absolute;
-  left: -19px;
+  left: -22px;
   top: 0.85em;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.38);
+  background: rgba(0,0,0,0.4);
   box-shadow: 0 0 0 3px var(--pastel-rose);
   z-index: 1;
 }
@@ -1128,8 +1137,6 @@ div > .folder-card.placeholder { cursor: default; }
 .activity-row.status-rejected::before { background: #c8281e; }
 .activity-row.status-drafting::before { background: rgba(0,0,0,0.38); }
 [data-theme="dark"] .activity-row::before { box-shadow: 0 0 0 3px var(--pastel-rose); }
-.activity-row:hover { background: rgba(0,0,0,0.05); }
-[data-theme="dark"] .activity-row:hover { background: rgba(255,255,255,0.05); }
 
 .activity-when {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -1147,6 +1154,8 @@ div > .folder-card.placeholder { cursor: default; }
   min-width: 0;
 }
 .activity-body strong { font-weight: 600; }
+.activity-detail { color: rgba(0,0,0,0.55); font-weight: 400; }
+[data-theme="dark"] .activity-detail { color: rgba(255,255,255,0.6); }
 
 /* Nested mini-card inside a sticky note (e.g. each take inside the Dailies note) */
 .sticky-mini {
