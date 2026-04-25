@@ -17,6 +17,8 @@ interface Props {
   onRenarrate: (stepId: string) => void;
   onGenerateBanana: (id: string) => void;
   onGenerateMusic: (id: string) => void;
+  musicError?: { message: string; suggestion: string | null } | null;
+  onApplyMusicSuggestion?: (id: string, suggestion: string) => void;
   busy?: boolean;
 }
 
@@ -49,7 +51,16 @@ export function ClipInspector(p: Props) {
 
       {clip.kind === "video" && <VideoBody clip={clip} onPatch={p.onPatch} onRetake={p.onRetake} busy={p.busy} />}
       {clip.kind === "voice" && <VoiceBody clip={clip} onPatch={p.onPatch} onRenarrate={p.onRenarrate} busy={p.busy} />}
-      {clip.kind === "music" && <MusicBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateMusic} busy={p.busy} />}
+      {clip.kind === "music" && (
+        <MusicBody
+          clip={clip}
+          onPatch={p.onPatch}
+          onGenerate={p.onGenerateMusic}
+          busy={p.busy}
+          error={p.musicError ?? null}
+          onApplySuggestion={p.onApplyMusicSuggestion}
+        />
+      )}
       {clip.kind === "transition" && <TransitionBody clip={clip} />}
       {clip.kind === "caption" && <CaptionBody clip={clip} onPatch={p.onPatch} />}
       {clip.kind === "banana" && <BananaBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateBanana} busy={p.busy} sourceById={p.sourceById} />}
@@ -212,11 +223,15 @@ function MusicBody({
   onPatch,
   onGenerate,
   busy,
+  error,
+  onApplySuggestion,
 }: {
   clip: Clip & { kind: "music" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
   onGenerate: (id: string) => void;
   busy?: boolean;
+  error?: { message: string; suggestion: string | null } | null;
+  onApplySuggestion?: (id: string, suggestion: string) => void;
 }) {
   return (
     <>
@@ -235,9 +250,30 @@ function MusicBody({
           disabled={busy || !clip.prompt}
           onClick={() => onGenerate(clip.id)}
         >
-          🎵 {clip.asset_url ? "Re-generate" : "Generate"}
+          🎵 {busy ? "Generating…" : clip.asset_url ? "Re-generate" : "Generate"}
         </button>
       </div>
+      {error ? (
+        <div className="ci-music-error">
+          <strong>Couldn't generate.</strong>
+          <span>{error.message}</span>
+          {error.suggestion ? (
+            <>
+              <div className="ci-music-suggestion">
+                <span className="ci-music-suggestion-label">Try this prompt instead:</span>
+                <span className="ci-music-suggestion-text">"{error.suggestion}"</span>
+              </div>
+              <button
+                type="button"
+                className="ci-btn ci-btn-ghost"
+                onClick={() => onApplySuggestion?.(clip.id, error.suggestion ?? "")}
+              >
+                Use suggested prompt
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {clip.asset_url ? (
         <audio
           controls
@@ -245,11 +281,11 @@ function MusicBody({
           className="ci-audio-preview"
           style={{ width: "100%", marginTop: 8 }}
         />
-      ) : (
+      ) : !error ? (
         <p className="ci-help">
           ElevenLabs Music. Length matches the clip's duration ({(clip.duration_ms / 1000).toFixed(0)}s).
         </p>
-      )}
+      ) : null}
       <Section title="Track">
         <Row label="Label">
           <TextInput value={clip.label} onChange={(v) => onPatch(clip.id, { label: v })} />

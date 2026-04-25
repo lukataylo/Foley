@@ -594,11 +594,16 @@ export function EditorShell({
     });
   }
 
+  const [musicErrorByClip, setMusicErrorByClip] = useState<
+    Record<string, { message: string; suggestion: string | null } | null>
+  >({});
+
   async function generateMusicClip(clipId: string) {
     if (!overlay) return;
     const f = overlay.clips.find((c) => c.id === clipId);
     if (!f || f.kind !== "music" || !f.prompt) return;
     setBusyAction("music");
+    setMusicErrorByClip((m) => ({ ...m, [clipId]: null }));
     try {
       const res = await fetch(`/api/music/generate`, {
         method: "POST",
@@ -609,18 +614,32 @@ export function EditorShell({
           duration_ms: f.duration_ms,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string; duration_ms?: number };
+      const json = (await res.json()) as {
+        ok?: boolean; url?: string; error?: string; duration_ms?: number;
+        prompt_suggestion?: string | null;
+      };
       if (json.ok && json.url) {
         patchClipState(clipId, {
           asset_url: `${json.url}?t=${Date.now()}`,
           generated_duration_ms: json.duration_ms ?? f.duration_ms,
         });
       } else {
-        alert(json.error ?? "Music generation failed");
+        setMusicErrorByClip((m) => ({
+          ...m,
+          [clipId]: {
+            message: json.error ?? "Music generation failed",
+            suggestion: json.prompt_suggestion ?? null,
+          },
+        }));
       }
     } finally {
       setBusyAction(null);
     }
+  }
+
+  function applyMusicSuggestion(clipId: string, suggestion: string) {
+    patchClipState(clipId, { prompt: suggestion });
+    setMusicErrorByClip((m) => ({ ...m, [clipId]: null }));
   }
 
   async function generateBananaClip(clipId: string) {
@@ -805,6 +824,8 @@ export function EditorShell({
               onRenarrate={(stepId) => { setSelectedStepId(stepId); aiReNarrateSelected(); }}
               onGenerateBanana={generateBananaClip}
               onGenerateMusic={generateMusicClip}
+              musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
+              onApplyMusicSuggestion={applyMusicSuggestion}
               busy={busyAction !== null}
             />
           ) : (

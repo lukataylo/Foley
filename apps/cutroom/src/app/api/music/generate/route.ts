@@ -65,8 +65,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!res.ok) {
     const text = await res.text();
+    // ElevenLabs returns structured errors: { detail: {code, message}, prompt_suggestion? }.
+    // Surface them so the UI can render a usable affordance.
+    let parsed: {
+      detail?: { code?: string; message?: string };
+      prompt_suggestion?: string;
+    } = {};
+    try { parsed = JSON.parse(text); } catch { /* leave empty */ }
     return NextResponse.json(
-      { error: `ElevenLabs music ${res.status}: ${text.slice(0, 400)}` },
+      {
+        error: parsed.detail?.message ?? `ElevenLabs ${res.status}`,
+        error_code: parsed.detail?.code ?? null,
+        prompt_suggestion: parsed.prompt_suggestion ?? null,
+        status: res.status,
+      },
       { status: 502 },
     );
   }
