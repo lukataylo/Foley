@@ -10,6 +10,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AskWidget } from "@/components/AskWidget";
 import { OpenInLLMMenu } from "@/components/OpenInLLMMenu";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { MermaidHydrator } from "@/components/MermaidHydrator";
+import { renderNarration } from "@/lib/narration-render";
 import { listTakes, loadWalkthrough, stepFramePath, takePublicPath } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
@@ -138,7 +140,7 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
             <div className="docs-step-num">{String(i + 1).padStart(2, "0")}</div>
             <div className="docs-step-body">
               <h2>{step.title}</h2>
-              <p className="narration">{step.narration}</p>
+              <div className="narration-block">{renderNarration(step.narration, `${step.id}-n`)}</div>
               <video
                 src={takePublicPath(params.walkthrough, masterTakeId, `segments/${step.id}.mp4`)}
                 poster={stepFramePath(params.walkthrough, step.id)}
@@ -160,6 +162,7 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
       </footer>
 
       <AskWidget walkthroughId={params.walkthrough} />
+      <MermaidHydrator />
     </main>
   );
 }
