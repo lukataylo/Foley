@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import type { Manifest } from "@/lib/fs";
-import type { Step, StepDiff, Take, Walkthrough } from "@/lib/types";
+import type { StepDiff, Take, Walkthrough } from "@/lib/types";
 import { Timeline } from "./Timeline";
 import { Inspector } from "./Inspector";
 import { SidePanel } from "./SidePanel";
@@ -26,14 +25,14 @@ export type RailTab = "steps" | "voice" | "brand" | "ai";
 
 interface Props {
   takeId: string;
+  walkthroughDisplayName: string;
   take: Take;
   walkthrough: Walkthrough;
-  manifest: Manifest;
   tracks: TrackEntry[];
   masterUrl: string;
 }
 
-export function EditorShell({ takeId, take, walkthrough, manifest, tracks, masterUrl }: Props) {
+export function EditorShell({ takeId, walkthroughDisplayName, take, walkthrough, tracks, masterUrl }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -136,7 +135,7 @@ export function EditorShell({ takeId, take, walkthrough, manifest, tracks, maste
       {/* ─── header ─── */}
       <header className="editor-header">
         <div className="left">
-          <Link href={`/walkthroughs/v1`} className="back" style={{ margin: 0 }}>← Loop</Link>
+          <Link href={`/walkthroughs/${walkthrough.id}`} className="back" style={{ margin: 0 }}>← {walkthroughDisplayName}</Link>
           <span className="editor-title">
             {takeId}
             <span className="meta">

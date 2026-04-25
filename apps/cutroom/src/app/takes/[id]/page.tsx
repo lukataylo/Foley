@@ -62,14 +62,17 @@ export default async function TakePage({ params }: { params: { id: string } }) {
     segment_sha256: segmentsByStep[s.id]?.segment_sha256 ?? null,
   }));
 
+  // Friendly title for the back-link. Matches the home's TITLECASE map.
+  const displayName = walkthrough.id === "v1" ? "Loop" : walkthrough.id.replace(/[-_]/g, " ");
+
   return (
     <EditorShell
       takeId={params.id}
+      walkthroughDisplayName={displayName}
       take={take}
       walkthrough={walkthrough}
-      manifest={manifest}
       tracks={trackData}
-      masterUrl={takePublicPath("v1", params.id, "master.mp4")}
+      masterUrl={takePublicPath(walkthrough.id, params.id, "master.mp4")}
     />
   );
 }

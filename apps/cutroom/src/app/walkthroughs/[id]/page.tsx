@@ -52,7 +52,7 @@ export default async function WalkthroughDetailPage({
             <p className="detail-eyebrow" style={{ marginTop: 12 }}>Walkthrough · v{wt.version}</p>
             <h1 className="detail-title">A tour of {wt.target_app.repo.split("/")[1] ?? wt.id}</h1>
           </div>
-          <div className="actions" style={{ display: "flex", gap: 10 }}>
+          <div className="actions">
             <ThemeToggle />
             <Link className="btn-secondary" href={`/docs/${params.id}`}>Docs page</Link>
           </div>

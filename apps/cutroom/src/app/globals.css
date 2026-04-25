@@ -143,7 +143,7 @@ code, .mono {
   color: var(--muted);
   font-size: 13px;
 }
-.cutroom-header .actions {
+.actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -296,11 +296,16 @@ h2.section-label {
   transition: transform 200ms ease, background 200ms ease;
   position: relative;
 }
-.folder-card:hover {
+/* Hover-lift only for clickable folders (those nested inside or being an <a>). */
+a .folder-card:hover,
+a.folder-card:hover {
   transform: translateY(-4px);
   background: rgba(255,255,255,0.4);
 }
-[data-theme="dark"] .folder-card:hover { background: rgba(255,255,255,0.02); }
+[data-theme="dark"] a .folder-card:hover,
+[data-theme="dark"] a.folder-card:hover { background: rgba(255,255,255,0.02); }
+/* Placeholder folders are not clickable — make that obvious. */
+div > .folder-card.placeholder { cursor: default; }
 .folder-card .folder-art { width: 200px; height: 156px; }
 .folder-card .folder-meta { margin-top: 12px; }
 .folder-card .folder-title {
