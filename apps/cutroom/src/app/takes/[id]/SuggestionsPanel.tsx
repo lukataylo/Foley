@@ -27,6 +27,7 @@ interface Props {
   selectedClipId: string | null;
   onPreview: (suggestion: Suggestion) => void;
   onInsert: (suggestion: Suggestion) => void;
+  onAddStep?: () => void;
   busy: boolean;
 }
 
@@ -52,7 +53,14 @@ export function SuggestionsPanel(p: Props) {
   return (
     <div className="sgx-panel">
       <header className="sgx-header">
-        <h2>Suggestions</h2>
+        <div className="sgx-header-row">
+          <h2>Suggestions</h2>
+          {p.onAddStep ? (
+            <button className="sgx-add-step" type="button" onClick={p.onAddStep}>
+              + Add step
+            </button>
+          ) : null}
+        </div>
         <p>From recent PRs. Click to preview, insert to drop into the timeline.</p>
       </header>
 

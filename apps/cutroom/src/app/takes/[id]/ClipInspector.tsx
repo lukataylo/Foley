@@ -26,6 +26,8 @@ interface Props {
   onUpdateTransition?: (id: string, patch: Partial<TransitionSpec>) => void;
   /** Open the full transition preview/editor (canvas swap). */
   onOpenTransitionInCanvas?: (id: string) => void;
+  /** Edit the underlying step in walkthrough.yaml — title/narration/duration. */
+  onEditStep?: (stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) => void;
   busy?: boolean;
 }
 
@@ -56,7 +58,16 @@ export function ClipInspector(p: Props) {
       <ClipHeader clip={clip} onRemove={p.onRemove} />
       <ClipTiming clip={clip} onPatch={p.onPatch} />
 
-      {clip.kind === "video" && <VideoBody clip={clip} onPatch={p.onPatch} onRetake={p.onRetake} busy={p.busy} />}
+      {clip.kind === "video" && (
+        <VideoBody
+          clip={clip}
+          onPatch={p.onPatch}
+          onRetake={p.onRetake}
+          onEditStep={p.onEditStep}
+          sourceById={p.sourceById}
+          busy={p.busy}
+        />
+      )}
       {clip.kind === "voice" && <VoiceBody clip={clip} onPatch={p.onPatch} onRenarrate={p.onRenarrate} busy={p.busy} />}
       {clip.kind === "music" && (
         <MusicBody
@@ -145,13 +156,18 @@ function VideoBody({
   clip,
   onPatch,
   onRetake,
+  onEditStep,
+  sourceById,
   busy,
 }: {
   clip: Clip & { kind: "video" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
   onRetake: (stepId: string) => void;
+  onEditStep?: (stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) => void;
+  sourceById: Record<string, TrackEntry>;
   busy?: boolean;
 }) {
+  const src = sourceById[clip.step_id];
   return (
     <>
       <Section title="Source">
@@ -197,6 +213,25 @@ function VideoBody({
         Re-recording replaces the source mp4 only. Length, fades, zoom, and
         position on the timeline are preserved.
       </p>
+      {onEditStep && src ? (
+        <Section title="Author the step (walkthrough.yaml)">
+          <Row label="Title">
+            <TextInput value={src.title} onChange={(v) => onEditStep(clip.step_id, { title: v })} />
+          </Row>
+          <Row label="Narration">
+            <TextArea value={src.narration} onChange={(v) => onEditStep(clip.step_id, { narration: v })} />
+          </Row>
+          <Row label="Duration">
+            <NumInput
+              value={src.duration_ms / 1000}
+              step={0.5}
+              min={1}
+              suffix="s"
+              onChange={(v) => onEditStep(clip.step_id, { duration_ms: Math.round(v * 1000) })}
+            />
+          </Row>
+        </Section>
+      ) : null}
     </>
   );
 }

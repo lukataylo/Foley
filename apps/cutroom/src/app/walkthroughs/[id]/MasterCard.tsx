@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+interface MasterBackup {
+  id: string;
+  ts: string;
+  promoted_from: string | null;
+  master_sha256: string | null;
+  size_bytes: number | null;
+}
 
 interface TakeChoice {
   id: string;
@@ -31,6 +39,16 @@ export function MasterCard({
   const router = useRouter();
   const [picking, setPicking] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [backups, setBackups] = useState<MasterBackup[]>([]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    void fetch(`/api/walkthroughs/${walkthroughId}/master/history`)
+      .then((r) => r.json())
+      .then((j) => setBackups(j.backups ?? []))
+      .catch(() => setBackups([]));
+  }, [historyOpen, walkthroughId]);
 
   async function promote(takeId: string) {
     if (!confirm(`Promote ${takeId} to master? The current master will be archived.`)) return;
@@ -85,9 +103,50 @@ export function MasterCard({
         ) : null}
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
+      <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
         <Link href={`/takes/master`} className="btn-secondary">Open in editor</Link>
+        <button
+          type="button"
+          className="brand-edit-btn"
+          onClick={() => setHistoryOpen((v) => !v)}
+        >
+          {historyOpen ? "Hide history" : "History"}
+        </button>
       </div>
+      {historyOpen ? (
+        <div className="master-picker" style={{ marginTop: 10 }}>
+          <div className="master-picker-label">Previous masters</div>
+          {backups.length === 0 ? (
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>
+              No backups yet — every promotion archives the prior master here.
+            </p>
+          ) : (
+            <ul>
+              {backups.map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    className="master-picker-row"
+                    onClick={() => promote(b.id)}
+                    disabled={busyId !== null}
+                    title={b.master_sha256 ?? ""}
+                  >
+                    <span className="mono">{b.id.replace("master.prev-", "").slice(0, 19)}</span>
+                    <span className="title">
+                      {b.promoted_from ? `was ${b.promoted_from}` : "(direct master)"}
+                      {b.master_sha256 ? ` · sha ${b.master_sha256.slice(0, 8)}…` : ""}
+                      {b.size_bytes ? ` · ${(b.size_bytes / (1024 * 1024)).toFixed(1)} MB` : ""}
+                    </span>
+                    <span className="cta">
+                      {busyId === b.id ? "Restoring…" : "Restore →"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       {picking ? (
         <div className="master-picker">

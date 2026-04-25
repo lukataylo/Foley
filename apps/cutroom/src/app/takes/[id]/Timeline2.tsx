@@ -35,6 +35,12 @@ interface Props {
   /** Pause video at scrub/drag start, resume at end. */
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
+  /** Mark a clip as out-of-date with its source. */
+  isClipStale?: (clip: Clip) => boolean;
+  /** Regenerate every stale clip we can (banana/music). */
+  onRegenerateStale?: () => void;
+  /** True while a regen sweep is in flight. */
+  regenBusy?: boolean;
 }
 
 const LABEL_GUTTER = 64;
@@ -64,6 +70,9 @@ export function Timeline2(p: Props) {
   const totalSeconds = totalMs / 1000;
   const totalWidth = totalSeconds * p.zoom;
   const rows = rowCount(p.overlay);
+  const staleCount = p.isClipStale
+    ? p.overlay.clips.filter(p.isClipStale).length
+    : 0;
 
   const ticks = useMemo(() => {
     const arr: number[] = [];
@@ -242,6 +251,17 @@ export function Timeline2(p: Props) {
           <button className="ctrl-icon" onClick={() => p.onJump(1)} title="Next clip (L)">⏭</button>
           <span className="speed">{p.speed.toFixed(1)}x</span>
           <span className="timestamp">{fmt(p.currentTime)} / {fmt(totalSeconds)}</span>
+          {staleCount > 0 ? (
+            <button
+              type="button"
+              className="tl3-stale-cta"
+              onClick={p.onRegenerateStale}
+              disabled={p.regenBusy}
+              title="Regenerate stale clips"
+            >
+              ⚠ {staleCount} stale {p.regenBusy ? "· regenerating…" : "· regenerate all"}
+            </button>
+          ) : null}
         </div>
         <div className="zoom">
           <button className="ctrl-icon" onClick={() => p.onZoom(p.zoom - 8)} title="Zoom out">－</button>
@@ -283,6 +303,7 @@ export function Timeline2(p: Props) {
                 sourceById={p.sourceById}
                 selectedClipId={p.selectedClipId}
                 currentTime={p.currentTime}
+                isClipStale={p.isClipStale}
                 onSelectClip={p.onSelectClip}
                 onClipPointerDown={startDrag}
               />
@@ -302,6 +323,7 @@ interface RowProps {
   sourceById: Record<string, TrackEntry>;
   selectedClipId: string | null;
   currentTime: number;
+  isClipStale?: (clip: Clip) => boolean;
   onSelectClip: (id: string | null) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
 }
@@ -320,6 +342,7 @@ function Row(p: RowProps) {
             zoom={p.zoom}
             sourceById={p.sourceById}
             selected={p.selectedClipId === c.id}
+            stale={p.isClipStale?.(c) ?? false}
             onSelect={p.onSelectClip}
             onPointerDown={p.onClipPointerDown}
           />
@@ -349,6 +372,7 @@ interface ClipProps {
   zoom: number;
   sourceById: Record<string, TrackEntry>;
   selected: boolean;
+  stale: boolean;
   onSelect: (id: string | null) => void;
   onPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
 }
@@ -406,7 +430,7 @@ function ClipBlock(p: ClipProps) {
 
   return (
     <div
-      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""}`}
+      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""} ${p.stale ? "stale" : ""}`}
       style={{ left, width }}
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest(".tl3-handle")) return;
@@ -421,6 +445,7 @@ function ClipBlock(p: ClipProps) {
       <div className="tl3-clip-label">
         <span className="tl3-clip-glyph">{KIND_GLYPH[p.clip.kind]}</span>
         {label}
+        {p.stale ? <span className="tl3-stale-badge" title="Source updated since this clip was edited">⚠</span> : null}
       </div>
       <div className="tl3-handle tl3-handle-l" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-l", e)} />
       <div className="tl3-handle tl3-handle-r" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-r", e)} />

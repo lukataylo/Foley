@@ -1,86 +1,91 @@
-# v1 walkthrough — hand-authored as if a doc expert wrote it.
-# Six steps. Total runtime ~70 seconds.
-#
-# Each Step runs in its own Playwright context, so each begins with a goto
-# that sets the scene. Step ids are stable: the agent uses them to decide
-# what to retake. The walkthrough id comes from the directory name (`v1`).
-
 version: 1
 target_app:
   repo: lukataylo/Foley-demo
   dev_url: http://localhost:3001
 brand_ref: brand.yaml
-
 steps:
-
   - id: intro
     title: Open Loop
-    narration: >-
-      Loop is a small, fast tracker for product teams.
-      Here's a tour in under a minute.
+    narration: Loop is a small, fast tracker for product teams. Here's a tour in under a minute.
     duration_ms: 5500
     actions:
-      - { kind: goto, url: "/login" }
-      - { kind: wait, ms: 4500 }
-
+      - kind: goto
+        url: /login
+      - kind: wait
+        ms: 4500
   - id: sign_in
     title: Sign in
-    narration: >-
-      Sign in with your work email — no password to remember.
+    narration: Sign in with your work email — no password to remember.
     duration_ms: 5500
     actions:
-      - { kind: goto, url: "/login" }
-      - { kind: fill, selector: "[data-testid=email-input]", value: "anna@acme.com" }
-      - { kind: wait, ms: 800 }
-      - { kind: hover, selector: "[data-testid=signin-button]" }
-      - { kind: wait, ms: 600 }
-      - { kind: click, selector: "[data-testid=signin-button]" }
-      - { kind: wait, ms: 1500 }
-
+      - kind: goto
+        url: /login
+      - kind: fill
+        selector: '[data-testid=email-input]'
+        value: anna@acme.com
+      - kind: wait
+        ms: 800
+      - kind: hover
+        selector: '[data-testid=signin-button]'
+      - kind: wait
+        ms: 600
+      - kind: click
+        selector: '[data-testid=signin-button]'
+      - kind: wait
+        ms: 1500
   - id: board_overview
     title: See the board
-    narration: >-
-      Every project lives on one board. Todo, doing, done — the team's whole week, on one screen.
+    narration: Every project lives on one board. Todo, doing, done — the team's whole week, on one screen.
     duration_ms: 7500
     actions:
-      - { kind: goto, url: "/" }
-      - { kind: wait, ms: 1500 }
-      - { kind: hover, selector: "[data-column=doing]" }
-      - { kind: wait, ms: 4500 }
-
+      - kind: goto
+        url: /
+      - kind: wait
+        ms: 1500
+      - kind: hover
+        selector: '[data-column=doing]'
+      - kind: wait
+        ms: 4500
   - id: open_ticket
     title: Open a ticket
-    narration: >-
-      Click any card to open the full ticket — description, status, comments, all in one place.
+    narration: Click any card to open the full ticket — description, status, comments, all in one place.
     duration_ms: 6000
     actions:
-      - { kind: goto, url: "/" }
-      - { kind: wait, ms: 1200 }
-      - { kind: click, selector: "[data-ticket=LOP-103]" }
-      - { kind: wait, ms: 3500 }
-
-  # Step that the v1→v2 PR will modify (button label change).
+      - kind: goto
+        url: /
+      - kind: wait
+        ms: 1200
+      - kind: click
+        selector: '[data-ticket=LOP-103]'
+      - kind: wait
+        ms: 3500
   - id: mark_done
     title: Move it forward
-    narration: >-
-      One click marks a ticket as done. No status menus, no friction.
+    narration: One click marks a ticket as done. No status menus, no friction.
     duration_ms: 5500
     actions:
-      - { kind: goto, url: "/ticket/LOP-103" }
-      - { kind: wait, ms: 1200 }
-      - { kind: hover, selector: "[data-testid=mark-done-button]" }
-      - { kind: wait, ms: 1200 }
-      - { kind: click, selector: "[data-testid=mark-done-button]" }
-      - { kind: wait, ms: 2000 }
-
+      - kind: goto
+        url: /ticket/LOP-103
+      - kind: wait
+        ms: 1200
+      - kind: hover
+        selector: '[data-testid=mark-done-button]'
+      - kind: wait
+        ms: 1200
+      - kind: click
+        selector: '[data-testid=mark-done-button]'
+      - kind: wait
+        ms: 2000
   - id: settings
     title: Settings stay out of the way
-    narration: >-
-      Workspace settings are one click away — and that's the whole tour.
-      Loop, in under a minute.
+    narration: Workspace settings are one click away — and that's the whole tour. Loop, in under a minute.
     duration_ms: 6500
     actions:
-      - { kind: goto, url: "/settings" }
-      - { kind: wait, ms: 1500 }
-      - { kind: hover, selector: "[data-testid=workspace-name-input]" }
-      - { kind: wait, ms: 4500 }
+      - kind: goto
+        url: /settings
+      - kind: wait
+        ms: 1500
+      - kind: hover
+        selector: '[data-testid=workspace-name-input]'
+      - kind: wait
+        ms: 4500
