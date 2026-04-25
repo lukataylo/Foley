@@ -68,7 +68,16 @@ export function ClipInspector(p: Props) {
           busy={p.busy}
         />
       )}
-      {clip.kind === "voice" && <VoiceBody clip={clip} onPatch={p.onPatch} onRenarrate={p.onRenarrate} busy={p.busy} />}
+      {clip.kind === "voice" && (
+        <VoiceBody
+          clip={clip}
+          onPatch={p.onPatch}
+          onRenarrate={p.onRenarrate}
+          onEditStep={p.onEditStep}
+          sourceById={p.sourceById}
+          busy={p.busy}
+        />
+      )}
       {clip.kind === "music" && (
         <MusicBody
           clip={clip}
@@ -214,12 +223,9 @@ function VideoBody({
         position on the timeline are preserved.
       </p>
       {onEditStep && src ? (
-        <Section title="Author the step (walkthrough.yaml)">
+        <Section title="Step metadata (walkthrough.yaml)">
           <Row label="Title">
             <TextInput value={src.title} onChange={(v) => onEditStep(clip.step_id, { title: v })} />
-          </Row>
-          <Row label="Narration">
-            <TextArea value={src.narration} onChange={(v) => onEditStep(clip.step_id, { narration: v })} />
           </Row>
           <Row label="Duration">
             <NumInput
@@ -240,29 +246,56 @@ function VoiceBody({
   clip,
   onPatch,
   onRenarrate,
+  onEditStep,
+  sourceById,
   busy,
 }: {
   clip: Clip & { kind: "voice" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
   onRenarrate: (stepId: string) => void;
+  onEditStep?: (stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) => void;
+  sourceById: Record<string, TrackEntry>;
   busy?: boolean;
 }) {
+  const src = sourceById[clip.step_id];
   return (
     <>
       <Section title="Source">
         <Row label="Step"><span className="ci-mono">{clip.step_id}</span></Row>
       </Section>
+      {onEditStep && src ? (
+        <Section title="Narration script">
+          <Row label="Text">
+            <TextArea
+              value={src.narration}
+              onChange={(v) => onEditStep(clip.step_id, { narration: v })}
+            />
+          </Row>
+        </Section>
+      ) : null}
       <Section title="Audio">
         <Row label="Volume">
           <Slider min={0} max={1.5} step={0.05} value={clip.volume}
             onChange={(v) => onPatch(clip.id, { volume: v })} suffix="x" />
         </Row>
+        <Row label="Fade in">
+          <Slider min={0} max={3} step={0.05} value={clip.fade_in_ms / 1000}
+            onChange={(v) => onPatch(clip.id, { fade_in_ms: Math.round(v * 1000) })} suffix="s" />
+        </Row>
+        <Row label="Fade out">
+          <Slider min={0} max={3} step={0.05} value={clip.fade_out_ms / 1000}
+            onChange={(v) => onPatch(clip.id, { fade_out_ms: Math.round(v * 1000) })} suffix="s" />
+        </Row>
       </Section>
       <div className="ci-actions">
-        <button className="ci-btn ci-btn-ghost" disabled={busy} onClick={() => onRenarrate(clip.step_id)}>
-          🎤 Re-narrate
+        <button className="ci-btn ci-btn-primary" disabled={busy} onClick={() => onRenarrate(clip.step_id)}>
+          🎤 Re-narrate with ElevenLabs
         </button>
       </div>
+      <p className="ci-help">
+        Re-narrate regenerates the .narration.mp3 from the script above.
+        Hash-cached, so identical text returns instantly.
+      </p>
     </>
   );
 }
