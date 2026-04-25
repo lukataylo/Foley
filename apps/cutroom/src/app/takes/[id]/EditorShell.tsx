@@ -31,7 +31,7 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { Inspector } from "./Inspector";
-import { SidePanel } from "./SidePanel";
+import { FeaturesPanel } from "./FeaturesPanel";
 import { ClipInspector } from "./ClipInspector";
 import {
   type Clip,
@@ -103,7 +103,9 @@ export function EditorShell({
   const [selectedStepId, setSelectedStepId] = useState<string | null>(initialStep);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
-  const [railTab, setRailTab] = useState<RailTab>("steps");
+  /** Canvas mode — video preview by default, transitions preview when the
+   *  user opens the transitions feature. (Replaces the legacy 5-tab rail.) */
+  const [canvasMode, setCanvasMode] = useState<"video" | "transitions">("video");
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(36);
@@ -171,7 +173,7 @@ export function EditorShell({
       return next;
     });
     setActiveTransitionId(t.id);
-    setRailTab("transitions");
+    setCanvasMode("transitions");
   }
   function removeTransition(id: string) {
     setTransitions((curr) => {
@@ -718,49 +720,27 @@ export function EditorShell({
       </header>
 
       <div className="editor-main">
-        <nav className="editor-rail">
-          <RailButton id="steps"       glyph="⊞" active={railTab === "steps"}       onClick={() => setRailTab("steps")}>Steps</RailButton>
-          <RailButton id="voice"       glyph="♪" active={railTab === "voice"}       onClick={() => setRailTab("voice")}>Voice</RailButton>
-          <RailButton id="brand"       glyph="◐" active={railTab === "brand"}       onClick={() => setRailTab("brand")}>Brand</RailButton>
-          <RailButton id="transitions" glyph="⌁" active={railTab === "transitions"} onClick={() => setRailTab("transitions")}>Trans.</RailButton>
-          <RailButton id="ai"          glyph="✦" active={railTab === "ai"}          onClick={() => setRailTab("ai")}>AI</RailButton>
-        </nav>
-
-        <SidePanel
-          tab={railTab}
-          tracks={tracks}
-          walkthrough={walkthrough}
-          selectedStepId={selectedStepId}
-          onSelectStep={selectStep}
-          volume={volume} setVolume={setVolume}
-          fadeIn={fadeIn} setFadeIn={setFadeIn}
-          fadeOut={fadeOut} setFadeOut={setFadeOut}
-          speed={speed} setSpeed={setSpeed}
-          animIn={animIn} setAnimIn={setAnimIn}
-          animOut={animOut} setAnimOut={setAnimOut}
-          aiReRunReview={aiReRunReview}
-          aiEditNarration={aiEditNarration}
-          aiReNarrateSelected={aiReNarrateSelected}
-          aiLaptopMockup={aiLaptopMockup}
-          aiBusy={busyAction}
-          transitions={transitions}
-          activeTransitionId={activeTransitionId}
-          onSelectTransition={(id) => { setActiveTransitionId(id); setTransitionResetKey((n) => n + 1); }}
-          onAddTransition={(kind) => addTransition(kind)}
-          stepZooms={stepZooms}
-          onPatchStepZoom={patchStepZoom}
-          onRemoveTransition={removeTransition}
-          onUpdateTransition={updateTransition}
-          onRelayoutTransition={relayoutTransition}
-          onPatchScreenshot={patchScreenshot}
-          onAddScreenshot={addScreenshotToTransition}
-          onRemoveScreenshot={removeScreenshotFromTransition}
-          onStylizeTransition={aiStylizeTransition}
-          onReplayTransition={() => setTransitionResetKey((n) => n + 1)}
+        <FeaturesPanel
+          masterUrl={masterUrl}
+          selectedClipId={selectedClipId}
+          busy={busyAction !== null}
+          onAddBanana={() => addClipOfKind("banana")}
+          onAddTyped={() => addClipOfKind("typed")}
+          onAddMusic={() => addClipOfKind("music")}
+          onAddCaption={() => addClipOfKind("caption")}
+          onOpenTransitions={() => {
+            const t = transitions[0] ?? null;
+            if (t) setActiveTransitionId(t.id);
+            else addTransition("title");
+            setCanvasMode("transitions");
+          }}
+          onRetakeSelected={() => aiReRunReview()}
+          onRenarrateSelected={() => aiReNarrateSelected()}
+          onOpenWatching={() => router.push(`/walkthroughs/${walkthrough.id}`)}
         />
 
         <section className="editor-stage">
-          {railTab === "transitions" && activeTransition ? (
+          {canvasMode === "transitions" && activeTransition ? (
             <div className="canvas is-transition">
               <TransitionSlide
                 spec={activeTransition}
@@ -786,10 +766,11 @@ export function EditorShell({
             </div>
           )}
           <div className="tabs">
-            {railTab === "transitions" && activeTransition ? (
+            {canvasMode === "transitions" && activeTransition ? (
               <>
                 <button className="on" type="button">Live</button>
                 <button onClick={() => setTransitionResetKey((n) => n + 1)} type="button">Replay typing</button>
+                <button onClick={() => setCanvasMode("video")} type="button">← Back to video</button>
               </>
             ) : (
               <>
@@ -888,26 +869,6 @@ export function EditorShell({
         />
       )}
     </div>
-  );
-}
-
-function RailButton(props: {
-  id: string;
-  glyph: string;
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className={`rail-btn ${props.active ? "active" : ""}`}
-      onClick={props.onClick}
-      type="button"
-      aria-label={props.id}
-    >
-      <span className="glyph">{props.glyph}</span>
-      <span>{props.children}</span>
-    </button>
   );
 }
 
