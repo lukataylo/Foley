@@ -44,6 +44,7 @@ export interface BrandConfig {
 export interface Walkthrough {
   id: string;
   version: number;
+  display_name?: string;
   target_app: { repo: string; dev_url: string };
   brand: BrandConfig;
   steps: Step[];

@@ -57,7 +57,7 @@ export async function listWalkthroughSummaries(): Promise<WalkthroughSummary[]> 
         : null;
       out.push({
         id,
-        display_name: TITLECASE[id] ?? id.replace(/[-_]/g, " "),
+        display_name: wt.display_name ?? TITLECASE[id] ?? id.replace(/[-_]/g, " "),
         step_count: wt.steps.length,
         take_count: takes.length,
         voice_name: wt.brand.voice_name,

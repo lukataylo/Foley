@@ -1,10 +1,16 @@
-// Project page — pinned project cards on top, doc grid below, hamburger-toggled
-// sidebar with filter + tree. Hosts many docs of varying kinds.
+// Project page — sticky-note masonry on top (Master / Brand / Dailies /
+// Watching / Steps / Recent activity), docs grid below with content-aware
+// previews (text reads like paper, video like a player, steps like a tutorial).
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { listTakes, loadWalkthrough } from "@/lib/fs";
+import {
+  listTakes,
+  loadManifest,
+  loadWalkthrough,
+  takePublicPath,
+} from "@/lib/fs";
 import { loadDocs } from "@/lib/docs";
 import { WalkthroughLayout } from "./WalkthroughLayout";
 
@@ -34,82 +40,142 @@ export default async function WalkthroughDetailPage({
 }: {
   params: { id: string };
 }) {
-  let wt, takes, docs;
+  let wt, takes, masterManifest, docs;
   try {
     wt = await loadWalkthrough(params.id);
     takes = await listTakes(params.id);
     docs = await loadDocs(params.id);
+    try { masterManifest = await loadManifest(params.id, "master"); }
+    catch { masterManifest = null; }
   } catch {
     notFound();
   }
 
-  const repoShort = wt.target_app.repo;
-  const recent = takes
-    .slice()
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .slice(0, 4);
+  const master = takes.find((t) => t.id === "master");
+  const otherTakes = takes.filter((t) => t.id !== "master");
+  const totalDuration = wt.steps.reduce((n, s) => n + s.duration_ms, 0);
 
-  // Compact project strip: Watching · Brand · Activity. Three sticky cards
-  // with a quieter palette so the docs below get visual priority.
+  // The pinned project masonry — back to the original sticky cards.
   const projectStrip = (
-    <>
-      <div className="strip-card strip-watching">
-        <div className="strip-head">
-          <Octocat />
-          <span className="strip-title">Watching</span>
-          <span className="strip-live"><span className="dot" /> live</span>
+    <div className="sticky-grid">
+      {master ? (
+        <div className="sticky sticky-sky">
+          <h2>Master</h2>
+          <video
+            controls
+            preload="metadata"
+            src={takePublicPath(params.id, "master", "master.mp4")}
+          />
+          <div className="meta">
+            {(totalDuration / 1000).toFixed(1)}s
+            {masterManifest ? <> · sha {masterManifest.master_sha256.slice(0, 12)}…</> : null}
+          </div>
+          <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
+            <Link href={`/takes/master`} className="btn-secondary">Open in editor</Link>
+          </div>
         </div>
-        <a
-          className="strip-row strip-link"
-          href={`https://github.com/${repoShort}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span className="k">Repo</span>
-          <span className="v mono">{repoShort} <span className="ext">↗</span></span>
-        </a>
-        <div className="strip-row"><span className="k">Director</span><span className="v">Sonnet 4.6</span></div>
-        <div className="strip-row"><span className="k">Webhook</span><span className="v mono">/api/webhook/github</span></div>
-      </div>
+      ) : null}
 
-      <div className="strip-card strip-brand">
-        <div className="strip-head">
-          <span className="strip-title">Brand</span>
-          <span className="strip-meta">🔒 locked</span>
-        </div>
-        <div className="strip-row"><span className="k">Voice</span><span className="v">{wt.brand.voice_name} · en-GB</span></div>
-        <div className="strip-row"><span className="k">Pacing</span><span className="v">{wt.brand.pacing_wpm} wpm</span></div>
-        <div className="strip-row"><span className="k">Font</span><span className="v">{wt.brand.font_family}</span></div>
-        <div className="strip-row">
-          <span className="k">Palette</span>
-          <span className="palette-dots v">
+      <div className="sticky sticky-mint">
+        <h2>Brand <Sparkle /></h2>
+        <div className="row"><span className="k">Voice</span><span className="v">{wt.brand.voice_name} · en-GB</span></div>
+        <div className="row"><span className="k">Pacing</span><span className="v">{wt.brand.pacing_wpm} wpm</span></div>
+        <div className="row"><span className="k">Intro card</span><span className="v">{(wt.brand.intro_card_ms / 1000).toFixed(1)}s</span></div>
+        <div className="row"><span className="k">Font</span><span className="v">{wt.brand.font_family}</span></div>
+        <div className="row"><span className="k">Palette</span>
+          <span className="palette-dots">
             <span style={{ background: wt.brand.palette_bg }} />
             <span style={{ background: wt.brand.palette_fg }} />
             <span style={{ background: wt.brand.palette_accent }} />
           </span>
         </div>
+        <div className="voice-locked">🔒 voice locked at the walkthrough level</div>
       </div>
 
-      <div className="strip-card strip-activity">
-        <div className="strip-head">
-          <span className="strip-title">Activity</span>
-          <span className="strip-meta">{takes.length} takes</span>
-        </div>
-        {recent.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>No takes yet.</p>
+      <div className="sticky sticky-cream">
+        <h2>Dailies</h2>
+        <div className="sub-label">{otherTakes.length} in review</div>
+        {otherTakes.length === 0 ? (
+          <p style={{ color: "var(--muted)" }}>No takes in review.</p>
         ) : (
-          recent.map((t) => (
-            <div key={t.id} className="strip-row strip-activity-row">
-              <span className="when mono">{formatTime(t.created_at)}</span>
-              <Link href={`/takes/${t.id}`} className="v">
-                <span className="mono">{t.id}</span>{" "}
-                <span className={`status status-${t.status}`}>{t.status}</span>
+          otherTakes.map((t) => {
+            const counts = t.step_diffs.reduce<Record<string, number>>(
+              (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
+              {},
+            );
+            return (
+              <Link key={t.id} href={`/takes/${t.id}`} className="sticky-mini">
+                <div className="mini-row">
+                  <span className="mini-id">{t.id}</span>
+                  <span className={`status status-${t.status}`}>{t.status}</span>
+                </div>
+                <div className="mini-title">{t.pr_title}</div>
+                <div className="mini-pills">
+                  {(["changed", "added", "removed", "unchanged"] as const).map((s) =>
+                    counts[s] ? (
+                      <span key={s} className={`pill pill-${s}`}>{counts[s]} {s}</span>
+                    ) : null,
+                  )}
+                </div>
               </Link>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
-    </>
+
+      <div className="sticky sticky-lavender gh-card">
+        <div className="gh-card-head">
+          <Octocat />
+          <h2 style={{ margin: 0 }}>Watching</h2>
+          <span className="gh-live"><span className="dot" /> live</span>
+        </div>
+        <a
+          className="row gh-row"
+          href={`https://github.com/${wt.target_app.repo}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="k">Repo</span>
+          <span className="v mono">
+            {wt.target_app.repo}
+            <span className="ext-arrow" aria-hidden="true">↗</span>
+          </span>
+        </a>
+        <div className="row"><span className="k">Dev URL</span><span className="v mono">{wt.target_app.dev_url}</span></div>
+        <div className="row"><span className="k">Director</span><span className="v">Sonnet 4.6</span></div>
+        <div className="row"><span className="k">Webhook</span><span className="v mono">/api/webhook/github</span></div>
+      </div>
+
+      <div className="sticky sticky-peach">
+        <h2>Steps <Sparkle /></h2>
+        <ul className="step-list">
+          {wt.steps.map((s, i) => (
+            <li key={s.id}>
+              <span className="num">{String(i + 1).padStart(2, "0")}</span>
+              <span>{s.title}</span>
+              <span className="dur">{(s.duration_ms / 1000).toFixed(1)}s</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="sticky sticky-rose">
+        <h2>Recent activity</h2>
+        {takes
+          .slice()
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .slice(0, 5)
+          .map((t) => (
+            <div key={t.id} className="activity">
+              <span className="when">{formatTime(t.created_at)}</span>
+              <span>
+                <strong>{t.id}</strong> <span style={{ color: "var(--muted)" }}>{t.status}</span>
+                {t.pr_title ? <> · {t.pr_title}</> : null}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
   );
 
   const headerActions = (
@@ -132,5 +198,16 @@ export default async function WalkthroughDetailPage({
         headerActions={headerActions}
       />
     </main>
+  );
+}
+
+function Sparkle() {
+  return (
+    <svg className="sparkle" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
