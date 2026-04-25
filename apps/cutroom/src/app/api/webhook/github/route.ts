@@ -8,7 +8,6 @@ const SECRET = process.env.GITHUB_WEBHOOK_SECRET ?? "";
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
 function verify(body: string, header: string | null): boolean {
-  if (!SECRET) return true; // dev mode — no secret configured, accept all
   if (!header?.startsWith("sha256=")) return false;
   const expected = crypto.createHmac("sha256", SECRET).update(body).digest("hex");
   const provided = header.slice("sha256=".length);
@@ -20,6 +19,23 @@ function verify(body: string, header: string | null): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // Refuse to act when no shared secret is configured. The previous "no
+  // secret = accept all" behaviour was a foot-gun: a judge who pointed a
+  // GitHub webhook at this endpoint without setting GITHUB_WEBHOOK_SECRET
+  // in .env would silently let any POST trigger a director review job
+  // (and burn API credits). Better to fail loud.
+  if (!SECRET) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "webhook_not_configured",
+        message:
+          "GITHUB_WEBHOOK_SECRET is not set in .env. Generate a random string, paste it both into .env and into the GitHub webhook config, then restart the dev server.",
+      },
+      { status: 503 },
+    );
+  }
+
   const body = await req.text();
   if (!verify(body, req.headers.get("x-hub-signature-256"))) {
     return NextResponse.json({ ok: false, error: "bad signature" }, { status: 401 });
@@ -54,5 +70,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, route: "webhook/github" });
+  return NextResponse.json({
+    ok: true,
+    route: "webhook/github",
+    secret_configured: !!SECRET,
+  });
 }
