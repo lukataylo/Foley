@@ -1,0 +1,28 @@
+{
+  "step_id": "open_ticket",
+  "fingerprint": "caf30833cb0e1452",
+  "actual_duration_ms": 6089,
+  "declared_duration_ms": 6000,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/"
+    },
+    {
+      "kind": "wait",
+      "ms": 1200
+    },
+    {
+      "kind": "click",
+      "selector": "[data-ticket=LOP-103]"
+    },
+    {
+      "kind": "wait",
+      "ms": 3500
+    }
+  ]
+}

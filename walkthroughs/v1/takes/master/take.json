@@ -1,0 +1,48 @@
+{
+  "id": "master",
+  "walkthrough_id": "v1",
+  "parent_take_id": null,
+  "pr_number": null,
+  "pr_title": null,
+  "created_at": "2026-04-25T10:58:13.495363Z",
+  "status": "approved",
+  "step_diffs": [
+    {
+      "step_id": "intro",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "sign_in",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "board_overview",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "open_ticket",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "mark_done",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    },
+    {
+      "step_id": "settings",
+      "status": "unchanged",
+      "reason": "initial master",
+      "proposed_step": null
+    }
+  ],
+  "master_path": "master.mp4"
+}

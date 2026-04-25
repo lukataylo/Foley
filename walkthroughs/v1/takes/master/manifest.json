@@ -1,0 +1,50 @@
+{
+  "walkthrough_id": "v1",
+  "take_id": "master",
+  "master_path": "master.mp4",
+  "master_sha256": "4891fa6f3e57c6a45b2f020ee379df675119fabf9187229be7f61b398237e301",
+  "segments": [
+    {
+      "step_id": "intro",
+      "fingerprint": "ccaf5a6ad97279ec",
+      "segment_path": "segments/intro.mp4",
+      "segment_sha256": "08b5f59225bd07feb86e27a1390127b5c1193fdc299c128469b0f2ce1fb77d72",
+      "duration_ms": 5500
+    },
+    {
+      "step_id": "sign_in",
+      "fingerprint": "bbfe7babdc3ce929",
+      "segment_path": "segments/sign_in.mp4",
+      "segment_sha256": "78f1b33f2f47a8bab6231d5c17dbdc59a5cc6c52ef2999b104ab1b0559bfda19",
+      "duration_ms": 5500
+    },
+    {
+      "step_id": "board_overview",
+      "fingerprint": "fe80c3c8545d92c1",
+      "segment_path": "segments/board_overview.mp4",
+      "segment_sha256": "52d1fb6bd3234926af919b96698e4fdf4c3cf8592c1eca5fa3b681b8fb3b6bcf",
+      "duration_ms": 7500
+    },
+    {
+      "step_id": "open_ticket",
+      "fingerprint": "caf30833cb0e1452",
+      "segment_path": "segments/open_ticket.mp4",
+      "segment_sha256": "e79534946f4c5abf3a079977c7dd578ed366a9aea38f357b86f7ccf719836c85",
+      "duration_ms": 6000
+    },
+    {
+      "step_id": "mark_done",
+      "fingerprint": "61c900a0be73e52d",
+      "segment_path": "segments/mark_done.mp4",
+      "segment_sha256": "aa7160101d0795768292f096d474f42bc50d2ecc515361523f40e90088bb68c8",
+      "duration_ms": 5500
+    },
+    {
+      "step_id": "settings",
+      "fingerprint": "cc96fd00ce6f02b5",
+      "segment_path": "segments/settings.mp4",
+      "segment_sha256": "3228f640ee9a7148fd9526ee8d44a1b28df7943322c7ec1dfe478a5b0a1ca0f5",
+      "duration_ms": 6500
+    }
+  ]
+}

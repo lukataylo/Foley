@@ -1,0 +1,105 @@
+// Server-only filesystem helpers. The cutroom is a thin reader over the
+// directory the director writes to. State of record is on disk.
+
+import "server-only";
+import { readFile, readdir, stat, writeFile } from "fs/promises";
+import path from "path";
+import yaml from "js-yaml";
+import type { Take, Walkthrough } from "./types";
+
+const REPO_ROOT = path.resolve(process.cwd(), "../..");
+const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
+
+interface SegmentEntry {
+  step_id: string;
+  fingerprint: string;
+  segment_path: string;
+  segment_sha256: string;
+  duration_ms: number;
+}
+
+export interface Manifest {
+  walkthrough_id: string;
+  take_id: string;
+  master_path: string;
+  master_sha256: string;
+  segments: SegmentEntry[];
+}
+
+export async function listWalkthroughIds(): Promise<string[]> {
+  const entries = await readdir(WALKTHROUGHS_DIR, { withFileTypes: true });
+  return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+}
+
+export async function loadWalkthrough(id: string): Promise<Walkthrough> {
+  const dir = path.join(WALKTHROUGHS_DIR, id);
+  const wtRaw = yaml.load(await readFile(path.join(dir, "walkthrough.yaml"), "utf8")) as Record<string, unknown>;
+  const brandRef = (wtRaw.brand_ref as string | undefined) ?? "brand.yaml";
+  const brand = yaml.load(await readFile(path.join(dir, brandRef), "utf8")) as Walkthrough["brand"];
+  delete wtRaw.brand_ref;
+  return { ...(wtRaw as Omit<Walkthrough, "id" | "brand">), id, brand } as Walkthrough;
+}
+
+export async function listTakes(walkthroughId: string): Promise<Take[]> {
+  const takesDir = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes");
+  let entries;
+  try {
+    entries = await readdir(takesDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const takes: Take[] = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    try {
+      const t = await loadTake(walkthroughId, e.name);
+      takes.push(t);
+    } catch {
+      // ignore broken takes
+    }
+  }
+  // master first, then by created_at desc.
+  takes.sort((a, b) => {
+    if (a.id === "master") return -1;
+    if (b.id === "master") return 1;
+    return b.created_at.localeCompare(a.created_at);
+  });
+  return takes;
+}
+
+export async function loadTake(walkthroughId: string, takeId: string): Promise<Take> {
+  const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "take.json");
+  const raw = JSON.parse(await readFile(file, "utf8"));
+  return raw as Take;
+}
+
+export async function loadManifest(walkthroughId: string, takeId: string): Promise<Manifest> {
+  const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "manifest.json");
+  const raw = JSON.parse(await readFile(file, "utf8"));
+  return raw as Manifest;
+}
+
+export async function setTakeStatus(
+  walkthroughId: string,
+  takeId: string,
+  status: Take["status"],
+): Promise<Take> {
+  const file = path.join(WALKTHROUGHS_DIR, walkthroughId, "takes", takeId, "take.json");
+  const take = JSON.parse(await readFile(file, "utf8")) as Take;
+  take.status = status;
+  await writeFile(file, JSON.stringify(take, null, 2));
+  return take;
+}
+
+// Public path under /walkthroughs/... served by Next from public/walkthroughs.
+export function publicPath(walkthroughId: string, ...rest: string[]): string {
+  return "/" + path.posix.join("walkthroughs", walkthroughId, ...rest);
+}
+
+export function takePublicPath(walkthroughId: string, takeId: string, file: string): string {
+  return publicPath(walkthroughId, "takes", takeId, file);
+}
+
+export function stepFramePath(walkthroughId: string, stepId: string): string {
+  return publicPath(walkthroughId, "steps", `${stepId}.png`);
+}

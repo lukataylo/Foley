@@ -22,6 +22,11 @@ def configure() -> None:
         # No token: still configure so spans print locally to stderr.
         logfire.configure(service_name="foley-director", send_to_logfire=False)
     logfire.instrument_pydantic()
+    try:
+        logfire.instrument_anthropic()
+    except Exception:
+        # Older logfire versions don't have this; spans still wrap calls manually.
+        pass
     _configured = True
 
 

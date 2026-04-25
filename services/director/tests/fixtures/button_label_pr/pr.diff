@@ -1,0 +1,18 @@
+diff --git a/src/app/ticket/[id]/TicketActions.tsx b/src/app/ticket/[id]/TicketActions.tsx
+index 0e8a1b7..d6f3c92 100644
+--- a/src/app/ticket/[id]/TicketActions.tsx
++++ b/src/app/ticket/[id]/TicketActions.tsx
+@@ -10,11 +10,11 @@ export function TicketActions({ ticketId }: { ticketId: string }) {
+       <button
+         className="btn btn-primary"
+         data-testid="mark-done-button"
+         onClick={() => setDone(true)}
+         disabled={done}
+       >
+-        {done ? "Done" : "Mark as done"}
++        {done ? "Done" : "Ship it"}
+       </button>
+       <button className="btn" data-testid="copy-link" onClick={() => navigator.clipboard?.writeText(`loop.app/${ticketId}`)}>
+         Copy link
+       </button>
+     </>

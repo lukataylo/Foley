@@ -1,0 +1,36 @@
+{
+  "step_id": "mark_done",
+  "fingerprint": "61c900a0be73e52d",
+  "actual_duration_ms": 5497,
+  "declared_duration_ms": 5500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/ticket/LOP-103"
+    },
+    {
+      "kind": "wait",
+      "ms": 1200
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-testid=mark-done-button]"
+    },
+    {
+      "kind": "wait",
+      "ms": 1200
+    },
+    {
+      "kind": "click",
+      "selector": "[data-testid=mark-done-button]"
+    },
+    {
+      "kind": "wait",
+      "ms": 2000
+    }
+  ]
+}

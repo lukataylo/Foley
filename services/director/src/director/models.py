@@ -241,6 +241,22 @@ class RenderJob(BaseModel):
     enqueued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+# ─── agent IO ────────────────────────────────────────────────────────────────
+
+
+class AgentVerdict(BaseModel):
+    """Wrapper output the director agent submits via its forced tool call."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(
+        description="One-sentence demoable summary of what changed and why a new take is needed."
+    )
+    step_diffs: list[StepDiff] = Field(
+        description="One entry per existing step (UNCHANGED/CHANGED/REMOVED), plus any ADDED steps."
+    )
+
+
 # ─── on-disk paths ───────────────────────────────────────────────────────────
 
 
@@ -263,6 +279,7 @@ StepID = Annotated[str, Field(pattern=r"^[a-z0-9_]+$")]
 __all__ = [
     "Action",
     "ActionKind",
+    "AgentVerdict",
     "BrandConfig",
     "RenderJob",
     "Step",

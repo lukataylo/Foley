@@ -1,0 +1,5 @@
+{
+  "title": "Add Inbox screen",
+  "body": "First pass at the notifications inbox. Lives at /inbox, accessible from the sidebar. Lists mentions and assignments grouped by day.",
+  "number": 12
+}

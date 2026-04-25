@@ -1,0 +1,20 @@
+{
+  "step_id": "intro",
+  "fingerprint": "ccaf5a6ad97279ec",
+  "actual_duration_ms": 5724,
+  "declared_duration_ms": 5500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/login"
+    },
+    {
+      "kind": "wait",
+      "ms": 4500
+    }
+  ]
+}

@@ -34,7 +34,9 @@ export interface BrandConfig {
   voice_id: string;
   voice_name: string;
   font_family: string;
-  palette: { bg: string; fg: string; accent: string };
+  palette_bg: string;
+  palette_fg: string;
+  palette_accent: string;
   pacing_wpm: number;
   intro_card_ms: number;
 }
@@ -59,6 +61,7 @@ export interface Take {
   walkthrough_id: string;
   parent_take_id: string | null;
   pr_number: number | null;
+  pr_title: string | null;
   created_at: string;
   status: "drafting" | "ready" | "approved" | "rejected";
   step_diffs: StepDiff[];

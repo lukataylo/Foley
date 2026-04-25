@@ -1,0 +1,28 @@
+{
+  "step_id": "settings",
+  "fingerprint": "cc96fd00ce6f02b5",
+  "actual_duration_ms": 7094,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/settings"
+    },
+    {
+      "kind": "wait",
+      "ms": 1500
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-testid=workspace-name-input]"
+    },
+    {
+      "kind": "wait",
+      "ms": 4500
+    }
+  ]
+}

@@ -28,6 +28,7 @@ walkthroughs/*/steps/*.mp4
 walkthroughs/*/steps/*.mp3
 walkthroughs/*/steps/*.png
 walkthroughs/*/steps/*.webm
+walkthroughs/*/steps/.narration-cache/
 walkthroughs/*/takes/*/master.mp4
 walkthroughs/*/takes/*/segments/
 

@@ -1,0 +1,41 @@
+{
+  "step_id": "sign_in",
+  "fingerprint": "bbfe7babdc3ce929",
+  "actual_duration_ms": 4077,
+  "declared_duration_ms": 5500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/login"
+    },
+    {
+      "kind": "fill",
+      "selector": "[data-testid=email-input]",
+      "value": "anna@acme.com"
+    },
+    {
+      "kind": "wait",
+      "ms": 800
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-testid=signin-button]"
+    },
+    {
+      "kind": "wait",
+      "ms": 600
+    },
+    {
+      "kind": "click",
+      "selector": "[data-testid=signin-button]"
+    },
+    {
+      "kind": "wait",
+      "ms": 1500
+    }
+  ]
+}

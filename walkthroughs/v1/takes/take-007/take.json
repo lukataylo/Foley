@@ -1,0 +1,62 @@
+{
+  "id": "take-007",
+  "walkthrough_id": "v1",
+  "parent_take_id": "master",
+  "pr_number": 7,
+  "pr_title": "Rename 'Mark as done' to 'Ship it'",
+  "created_at": "2026-04-25T11:02:02.526161Z",
+  "status": "ready",
+  "step_diffs": [
+    {
+      "step_id": "intro",
+      "status": "unchanged",
+      "reason": "Intro is unaffected by this change.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "sign_in",
+      "status": "unchanged",
+      "reason": "Sign-in flow untouched.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "board_overview",
+      "status": "unchanged",
+      "reason": "Board layout and copy unchanged.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "open_ticket",
+      "status": "unchanged",
+      "reason": "Ticket page entry-point unchanged.",
+      "proposed_step": null
+    },
+    {
+      "step_id": "mark_done",
+      "status": "changed",
+      "reason": "Primary action label moved from 'Mark as done' to 'Ship it'. Narration updated to match the new wording.",
+      "proposed_step": {
+        "id": "mark_done",
+        "title": "Move it forward",
+        "narration": "One click ships it. No status menus, no friction.",
+        "actions": [
+          { "kind": "goto", "url": "/ticket/LOP-103" },
+          { "kind": "wait", "ms": 1200 },
+          { "kind": "hover", "selector": "[data-testid=mark-done-button]" },
+          { "kind": "wait", "ms": 1200 },
+          { "kind": "click", "selector": "[data-testid=mark-done-button]" },
+          { "kind": "wait", "ms": 2000 }
+        ],
+        "duration_ms": 5500,
+        "viewport": { "width": 1440, "height": 900 }
+      }
+    },
+    {
+      "step_id": "settings",
+      "status": "unchanged",
+      "reason": "Settings page unaffected.",
+      "proposed_step": null
+    }
+  ],
+  "master_path": "master.mp4"
+}

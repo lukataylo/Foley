@@ -1,10 +1,10 @@
 # v1 walkthrough — hand-authored as if a doc expert wrote it.
 # Six steps. Total runtime ~70 seconds.
 #
-# Step ids are stable: the agent uses them to decide what to retake.
-# Selectors target the demo app at $DEMO_APP_DEV_URL (default :3001).
+# Each Step runs in its own Playwright context, so each begins with a goto
+# that sets the scene. Step ids are stable: the agent uses them to decide
+# what to retake. The walkthrough id comes from the directory name (`v1`).
 
-id: loop_v1
 version: 1
 target_app:
   repo: lukataylo/Foley-demo
@@ -21,6 +21,7 @@ steps:
     duration_ms: 5500
     actions:
       - { kind: goto, url: "/login" }
+      - { kind: wait, ms: 4500 }
 
   - id: sign_in
     title: Sign in
@@ -28,10 +29,13 @@ steps:
       Sign in with your work email — no password to remember.
     duration_ms: 5500
     actions:
+      - { kind: goto, url: "/login" }
       - { kind: fill, selector: "[data-testid=email-input]", value: "anna@acme.com" }
+      - { kind: wait, ms: 800 }
+      - { kind: hover, selector: "[data-testid=signin-button]" }
       - { kind: wait, ms: 600 }
       - { kind: click, selector: "[data-testid=signin-button]" }
-      - { kind: wait, ms: 1200 }
+      - { kind: wait, ms: 1500 }
 
   - id: board_overview
     title: See the board
@@ -39,9 +43,10 @@ steps:
       Every project lives on one board. Todo, doing, done — the team's whole week, on one screen.
     duration_ms: 7500
     actions:
+      - { kind: goto, url: "/" }
       - { kind: wait, ms: 1500 }
       - { kind: hover, selector: "[data-column=doing]" }
-      - { kind: wait, ms: 2500 }
+      - { kind: wait, ms: 4500 }
 
   - id: open_ticket
     title: Open a ticket
@@ -49,8 +54,10 @@ steps:
       Click any card to open the full ticket — description, status, comments, all in one place.
     duration_ms: 6000
     actions:
+      - { kind: goto, url: "/" }
+      - { kind: wait, ms: 1200 }
       - { kind: click, selector: "[data-ticket=LOP-103]" }
-      - { kind: wait, ms: 2200 }
+      - { kind: wait, ms: 3500 }
 
   # Step that the v1→v2 PR will modify (button label change).
   - id: mark_done
@@ -59,10 +66,12 @@ steps:
       One click marks a ticket as done. No status menus, no friction.
     duration_ms: 5500
     actions:
+      - { kind: goto, url: "/ticket/LOP-103" }
+      - { kind: wait, ms: 1200 }
       - { kind: hover, selector: "[data-testid=mark-done-button]" }
       - { kind: wait, ms: 1200 }
       - { kind: click, selector: "[data-testid=mark-done-button]" }
-      - { kind: wait, ms: 1500 }
+      - { kind: wait, ms: 2000 }
 
   - id: settings
     title: Settings stay out of the way
@@ -74,4 +83,4 @@ steps:
       - { kind: goto, url: "/settings" }
       - { kind: wait, ms: 1500 }
       - { kind: hover, selector: "[data-testid=workspace-name-input]" }
-      - { kind: wait, ms: 2000 }
+      - { kind: wait, ms: 4500 }

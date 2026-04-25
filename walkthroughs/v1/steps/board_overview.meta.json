@@ -1,0 +1,28 @@
+{
+  "step_id": "board_overview",
+  "fingerprint": "fe80c3c8545d92c1",
+  "actual_duration_ms": 7164,
+  "declared_duration_ms": 7500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/"
+    },
+    {
+      "kind": "wait",
+      "ms": 1500
+    },
+    {
+      "kind": "hover",
+      "selector": "[data-column=doing]"
+    },
+    {
+      "kind": "wait",
+      "ms": 4500
+    }
+  ]
+}

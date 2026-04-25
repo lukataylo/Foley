@@ -1,0 +1,59 @@
+diff --git a/src/app/inbox/page.tsx b/src/app/inbox/page.tsx
+new file mode 100644
+index 0000000..a4b1f02
+--- /dev/null
++++ b/src/app/inbox/page.tsx
+@@ -0,0 +1,42 @@
++"use client";
++
++import { Shell } from "@/components/Shell";
++
++const ITEMS = [
++  { id: "n1", who: "Anna", what: "mentioned you on LOP-103", when: "today" },
++  { id: "n2", who: "Marcus", what: "assigned you LOP-101", when: "today" },
++  { id: "n3", who: "Sam", what: "commented on LOP-104", when: "yesterday" },
++];
++
++export default function InboxPage() {
++  return (
++    <Shell>
++      <h2 className="page">Inbox</h2>
++      <p className="subtle">Mentions and assignments.</p>
++      <ul className="inbox-list" data-testid="inbox">
++        {ITEMS.map((n) => (
++          <li key={n.id} className="inbox-item" data-notification={n.id}>
++            <strong>{n.who}</strong> {n.what}
++            <span className="when">{n.when}</span>
++          </li>
++        ))}
++      </ul>
++    </Shell>
++  );
++}
+diff --git a/src/components/Shell.tsx b/src/components/Shell.tsx
+index 7a91c2d..b3e5a80 100644
+--- a/src/components/Shell.tsx
++++ b/src/components/Shell.tsx
+@@ -4,6 +4,7 @@ import Link from "next/link";
+ import { usePathname } from "next/navigation";
+
+ const NAV = [
+   { href: "/", label: "Board" },
++  { href: "/inbox", label: "Inbox" },
+   { href: "/settings", label: "Settings" },
+ ];
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 1c4a3f9..2e0d7c5 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -120,3 +120,11 @@
+ h2.page { font-size: 18px; margin: 0 0 6px; font-weight: 600; }
+ .subtle { color: var(--muted); }
++
++.inbox-list { list-style: none; padding: 0; margin: 18px 0 0; }
++.inbox-item {
++  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
++  padding: 12px 14px; margin-bottom: 8px;
++  display: flex; align-items: center; gap: 8px;
++}
++.inbox-item .when { margin-left: auto; color: var(--muted); font-size: 12px; }
