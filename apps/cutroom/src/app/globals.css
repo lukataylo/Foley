@@ -3216,21 +3216,22 @@ a.back:hover { color: var(--fg); }
 .tl3-bar { position: relative; }
 .tl3-add { position: relative; display: inline-flex; }
 .tl3-add-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px;
-  background: linear-gradient(180deg, #f5b94a 0%, #d39d2e 100%);
-  color: #1d1d1f;
-  border: 1px solid #b88718;
-  border-radius: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  background: #1d1d1f;
+  color: #fafafa;
+  border: 1px solid #1d1d1f;
+  border-radius: 6px;
   font: inherit;
-  font-weight: 600;
-  font-size: 12.5px;
+  font-weight: 500;
+  font-size: 12px;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-  transition: transform 100ms ease, box-shadow 100ms ease;
+  transition: background 100ms ease;
 }
-.tl3-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.18); }
-.tl3-add-caret { font-size: 9px; opacity: 0.7; }
+.tl3-add-btn:hover { background: #000; }
+[data-theme="dark"] .tl3-add-btn { background: #fafafa; color: #0a0a0a; border-color: #fafafa; }
+[data-theme="dark"] .tl3-add-btn:hover { background: #fff; }
+.tl3-add-caret { font-size: 8px; opacity: 0.6; }
 .tl3-add-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -3264,7 +3265,17 @@ a.back:hover { color: var(--fg); }
 .tl3-add-item:hover { background: rgba(245,185,74,0.14); }
 .tl3-add-glyph { font-size: 15px; line-height: 1; width: 18px; text-align: center; }
 
-.tl3-tracks { padding: 0; }
+/* Override the legacy timeline-tracks overflow when v3 is mounted, so all
+   rows are visible (legacy assumed 4 fixed tracks; v3 stacks more). */
+.timeline-tracks.tl3-tracks {
+  overflow-y: auto;
+  max-height: 360px;
+}
+.tl3-scaler {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 .tl3-rows { display: flex; flex-direction: column; }
 .tl3-row {
   display: grid;
