@@ -15,6 +15,7 @@ import { loadDocs } from "@/lib/docs";
 import { WalkthroughLayout } from "./WalkthroughLayout";
 import { EditableBrand } from "./EditableBrand";
 import { MasterCard } from "./MasterCard";
+import { PublishButton } from "./PublishButton";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +169,11 @@ export default async function WalkthroughDetailPage({
     <>
       <ThemeToggle />
       <Link className="btn-secondary" href={`/docs/${params.id}`}>Public docs</Link>
+      <PublishButton
+        walkthroughId={params.id}
+        displayName={(wt as { display_name?: string }).display_name ?? params.id}
+        videoUrl={takePublicPath(params.id, "master", "master.mp4")}
+      />
     </>
   );
 
