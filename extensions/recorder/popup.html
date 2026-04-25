@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foley Recorder</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="title">Foley Recorder</div>
+        <div class="sub">Click-by-click walkthrough capture</div>
+      </header>
+
+      <div id="status" class="status idle">
+        <span class="dot"></span>
+        <span id="status-text">Ready</span>
+      </div>
+
+      <div id="primary-actions" class="actions">
+        <button id="start" class="btn primary">Start recording</button>
+        <button id="stop" class="btn danger" hidden>Stop</button>
+      </div>
+
+      <!-- Save form, shown after Stop -->
+      <form id="save-form" class="save-form" hidden>
+        <label class="field">
+          <span class="field-label">Name</span>
+          <input id="save-name" type="text" maxlength="120" placeholder="What should we call this?" required />
+        </label>
+
+        <fieldset class="folder-choice">
+          <legend>Save to</legend>
+          <label class="radio">
+            <input type="radio" name="folder" value="new" checked />
+            <span>New folder</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="folder" value="existing" />
+            <span>Existing folder</span>
+          </label>
+        </fieldset>
+
+        <label class="field" id="existing-field" hidden>
+          <span class="field-label">Choose folder</span>
+          <select id="existing-select">
+            <option value="">Loading…</option>
+          </select>
+        </label>
+
+        <div class="actions">
+          <button type="submit" id="save-btn" class="btn primary">Save &amp; open in cutroom</button>
+          <button type="button" id="discard" class="btn ghost">Discard recording</button>
+        </div>
+      </form>
+
+      <dl class="meta">
+        <div>
+          <dt>Steps</dt>
+          <dd id="step-count">0</dd>
+        </div>
+        <div>
+          <dt>Started</dt>
+          <dd id="started-at">—</dd>
+        </div>
+      </dl>
+
+      <details class="settings">
+        <summary>Cutroom destination</summary>
+        <label>
+          <span>App URL</span>
+          <input id="cutroom-url" type="url" placeholder="http://localhost:3000" />
+        </label>
+        <button id="save-url" class="btn ghost small" type="button">Save</button>
+        <p class="settings-hint">
+          Captured steps are POSTed to this URL. If unreachable, a JSON file is downloaded instead.
+        </p>
+      </details>
+
+      <p class="hint" id="hint">
+        Press <strong>Start</strong>, then click around the app you want to document.
+      </p>
+
+      <p id="toast" class="toast" hidden></p>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

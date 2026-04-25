@@ -155,6 +155,50 @@ export async function loadStepWaveform(
   }
 }
 
+interface ContinuousNarrationDoc {
+  duration_ms: number;
+  peaks: number[];
+  audio_url: string | null;
+  steps: Array<{ step_id: string; start_ms: number; end_ms: number }>;
+  source: "real" | "synthesized";
+}
+
+/**
+ * Load the continuous narration take from disk if `director synth-continuous`
+ * has produced one. Returns null when the artefacts are missing — the editor
+ * then falls back to the per-step synthesized view.
+ */
+export async function loadContinuousNarration(
+  walkthroughId: string,
+): Promise<ContinuousNarrationDoc | null> {
+  const dir = path.join(WALKTHROUGHS_DIR, walkthroughId);
+  try {
+    const [timingRaw, waveformRaw, audioStat] = await Promise.all([
+      readFile(path.join(dir, "narration.timing.json"), "utf8"),
+      readFile(path.join(dir, "narration.waveform.json"), "utf8"),
+      stat(path.join(dir, "narration.mp3")).catch(() => null),
+    ]);
+    const timing = JSON.parse(timingRaw) as {
+      duration_ms: number;
+      steps: Array<{ step_id: string; start_ms: number; end_ms: number }>;
+    };
+    const waveform = JSON.parse(waveformRaw) as { peaks: number[] };
+    const audio_url =
+      audioStat && audioStat.isFile() && audioStat.size > 0
+        ? `/walkthroughs/${walkthroughId}/narration.mp3`
+        : null;
+    return {
+      duration_ms: timing.duration_ms,
+      peaks: waveform.peaks,
+      audio_url,
+      steps: timing.steps,
+      source: "real",
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Public path under /walkthroughs/... served by Next from public/walkthroughs.
 export function publicPath(walkthroughId: string, ...rest: string[]): string {
   return "/" + path.posix.join("walkthroughs", walkthroughId, ...rest);

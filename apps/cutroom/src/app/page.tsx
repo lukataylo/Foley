@@ -134,7 +134,7 @@ export default async function HomePage() {
             );
           })}
 
-          <Link href="/walkthroughs/new" className="folder-card placeholder">
+          <Link href="/onboard" className="folder-card placeholder">
             <Folder mark="" glyph="+" tone="violet" variant="muted" />
             <div className="folder-meta">
               <div className="folder-title">New walkthrough</div>

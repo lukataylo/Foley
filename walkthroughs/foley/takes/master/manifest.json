@@ -1,0 +1,48 @@
+{
+  "walkthrough_id": "foley",
+  "take_id": "master",
+  "master_path": "master.mp4",
+  "master_sha256": "48a86e98b8abf34d8212edc2abaed7e50befb6cc07a57a1ea84d1f8f67400065",
+  "segments": [
+    {
+      "step_id": "intro",
+      "fingerprint": "004fdf7339882dc6",
+      "segment_path": "segments/intro.mp4",
+      "segment_sha256": "4aeaef6eda7e4a0ef316c5a82a7910096f62178de7aaf546deb8db061ca9ee95",
+      "duration_ms": 6000,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "walkthrough_folders",
+      "fingerprint": "38923f0eda981958",
+      "segment_path": "segments/walkthrough_folders.mp4",
+      "segment_sha256": "c6ef848df83a8a7036d5b4051d9ca1793935d5b2845d29be914a95a35cf6fafd",
+      "duration_ms": 6000,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "open_walkthrough",
+      "fingerprint": "06ac384a10ceac19",
+      "segment_path": "segments/open_walkthrough.mp4",
+      "segment_sha256": "b7f4d1bdfa3ebf0f4b48ece7cbe7e52cb82b0e48fc441159862d8ff1a55c0eb2",
+      "duration_ms": 6000,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "inspect_steps",
+      "fingerprint": "e0c9d8d137fb2185",
+      "segment_path": "segments/inspect_steps.mp4",
+      "segment_sha256": "ba4fb9ea3ef318c66bb32ef999dacc9e3ee25f4728a8644d99f2a2f45f89fe7a",
+      "duration_ms": 6500,
+      "source": "rebuilt"
+    },
+    {
+      "step_id": "foley_self_walkthrough",
+      "fingerprint": "ee0f70208ebebfbd",
+      "segment_path": "segments/foley_self_walkthrough.mp4",
+      "segment_sha256": "cd66f502b031ec76e4b9673f41ac0637750a25ada87d4680fee98f84bebe79a6",
+      "duration_ms": 6500,
+      "source": "rebuilt"
+    }
+  ]
+}

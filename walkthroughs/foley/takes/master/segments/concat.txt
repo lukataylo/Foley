@@ -1,0 +1,5 @@
+file 'intro.mp4'
+file 'walkthrough_folders.mp4'
+file 'open_walkthrough.mp4'
+file 'inspect_steps.mp4'
+file 'foley_self_walkthrough.mp4'

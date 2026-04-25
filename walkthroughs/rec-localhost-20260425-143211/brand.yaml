@@ -1,0 +1,10 @@
+# Default brand for imported walkthroughs.
+# Edit voice, palette, and pacing to taste.
+voice_id: XB0fDUnXU5powFXDhCwa
+voice_name: Charlotte
+font_family: "SF Pro Text"
+palette_bg: "#0a0a0a"
+palette_fg: "#f5f5f5"
+palette_accent: "#5b8cff"
+pacing_wpm: 168
+intro_card_ms: 1500

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { promises as fs } from "fs";
 import path from "path";
 import {
+  loadContinuousNarration,
   loadManifest,
   loadStepWaveform,
   loadTake,
@@ -42,9 +43,12 @@ export default async function TakePage({ params }: { params: { id: string } }) {
     .map((id) => stepById.get(id))
     .filter((s): s is Step => Boolean(s));
 
-  const waveforms = await Promise.all(
-    steps.map(async (s) => ({ id: s.id, wf: await loadStepWaveform("v1", s.id) })),
-  );
+  const [waveforms, continuousNarration] = await Promise.all([
+    Promise.all(
+      steps.map(async (s) => ({ id: s.id, wf: await loadStepWaveform("v1", s.id) })),
+    ),
+    loadContinuousNarration("v1"),
+  ]);
 
   const segmentsByStep = Object.fromEntries(
     manifest.segments.map((s) => [s.step_id, s]),
@@ -94,6 +98,7 @@ export default async function TakePage({ params }: { params: { id: string } }) {
       tracks={trackData}
       masterUrl={takePublicPath(walkthrough.id, params.id, "master.mp4")}
       initialTransitions={initialTransitions}
+      initialContinuousNarration={continuousNarration}
     />
   );
 }

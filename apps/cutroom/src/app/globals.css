@@ -3226,6 +3226,28 @@ a.back:hover { color: var(--fg); }
   font-family: inherit;
   color: inherit;
 }
+.onboard-field {
+  display: block;
+  margin-bottom: 14px;
+}
+.onboard-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.65);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.onboard-field-hint {
+  display: block;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+  margin-top: -6px;
+  line-height: 1.4;
+}
+[data-theme="dark"] .onboard-field-label { color: rgba(255,255,255,0.7); }
+[data-theme="dark"] .onboard-field-hint { color: rgba(255,255,255,0.55); }
 .onboard-search:focus {
   outline: 2px solid rgba(245,185,74,0.5);
   outline-offset: 1px;
@@ -4253,6 +4275,173 @@ a.back:hover { color: var(--fg); }
 .tl3-stale-cta:hover:not(:disabled) { background: rgba(245,166,35,0.28); }
 .tl3-stale-cta:disabled { opacity: 0.6; cursor: not-allowed; }
 [data-theme="dark"] .tl3-stale-cta { color: #f5cc7d; }
+
+/* Variant A toolbar additions ─────────────────────────── */
+.tl3-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font: inherit; font-size: 11.5px; font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+.tl3-toggle:hover { background: var(--panel); color: var(--fg); }
+.tl3-toggle.on {
+  background: rgba(0,112,243,0.10);
+  border-color: rgba(0,112,243,0.45);
+  color: #0070f3;
+}
+[data-theme="dark"] .tl3-toggle.on { color: #7aa9ff; }
+
+.tl3-voice-cta {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(0,112,243,0.10);
+  color: #0070f3;
+  border: 1px solid rgba(0,112,243,0.45);
+  font: inherit; font-size: 11.5px; font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 100ms ease;
+}
+.tl3-voice-cta:hover:not(:disabled) { background: rgba(0,112,243,0.20); }
+.tl3-voice-cta:disabled { opacity: 0.6; cursor: not-allowed; }
+.tl3-voice-cta.stale {
+  background: rgba(245,166,35,0.15);
+  color: #b9772b;
+  border-color: rgba(245,166,35,0.55);
+}
+.tl3-voice-cta.stale:hover:not(:disabled) { background: rgba(245,166,35,0.28); }
+[data-theme="dark"] .tl3-voice-cta { color: #7aa9ff; }
+[data-theme="dark"] .tl3-voice-cta.stale { color: #f5cc7d; }
+
+/* Step boundaries on a continuous waveform ─────────────── */
+.tl3-step-boundary {
+  position: absolute;
+  top: 6px; bottom: 6px;
+  width: 0;
+  border-left: 1px dashed rgba(0,0,0,0.30);
+  pointer-events: none;
+  z-index: 2;
+}
+[data-theme="dark"] .tl3-step-boundary { border-left-color: rgba(255,255,255,0.28); }
+
+/* The river-mode waveform looks identical visually but has a subtle hint
+ * that it's part of a longer continuous take rather than a per-clip island. */
+.tl3-waveform.tl3-waveform-river .bar { background: rgba(6, 42, 35, 0.55); }
+[data-theme="dark"] .tl3-waveform.tl3-waveform-river .bar { background: rgba(122, 169, 255, 0.55); }
+
+/* Continuous voice "river" — one waveform strip painted across the full row,
+ * end-to-end, behind the per-clip selection regions. */
+.tl3-row-river {
+  position: absolute;
+  top: 4px;
+  height: 36px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2cd6a8 0%, #1aaf86 100%);
+  border: 1px solid #138567;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+.tl3-row-river .tl3-waveform { padding: 4px; }
+
+/* In river mode, voice clips are invisible selection regions on top of the
+ * shared strip — no background, no border, no rounded corners. The selection
+ * outline still wins so the user knows which step they've grabbed. */
+.tl3-clip.kind-voice-river {
+  background: transparent;
+  border-color: transparent;
+  z-index: 1;
+}
+.tl3-clip.kind-voice-river:hover { background: rgba(255,255,255,0.10); }
+.tl3-clip.kind-voice-river.selected {
+  background: rgba(253,243,216,0.18);
+}
+
+/* When Script is on, give voice rows real vertical room so the per-step
+ * ScriptBubble textareas can show a few lines at once instead of a single
+ * ellipsised line. */
+.tl3-row.tl3-row-script { height: 96px; }
+.tl3-row.tl3-row-script .tl3-clip.kind-voice,
+.tl3-row.tl3-row-script .tl3-clip.kind-voice-river { height: 88px; }
+.tl3-row.tl3-row-script .tl3-row-river { height: 88px; }
+.tl3-row.tl3-row-script .tl3-step-boundary { top: 8px; bottom: 8px; }
+
+/* Script bubbles (Variant B) ─────────────────────────── */
+.tl3-script-bubble {
+  position: absolute;
+  inset: 22px 4px 16px 4px;
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.94);
+  color: #1d1d1f;
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid rgba(0,0,0,0.14);
+  cursor: text;
+  z-index: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+}
+/* In compact (script-off) rows the bubble keeps the old single-line shape. */
+.tl3-row:not(.tl3-row-script) .tl3-script-bubble {
+  inset: auto 4px 4px 4px;
+  max-height: 56%;
+  font-size: 10.5px;
+  padding: 4px 6px;
+}
+[data-theme="dark"] .tl3-script-bubble {
+  background: rgba(20,23,28,0.92);
+  color: var(--fg);
+  border-color: rgba(255,255,255,0.18);
+}
+.tl3-script-bubble .tl3-script-glyph {
+  font-size: 10px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+.tl3-script-bubble .tl3-script-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tl3-row:not(.tl3-row-script) .tl3-script-bubble .tl3-script-text {
+  -webkit-line-clamp: 1;
+}
+.tl3-script-bubble.editing {
+  position: absolute;
+  inset: 22px 4px 16px 4px;
+  height: auto;
+  resize: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--link, #0070f3);
+  background: var(--panel);
+  color: var(--fg);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,112,243,0.12);
+  z-index: 4;
+}
+.tl3-row:not(.tl3-row-script) .tl3-script-bubble.editing {
+  inset: auto 4px 4px 4px;
+  max-height: 80%;
+  font-size: 11px;
+  padding: 5px 7px;
+}
 
 /* Live preview ------------------------------------------- */
 

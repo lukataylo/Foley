@@ -2,6 +2,43 @@
 
 **Product walkthrough videos that maintain themselves from PRs.**
 
+## See it in action
+
+The clip below is a Foley walkthrough _of Foley_. It was scripted by Claude
+from the running cutroom's HTML, captured by Playwright, narrated by ElevenLabs,
+and concatenated by ffmpeg — every artefact in this repo went through the same
+pipeline a user's would.
+
+▶️ **[Watch the auto-generated tour](walkthroughs/foley/takes/master/master.mp4)** · 24 seconds · 2.1 MB · 1440 × 900 · voiced
+
+(GitHub plays the file inline in its blob viewer when you click through. The
+clip lives at `walkthroughs/foley/takes/master/master.mp4` so it travels with
+the repo.)
+
+## Quickstart for judges
+
+This repo bundles a working demo. To try it locally:
+
+1. **Prereqs.** macOS or Linux. Install [pnpm](https://pnpm.io), [uv](https://docs.astral.sh/uv/), and `ffmpeg` (`brew install ffmpeg` on macOS).
+2. **Clone & bootstrap.**
+   ```
+   git clone https://github.com/lukataylo/Foley.git
+   cd Foley
+   pnpm bootstrap        # installs everything, sets up .env
+   ```
+   The bootstrap script copies `.env.example` to `.env` — open it and paste an `ANTHROPIC_API_KEY` and `ELEVENLABS_API_KEY` (free tiers are fine).
+3. **Run the studio.**
+   ```
+   pnpm dev
+   ```
+   Open http://localhost:3000.
+4. **Try the full flow.**
+   - Click **"+ New walkthrough"** on the home page. The wizard takes a GitHub repo and the URL where the product is running locally. Foley fetches the landing page, asks Claude to draft 4–7 steps, writes them to `walkthroughs/<slug>/walkthrough.yaml`, and drops you straight into the step editor.
+   - Click **"Render video"** in the editor. Playwright captures each step against your dev server, ElevenLabs narrates them in one continuous take, ffmpeg concatenates the result. ~60–90s end-to-end on a typical walkthrough.
+   - Or open the seeded **"Loop"** walkthrough to play a finished take and inspect the diff history from prior PRs.
+
+That's it — no extra services to run, no Playwright dev container, nothing to provision.
+
 A documentation expert sets up a canonical walkthrough once. From then on, every
 pull request that touches the user-facing surface triggers an agent that diffs
 the change, identifies which step atoms are affected, re-runs Playwright on
@@ -84,6 +121,18 @@ That's the gap Foley closes.
 ---
 
 ## How Foley works
+
+### 0 · A new project becomes a walkthrough in 30 seconds
+
+The first cut is _not_ hand-authored. The onboarding wizard fetches the dev
+URL's landing-page HTML, hands it to Claude Sonnet 4.6 with adaptive thinking,
+and gets back a structured `ProposedSteps` object — 4–7 steps with grounded
+Playwright actions (text-locator selectors only, intro is always `goto+wait`,
+every step ends with a `wait`). The proposer writes those into
+`walkthroughs/<slug>/walkthrough.yaml`, the user lands in the step editor,
+clicks **Render**, and the rest of the pipeline below kicks in.
+
+The walkthrough you saw at the top of this README was made this way.
 
 ### 1 · The walkthrough is a list of step atoms
 
@@ -214,10 +263,12 @@ cutroom is a thin reader; the director is the only writer.
 ## Repo layout
 
 ```
-apps/cutroom/             Next.js 14 — dashboard, webhook, Remotion compositions
-services/director/        Python — diff agent, playwright runner, narrator, concat, CLI
-walkthroughs/v1/          Canonical walkthrough — walkthrough.yaml, brand.yaml, steps/, takes/
-.claude/skills/foley/     Claude Code skill that wraps `director review`
+apps/cutroom/                       Next.js 14 — dashboard, onboard wizard, step editor, APIs
+services/director/                  Python — proposer, diff agent, playwright runner, narrator, concat, CLI
+walkthroughs/v1/                    Canonical "Loop" demo — what an authored walkthrough looks like
+walkthroughs/foley/                 Self-walkthrough — Foley demoing Foley (rendered by Foley)
+scripts/bootstrap.sh                One-shot setup for judges
+.claude/skills/foley/               Claude Code skill that wraps `director review`
 ```
 
 ---
@@ -225,32 +276,26 @@ walkthroughs/v1/          Canonical walkthrough — walkthrough.yaml, brand.yaml
 ## Run it locally
 
 ```bash
-# 1. fill in API keys
-cp .env.example .env
-# edit .env with ANTHROPIC_API_KEY, ELEVENLABS_API_KEY (Charlotte voice is
-# pre-configured)
+# 1. one-shot bootstrap — installs node + python deps, plays Playwright,
+#    copies .env.example -> .env (you fill in the keys)
+pnpm bootstrap
 
-# 2. install
-pnpm install
-uv --directory services/director sync
-uv --directory services/director run playwright install chromium
+# 2. start the cutroom
+pnpm dev                            # http://localhost:3000
 
-# 3. start the demo app (the product Foley watches)
-git clone https://github.com/lukataylo/Foley-demo ../Foley-demo-app
-cd ../Foley-demo-app && pnpm install && pnpm dev   # localhost:3001
+# 3. either onboard a new project from the UI ("+ New walkthrough"), or
+#    drive the director by hand for the seeded "Loop" walkthrough:
+pnpm director ingest                # capture every step's clip + narration
+pnpm director master                # concat into walkthroughs/v1/takes/master/master.mp4
 
-# 4. bake the v1 master
-cd ../Foley
-pnpm director ingest                # captures clips + narration for every step
-pnpm director master                # concats into walkthroughs/v1/takes/master/master.mp4
-
-# 5. start the cutroom
-pnpm cutroom                        # http://localhost:3000
-
-# 6. review a PR end-to-end
-pnpm director review <PR_NUMBER>    # diffs the PR, retakes affected steps,
-                                    # builds a new take, surfaces it in the cutroom
+# 4. (optional) review a PR end-to-end against the seeded demo repo
+pnpm director review <PR_NUMBER>    # diff → agent → retake → master → cutroom
 ```
+
+The PR-driven flow needs a watched product repo at the URL in `target_app.dev_url`.
+For the seeded "Loop" walkthrough the demo app lives at
+`https://github.com/lukataylo/Foley-demo` — clone it and run `pnpm dev` on
+`localhost:3001` to point Playwright at it.
 
 For PR-driven runs over the webhook:
 
@@ -264,12 +309,14 @@ ngrok http 3000                     # paste the forwarding URL into the GitHub
 
 | Command | What it does |
 |---|---|
-| `director ingest [v1]` | Capture every step's clip + narration |
+| `director propose-steps <id>` | Draft 3–8 steps for a brand-new walkthrough from its dev URL's HTML |
+| `director ingest [id]` | Capture every step's clip + narration |
 | `director retake <step_id>` | Re-run one step (force, ignore cache) |
+| `director synth-continuous [id]` | Synth one continuous narration mp3 spanning the whole take |
 | `director master [--take <id>]` | Concat current step artifacts into a new take |
+| `director bake-master [--intro X --outro Y]` | Add intro/outro PNG bookends with fades |
 | `director review <PR>` | Full PR loop: diff → agent → retake → master |
 | `director diff-takes <a> <b>` | Per-segment SHA comparison between two takes |
-| `director test-agent <fixture>` | Run the agent against a saved fixture |
 
 ---
 

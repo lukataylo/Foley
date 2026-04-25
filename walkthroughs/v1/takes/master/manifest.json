@@ -2,13 +2,13 @@
   "walkthrough_id": "v1",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "511b4bbb0d88006620ba92984bcf0981bb28e080fb4066815fcb3d4248fdd1a2",
+  "master_sha256": "5130dcc96a69d05f0d76c56b7ac79d081dc99ed7d9d66e56b6a334bcdd7af0fd",
   "segments": [
     {
       "step_id": "intro",
       "fingerprint": "ccaf5a6ad97279ec",
       "segment_path": "segments/intro.mp4",
-      "segment_sha256": "11fedce0a59af4668bbba35ec8e4bc8aa6e5e6c79885cc052cff653cec8b07fd",
+      "segment_sha256": "4268388a7ca9046edeb4acc6344a1c8de64aeed2dbbe8f431df3ea14114827a5",
       "duration_ms": 5500,
       "source": "rebuilt"
     },
@@ -16,7 +16,7 @@
       "step_id": "sign_in",
       "fingerprint": "bbfe7babdc3ce929",
       "segment_path": "segments/sign_in.mp4",
-      "segment_sha256": "ce2834e48c58fa0f2e3bc36adc38733c636b7c581f6a6770d20bc4dc102bc0a9",
+      "segment_sha256": "9a354794ef9c3329bbe80c712929cda35818f913ef3f8a6f0d4a820fcb7b7bc8",
       "duration_ms": 5500,
       "source": "rebuilt"
     },
@@ -24,7 +24,7 @@
       "step_id": "board_overview",
       "fingerprint": "fe80c3c8545d92c1",
       "segment_path": "segments/board_overview.mp4",
-      "segment_sha256": "8ffb5148554d20f805cd3b7746a64f464c8c4fbe27c2b3aa1e5dc2273d303b46",
+      "segment_sha256": "95eec9fe4c4ac892354450d34ec44ec77ba7e56521d912ac9ecae3974ad76577",
       "duration_ms": 7500,
       "source": "rebuilt"
     },
@@ -32,7 +32,7 @@
       "step_id": "open_ticket",
       "fingerprint": "caf30833cb0e1452",
       "segment_path": "segments/open_ticket.mp4",
-      "segment_sha256": "ff8f44e681967b3b3d7c0c6d13130bf995776be2ba120caa24c5a5577713123e",
+      "segment_sha256": "4c7084948acaa247f322365e485bc8cd2c8617d78a84f86fe15fdbbf14bf47c9",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
@@ -40,7 +40,7 @@
       "step_id": "mark_done",
       "fingerprint": "61c900a0be73e52d",
       "segment_path": "segments/mark_done.mp4",
-      "segment_sha256": "18ac571c3c3d93b899b01a7c9a73f000bb20b733e675a3fd8999ff652fca6f99",
+      "segment_sha256": "11197f710042891776e2f6fe9097a2750ed300aaa834bacc1c34eb5381a35526",
       "duration_ms": 5500,
       "source": "rebuilt"
     },
@@ -48,15 +48,9 @@
       "step_id": "settings",
       "fingerprint": "cc96fd00ce6f02b5",
       "segment_path": "segments/settings.mp4",
-      "segment_sha256": "39d4c9f5fe21187174e4114ff327704ac0c6f4dabce1a7bb689f16a0a6dd74a2",
+      "segment_sha256": "268252fea7ff2e22484516dee82a79975def81ca4963e8b7c3c17e9f303f27f9",
       "duration_ms": 6500,
       "source": "rebuilt"
     }
-  ],
-  "baked": {
-    "intro_png": "/Users/lukadadiani/Documents/Foley/walkthroughs/v1/genai/transition-demo.png",
-    "outro_png": "/Users/lukadadiani/Documents/Foley/walkthroughs/v1/genai/transition-outro.png",
-    "intro_duration_s": 3.5,
-    "outro_duration_s": 3.0
-  }
+  ]
 }

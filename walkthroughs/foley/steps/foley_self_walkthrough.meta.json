@@ -1,0 +1,20 @@
+{
+  "step_id": "foley_self_walkthrough",
+  "fingerprint": "ee0f70208ebebfbd",
+  "actual_duration_ms": 4274,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/walkthroughs/foley"
+    },
+    {
+      "kind": "wait",
+      "ms": 3200
+    }
+  ]
+}

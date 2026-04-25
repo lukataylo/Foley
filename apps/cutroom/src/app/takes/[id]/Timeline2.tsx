@@ -15,6 +15,7 @@ import {
   rowCount,
   totalDurationMs,
 } from "@/lib/timeline";
+import { type ContinuousNarration, slicePeaks } from "@/lib/narration";
 import type { TrackEntry } from "./EditorShell";
 
 interface Props {
@@ -43,6 +44,24 @@ interface Props {
   regenBusy?: boolean;
   /** Right-click delete on a clip. */
   onRemoveClip?: (id: string) => void;
+
+  /** ── Variant A / B props ────────────────────────────────────────── */
+  /** One waveform spanning the whole take. When present, voice clips draw
+   *  their slice of *this* waveform instead of their own per-step peaks. */
+  narration?: ContinuousNarration | null;
+  /** True iff any step's narration text was edited since the last continuous
+   *  synth. Drives the "voice stale" pill in the toolbar. */
+  voiceStale?: boolean;
+  /** Triggered by the regenerate-voice button. */
+  onRegenerateVoice?: () => void;
+  /** Spinner state for the regenerate-voice button. */
+  voiceBusy?: boolean;
+  /** Variant B — render an opt-in lane that shows narration text per step on
+   *  top of the voice clip. Editing flips voiceStale until the next render. */
+  showScriptLane?: boolean;
+  onToggleScriptLane?: () => void;
+  /** Update narration text for a step (debounced PATCH happens upstream). */
+  onEditStepNarration?: (step_id: string, text: string) => void;
 }
 
 const LABEL_GUTTER = 64;
@@ -306,6 +325,35 @@ export function Timeline2(p: Props) {
               ⚠ {staleCount} stale {p.regenBusy ? "· regenerating…" : "· regenerate all"}
             </button>
           ) : null}
+          {p.onToggleScriptLane ? (
+            <button
+              type="button"
+              className={`tl3-toggle ${p.showScriptLane ? "on" : ""}`}
+              onClick={p.onToggleScriptLane}
+              title="Show narration script bubbles on voice clips"
+            >
+              {p.showScriptLane ? "✓ Script" : "Script"}
+            </button>
+          ) : null}
+          {p.onRegenerateVoice ? (
+            <button
+              type="button"
+              className={`tl3-voice-cta ${p.voiceStale ? "stale" : ""}`}
+              onClick={p.onRegenerateVoice}
+              disabled={p.voiceBusy}
+              title={
+                p.voiceStale
+                  ? "Narration text edited — re-synth as one continuous take"
+                  : "Re-synth narration as one continuous take"
+              }
+            >
+              {p.voiceBusy
+                ? "🎙 synthesizing…"
+                : p.voiceStale
+                  ? "⚠ voice stale · regenerate"
+                  : "🎙 regenerate voice"}
+            </button>
+          ) : null}
         </div>
         <div className="zoom">
           <button className="ctrl-icon" onClick={() => p.onZoom(p.zoom - 8)} title="Zoom out">－</button>
@@ -351,6 +399,9 @@ export function Timeline2(p: Props) {
                 onSelectClip={p.onSelectClip}
                 onClipPointerDown={startDrag}
                 onContextMenu={openCtxMenu}
+                narration={p.narration ?? null}
+                showScriptLane={!!p.showScriptLane}
+                onEditStepNarration={p.onEditStepNarration}
               />
             ))}
             <GhostRow rowIndex={rows} zoom={p.zoom} currentTime={p.currentTime} />
@@ -402,15 +453,70 @@ interface RowProps {
   onSelectClip: (id: string | null) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
   onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
+  narration: ContinuousNarration | null;
+  showScriptLane: boolean;
+  onEditStepNarration?: (step_id: string, text: string) => void;
 }
 
 function Row(p: RowProps) {
+  // One continuous waveform across the row when this is a voice row that has
+  // a continuous narration take. Replaces the per-clip waveform islands so the
+  // voice overlay reads as a single end-to-end strip.
+  const voiceClips = p.clips.filter((c) => c.kind === "voice");
+  const isVoiceRiver = !!p.narration && voiceClips.length >= 1;
+  const riverLeft = isVoiceRiver
+    ? Math.min(...voiceClips.map((c) => c.start_ms)) / 1000 * p.zoom
+    : 0;
+  const riverRight = isVoiceRiver
+    ? Math.max(...voiceClips.map((c) => c.start_ms + c.duration_ms)) / 1000 * p.zoom
+    : 0;
+  const riverWidth = Math.max(0, riverRight - riverLeft);
+  const riverPeaks = isVoiceRiver && p.narration
+    ? slicePeaks(
+        p.narration,
+        Math.min(...voiceClips.map((c) => c.start_ms)),
+        Math.max(...voiceClips.map((c) => c.start_ms + c.duration_ms)) -
+          Math.min(...voiceClips.map((c) => c.start_ms)),
+      )
+    : [];
+  const showBoundaries = isVoiceRiver && voiceClips.length >= 2;
+  // Expand the row when the script lane is on so the per-step ScriptBubble
+  // textareas have real room to breathe — the default 44px row only fits a
+  // single ellipsised line.
+  const isScriptExpanded = !!p.showScriptLane && voiceClips.length >= 1;
+
   return (
-    <div className="tl3-row" data-row={p.rowIndex}>
+    <div
+      className={`tl3-row ${isScriptExpanded ? "tl3-row-script" : ""}`}
+      data-row={p.rowIndex}
+    >
       <div className="tl3-row-chrome">
         <span className="tl3-row-speaker" title={`Row ${p.rowIndex + 1}`}>🔊</span>
       </div>
-      <div className="tl3-row-lane">
+      <div className={`tl3-row-lane ${isVoiceRiver ? "tl3-row-lane-river" : ""}`}>
+        {isVoiceRiver ? (
+          <div
+            className="tl3-row-river"
+            style={{ left: riverLeft, width: riverWidth }}
+            aria-hidden
+          >
+            <div className="tl3-waveform tl3-waveform-river">
+              {riverPeaks.map((peak, idx) => (
+                <span key={idx} className="bar" style={{ height: `${Math.max(2, peak * 100)}%` }} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {showBoundaries
+          ? voiceClips.slice(1).map((c) => (
+              <div
+                key={`b-${c.id}`}
+                className="tl3-step-boundary"
+                style={{ left: (c.start_ms / 1000) * p.zoom }}
+                aria-hidden
+              />
+            ))
+          : null}
         {p.clips.map((c) => (
           <ClipBlock
             key={c.id}
@@ -419,9 +525,12 @@ function Row(p: RowProps) {
             sourceById={p.sourceById}
             selected={p.selectedClipId === c.id}
             stale={p.isClipStale?.(c) ?? false}
+            narration={p.narration}
+            showScriptLane={p.showScriptLane}
             onSelect={p.onSelectClip}
             onPointerDown={p.onClipPointerDown}
             onContextMenu={p.onContextMenu}
+            onEditStepNarration={p.onEditStepNarration}
           />
         ))}
         <Playhead time={p.currentTime} zoom={p.zoom} />
@@ -450,9 +559,12 @@ interface ClipProps {
   sourceById: Record<string, TrackEntry>;
   selected: boolean;
   stale: boolean;
+  narration: ContinuousNarration | null;
+  showScriptLane: boolean;
   onSelect: (id: string | null) => void;
   onPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
   onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
+  onEditStepNarration?: (step_id: string, text: string) => void;
 }
 
 function ClipBlock(p: ClipProps) {
@@ -463,6 +575,11 @@ function ClipBlock(p: ClipProps) {
 
   let body: React.ReactNode = null;
   let label = "";
+  const bodyOwnsLabel =
+    p.clip.kind === "transition" ||
+    p.clip.kind === "caption" ||
+    p.clip.kind === "banana" ||
+    p.clip.kind === "typed";
   if (p.clip.kind === "video") {
     const src = p.sourceById[p.clip.step_id];
     label = src?.title ?? p.clip.step_id;
@@ -478,13 +595,36 @@ function ClipBlock(p: ClipProps) {
   } else if (p.clip.kind === "voice") {
     const src = p.sourceById[p.clip.step_id];
     label = `vo: ${src?.title ?? p.clip.step_id}`;
-    body = (
-      <div className="tl3-waveform">
-        {(src?.waveform?.peaks ?? []).map((peak, idx) => (
-          <span key={idx} className="bar" style={{ height: `${Math.max(2, peak * 100)}%` }} />
-        ))}
-      </div>
-    );
+    // River mode (continuous narration available): the row paints one waveform
+    // strip end-to-end behind every voice clip — so the per-clip body is just
+    // an empty selection region. Legacy mode: each clip draws its own peaks.
+    if (p.narration && p.narration.peaks.length) {
+      body = p.showScriptLane ? (
+        <ScriptBubble
+          stepId={p.clip.step_id}
+          text={src?.narration ?? ""}
+          onEdit={p.onEditStepNarration}
+        />
+      ) : null;
+    } else {
+      const peaks = src?.waveform?.peaks ?? [];
+      body = (
+        <>
+          <div className="tl3-waveform">
+            {peaks.map((peak, idx) => (
+              <span key={idx} className="bar" style={{ height: `${Math.max(2, peak * 100)}%` }} />
+            ))}
+          </div>
+          {p.showScriptLane ? (
+            <ScriptBubble
+              stepId={p.clip.step_id}
+              text={src?.narration ?? ""}
+              onEdit={p.onEditStepNarration}
+            />
+          ) : null}
+        </>
+      );
+    }
   } else if (p.clip.kind === "music") {
     label = p.clip.label;
     body = <div className="tl3-music-fill" />;
@@ -506,9 +646,11 @@ function ClipBlock(p: ClipProps) {
     body = <div className="tl3-typed-fill">⌨ {p.clip.strings.join(" / ")}</div>;
   }
 
+  const isVoiceRiver = p.clip.kind === "voice" && !!p.narration && p.narration.peaks.length > 0;
+
   return (
     <div
-      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""} ${p.stale ? "stale" : ""}`}
+      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""} ${p.stale ? "stale" : ""} ${isVoiceRiver ? "kind-voice-river" : ""}`}
       style={{ left, width }}
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest(".tl3-handle")) return;
@@ -521,11 +663,19 @@ function ClipBlock(p: ClipProps) {
       {fadeInPx > 4 ? <div className="tl3-fade tl3-fade-in" style={{ width: fadeInPx }} /> : null}
       {fadeOutPx > 4 ? <div className="tl3-fade tl3-fade-out" style={{ width: fadeOutPx }} /> : null}
       <div className="tl3-clip-body">{body}</div>
-      <div className="tl3-clip-label">
-        <span className="tl3-clip-glyph">{KIND_GLYPH[p.clip.kind]}</span>
-        {label}
-        {p.stale ? <span className="tl3-stale-badge" title="Source updated since this clip was edited">⚠</span> : null}
-      </div>
+      {bodyOwnsLabel ? (
+        p.stale ? (
+          <div className="tl3-clip-label tl3-clip-label-badge">
+            <span className="tl3-stale-badge" title="Source updated since this clip was edited">⚠</span>
+          </div>
+        ) : null
+      ) : (
+        <div className="tl3-clip-label">
+          <span className="tl3-clip-glyph">{KIND_GLYPH[p.clip.kind]}</span>
+          {label}
+          {p.stale ? <span className="tl3-stale-badge" title="Source updated since this clip was edited">⚠</span> : null}
+        </div>
+      )}
       <div className="tl3-handle tl3-handle-l" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-l", e)} />
       <div className="tl3-handle tl3-handle-r" onPointerDown={(e) => p.onPointerDown(p.clip, "resize-r", e)} />
     </div>
@@ -534,6 +684,71 @@ function ClipBlock(p: ClipProps) {
 
 function Playhead({ time, zoom }: { time: number; zoom: number }) {
   return <div className="playhead" style={{ left: time * zoom }} />;
+}
+
+interface ScriptBubbleProps {
+  stepId: string;
+  text: string;
+  onEdit?: (step_id: string, text: string) => void;
+}
+
+function ScriptBubble(p: ScriptBubbleProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(p.text);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reset the local draft when the source text changes (e.g. after a save
+  // round-trip from an external editor).
+  useEffect(() => {
+    if (!editing) setDraft(p.text);
+  }, [p.text, editing]);
+
+  function commit() {
+    setEditing(false);
+    const next = draft.trim();
+    if (next && next !== p.text) p.onEdit?.(p.stepId, next);
+    else setDraft(p.text);
+  }
+
+  if (editing) {
+    return (
+      <textarea
+        ref={taRef}
+        className="tl3-script-bubble editing"
+        value={draft}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            setDraft(p.text);
+            setEditing(false);
+          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+  return (
+    <div
+      className="tl3-script-bubble"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!p.onEdit) return;
+        setEditing(true);
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      title="Click to edit narration text"
+    >
+      <span className="tl3-script-glyph">📝</span>
+      <span className="tl3-script-text">{p.text || <em>No narration yet</em>}</span>
+    </div>
+  );
 }
 
 function fmt(s: number): string {

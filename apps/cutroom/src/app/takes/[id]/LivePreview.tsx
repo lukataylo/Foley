@@ -16,7 +16,12 @@ import type {
   VideoClip,
   VoiceClip,
 } from "@/lib/timeline";
+import type { ContinuousNarration } from "@/lib/narration";
 import { TypedText } from "@/components/TypedText";
+
+// How early to start decoding the next video clip before the boundary.
+// Eliminates the visible freeze when swapping live-video-active.
+const WARMUP_MS = 250;
 
 export interface LivePreviewHandle {
   syncPlay: () => void;
@@ -41,6 +46,12 @@ interface Props {
   onPatchClip?: (id: string, patch: Partial<Clip>) => void;
   onTimeUpdate: (t: number) => void;
   onPlayStateChange: (playing: boolean) => void;
+  /**
+   * Continuous narration take. When `narration.audio_url` is present we play
+   * one master <audio> spanning the whole timeline instead of swapping per-step
+   * audio elements at every boundary — that swap was the audible pause.
+   */
+  narration?: ContinuousNarration | null;
 }
 
 const TYPED_BG_PRESETS = new Set([
@@ -62,8 +73,10 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
 ) {
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+  const masterAudioRef = useRef<HTMLAudioElement | null>(null);
   const [missingSrc, setMissingSrc] = useState<Record<string, boolean>>({});
   const tMs = p.currentTime * 1000;
+  const masterAudioUrl = p.narration?.audio_url ?? null;
 
   // Partition clips by kind once per overlay.
   const { videos, voices, typeds, captions, bananas } = useMemo(() => {
@@ -88,6 +101,24 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     return candidates[0];
   }, [videos, tMs]);
 
+  // Next video clip we'll cut to. We pre-roll it (muted, hidden) when the
+  // playhead is within WARMUP_MS of the boundary so the decoder is warm and
+  // the cut is instant — kills the visible freeze at section boundaries.
+  const nextVideo = useMemo<VideoClip | null>(() => {
+    if (!activeVideo) return null;
+    const boundary = activeVideo.start_ms + activeVideo.duration_ms;
+    const after = videos
+      .filter((c) => c.id !== activeVideo.id && c.start_ms >= boundary - 1)
+      .sort((a, b) => a.start_ms - b.start_ms || a.row - b.row);
+    return after[0] ?? null;
+  }, [videos, activeVideo]);
+
+  const shouldWarmNext =
+    !!nextVideo &&
+    !!activeVideo &&
+    p.isPlaying &&
+    nextVideo.start_ms - tMs <= WARMUP_MS;
+
   // Active overlays. A typed clip with a higher row index than the active
   // video is "behind" it (row 0 = front in z-order) so we hide it; this
   // mirrors how moving a typed clip below the video on the timeline reads.
@@ -102,25 +133,74 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
   const activeCaption = useMemo(() => captions.find((c) => inRange(c, tMs)) ?? null, [captions, tMs]);
   const activeBanana = useMemo(() => bananas.find((c) => inRange(c, tMs)) ?? null, [bananas, tMs]);
 
-  // Sync video elements: pause inactive, play+seek active.
+  // Boundary-driven video play/pause. Runs only when the active or next clip
+  // changes (or play-state flips), NOT on every tMs tick — so we don't churn
+  // play()/pause() at 60Hz. The active clip is playing+unmuted; the next clip
+  // is also playing but muted+hidden once shouldWarmNext flips, so the cut at
+  // the boundary swaps the .live-video-active class with no decode latency.
   useEffect(() => {
     for (const v of videos) {
       const el = videoRefs.current[v.id];
       if (!el) continue;
       const isActive = activeVideo?.id === v.id;
+      const isNext = !isActive && nextVideo?.id === v.id && shouldWarmNext;
       if (isActive) {
-        const localPos = (tMs - v.start_ms) / 1000;
-        if (Math.abs(el.currentTime - localPos) > 0.3) el.currentTime = localPos;
         if (p.isPlaying && el.paused) void el.play().catch(() => {});
         if (!p.isPlaying && !el.paused) el.pause();
+      } else if (isNext) {
+        // Pre-roll: seek to 0 once and start playing muted so the decoder
+        // is hot when the playhead reaches the boundary.
+        if (el.currentTime > 0.05) el.currentTime = 0;
+        if (el.paused) void el.play().catch(() => {});
       } else if (!el.paused) {
         el.pause();
       }
     }
-  }, [videos, activeVideo, tMs, p.isPlaying]);
+  }, [videos, activeVideo, nextVideo, shouldWarmNext, p.isPlaying]);
 
-  // Sync voice elements
+  // Drift-correction for the active video — runs on every tMs but only seeks
+  // when out of sync by more than 300ms. Decoupled from the boundary effect
+  // above so element swaps aren't re-evaluated dozens of times per second.
   useEffect(() => {
+    if (!activeVideo) return;
+    const el = videoRefs.current[activeVideo.id];
+    if (!el) return;
+    const localPos = (tMs - activeVideo.start_ms) / 1000;
+    if (Math.abs(el.currentTime - localPos) > 0.3) el.currentTime = localPos;
+  }, [activeVideo, tMs]);
+
+  // Continuous narration: one master <audio> spanning the whole timeline.
+  // Replaces the per-voice-clip audio swap that produced the audible pause.
+  useEffect(() => {
+    if (!masterAudioUrl) return;
+    const el = masterAudioRef.current;
+    if (!el) return;
+    if (p.isPlaying && el.paused) void el.play().catch(() => {});
+    if (!p.isPlaying && !el.paused) el.pause();
+  }, [masterAudioUrl, p.isPlaying]);
+
+  // Drift-correction for the master audio (only when continuous mode is on).
+  useEffect(() => {
+    if (!masterAudioUrl) return;
+    const el = masterAudioRef.current;
+    if (!el) return;
+    if (Math.abs(el.currentTime - p.currentTime) > 0.3) {
+      el.currentTime = Math.max(0, p.currentTime);
+    }
+  }, [masterAudioUrl, p.currentTime]);
+
+  // Per-voice-clip audio sync — only used when there is no continuous take
+  // (legacy fallback). When continuous mode is on we mute these and let the
+  // master audio drive playback.
+  useEffect(() => {
+    if (masterAudioUrl) {
+      // Make sure all per-step audio is silent in continuous mode.
+      for (const vo of voices) {
+        const el = audioRefs.current[vo.id];
+        if (el && !el.paused) el.pause();
+      }
+      return;
+    }
     for (const vo of voices) {
       const el = audioRefs.current[vo.id];
       if (!el) continue;
@@ -143,7 +223,7 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         el.pause();
       }
     }
-  }, [voices, tMs, p.isPlaying]);
+  }, [voices, tMs, p.isPlaying, masterAudioUrl]);
 
   // External imperative handle so the editor's keyboard/spacebar/timeline
   // bar can drive playback without going through the native <video> controls.
@@ -151,11 +231,15 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     play() {
       const el = activeVideo ? videoRefs.current[activeVideo.id] : null;
       if (el) void el.play().catch(() => {});
+      if (masterAudioUrl && masterAudioRef.current) {
+        void masterAudioRef.current.play().catch(() => {});
+      }
       p.onPlayStateChange(true);
     },
     pause() {
       for (const v of videos) videoRefs.current[v.id]?.pause();
       for (const vo of voices) audioRefs.current[vo.id]?.pause();
+      masterAudioRef.current?.pause();
       p.onPlayStateChange(false);
     },
     syncPlay() {
@@ -168,17 +252,23 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
           void el.play().catch(() => {});
         }
       }
-      for (const vo of voices) {
-        if (!inRange(vo, tMs)) continue;
-        const el = audioRefs.current[vo.id];
-        if (!el) continue;
-        el.currentTime = Math.max(0, (tMs - vo.start_ms) / 1000);
-        void el.play().catch(() => {});
+      if (masterAudioUrl && masterAudioRef.current) {
+        masterAudioRef.current.currentTime = Math.max(0, p.currentTime);
+        void masterAudioRef.current.play().catch(() => {});
+      } else {
+        for (const vo of voices) {
+          if (!inRange(vo, tMs)) continue;
+          const el = audioRefs.current[vo.id];
+          if (!el) continue;
+          el.currentTime = Math.max(0, (tMs - vo.start_ms) / 1000);
+          void el.play().catch(() => {});
+        }
       }
     },
     syncPause() {
       for (const v of videos) videoRefs.current[v.id]?.pause();
       for (const vo of voices) audioRefs.current[vo.id]?.pause();
+      masterAudioRef.current?.pause();
     },
     syncSeek(sec: number) {
       const ms = sec * 1000;
@@ -188,14 +278,18 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         if (inRange(v, ms)) el.currentTime = Math.max(0, (ms - v.start_ms) / 1000);
         else if (!el.paused) el.pause();
       }
-      for (const vo of voices) {
-        const el = audioRefs.current[vo.id];
-        if (!el) continue;
-        if (inRange(vo, ms)) el.currentTime = Math.max(0, (ms - vo.start_ms) / 1000);
-        else if (!el.paused) el.pause();
+      if (masterAudioUrl && masterAudioRef.current) {
+        masterAudioRef.current.currentTime = Math.max(0, sec);
+      } else {
+        for (const vo of voices) {
+          const el = audioRefs.current[vo.id];
+          if (!el) continue;
+          if (inRange(vo, ms)) el.currentTime = Math.max(0, (ms - vo.start_ms) / 1000);
+          else if (!el.paused) el.pause();
+        }
       }
     },
-  }), [videos, voices, activeVideo, tMs, p]);
+  }), [videos, voices, activeVideo, tMs, p, masterAudioUrl]);
 
   return (
     <div className="live-preview">
@@ -214,6 +308,10 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             onLoadedMetadata={() => setMissingSrc((m) => (m[v.id] ? { ...m, [v.id]: false } : m))}
             onTimeUpdate={(e) => {
               if (activeVideo?.id !== v.id) return;
+              // When continuous narration is on, the master audio drives the
+              // playhead — its cadence is steadier and avoids the per-clip
+              // restart blip at section boundaries.
+              if (masterAudioUrl) return;
               const local = (e.currentTarget as HTMLVideoElement).currentTime;
               p.onTimeUpdate(v.start_ms / 1000 + local);
             }}
@@ -283,16 +381,30 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         ) : null}
       </div>
 
-      {/* Hidden audio elements per voice clip */}
+      {/* Hidden audio. Continuous take wins when present; otherwise we fall
+          back to one <audio> per voice clip (the legacy per-step path). */}
       <div style={{ display: "none" }}>
-        {voices.map((vo) => (
+        {masterAudioUrl ? (
           <audio
-            key={`${vo.id}-${p.assetVersion ?? 0}`}
-            ref={(el) => { audioRefs.current[vo.id] = el; }}
-            src={`/walkthroughs/${p.walkthroughId}/steps/${vo.step_id}.narration.mp3${p.assetVersion ? `?v=${p.assetVersion}` : ""}`}
+            ref={masterAudioRef}
+            src={`${masterAudioUrl}${p.assetVersion ? `?v=${p.assetVersion}` : ""}`}
             preload="auto"
+            onTimeUpdate={(e) => {
+              p.onTimeUpdate((e.currentTarget as HTMLAudioElement).currentTime);
+            }}
+            onPlay={() => p.onPlayStateChange(true)}
+            onPause={() => p.onPlayStateChange(false)}
           />
-        ))}
+        ) : (
+          voices.map((vo) => (
+            <audio
+              key={`${vo.id}-${p.assetVersion ?? 0}`}
+              ref={(el) => { audioRefs.current[vo.id] = el; }}
+              src={`/walkthroughs/${p.walkthroughId}/steps/${vo.step_id}.narration.mp3${p.assetVersion ? `?v=${p.assetVersion}` : ""}`}
+              preload="auto"
+            />
+          ))
+        )}
       </div>
     </div>
   );

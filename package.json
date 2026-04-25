@@ -5,6 +5,8 @@
   "description": "On-brand product walkthrough videos that maintain themselves from PRs.",
   "packageManager": "pnpm@10.25.0",
   "scripts": {
+    "bootstrap": "bash scripts/bootstrap.sh",
+    "dev": "pnpm --filter cutroom dev",
     "cutroom": "pnpm --filter cutroom dev",
     "build": "pnpm --filter cutroom build",
     "director": "uv --directory services/director run director",

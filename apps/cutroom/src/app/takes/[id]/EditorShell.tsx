@@ -31,6 +31,10 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { ChangesTimeline } from "./ChangesTimeline";
+import {
+  type ContinuousNarration,
+  synthesizeContinuousFromTracks,
+} from "@/lib/narration";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
 import { LivePreview, type LivePreviewHandle } from "./LivePreview";
@@ -70,6 +74,12 @@ interface Props {
   tracks: TrackEntry[];
   masterUrl: string;
   initialTransitions?: TransitionSpec[];
+  /**
+   * Continuous narration take loaded from disk on first render. When present
+   * the timeline + LivePreview render the "river" view immediately instead of
+   * falling back to the synthesized per-step approximation.
+   */
+  initialContinuousNarration?: ContinuousNarration | null;
 }
 
 export function EditorShell({
@@ -80,6 +90,7 @@ export function EditorShell({
   tracks,
   masterUrl,
   initialTransitions = [],
+  initialContinuousNarration = null,
 }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -104,6 +115,22 @@ export function EditorShell({
   const [selectedStepId, setSelectedStepId] = useState<string | null>(initialStep);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
+
+  // ── Continuous narration view ───────────────────────────────────────────
+  // Until the director's continuous synth ships, fall back to a synthesized
+  // view assembled from per-step waveforms. The Timeline draws one waveform
+  // either way; the difference is purely in what audio backs it at render time.
+  const [realContinuous, setRealContinuous] = useState<ContinuousNarration | null>(
+    initialContinuousNarration,
+  );
+  const [voiceStale, setVoiceStale] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [showScriptLane, setShowScriptLane] = useState(false);
+
+  const continuousNarration: ContinuousNarration = useMemo(
+    () => realContinuous ?? synthesizeContinuousFromTracks(tracks, stepStartsMs),
+    [realContinuous, tracks, stepStartsMs],
+  );
 
   // Timeline length = max(sum of tracks, last overlay clip end). The overlay
   // tail matters when a user inserts a suggestion past the master's end —
@@ -764,6 +791,9 @@ export function EditorShell({
   const authoringTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   function editStepInYaml(stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) {
     if (authoringTimers.current[stepId]) clearTimeout(authoringTimers.current[stepId]);
+    // A narration edit invalidates the continuous take — flip the stale pill
+    // so the user sees a "regenerate voice" prompt in the toolbar.
+    if (patch.narration !== undefined) setVoiceStale(true);
     authoringTimers.current[stepId] = setTimeout(() => {
       void fetch(`/api/walkthroughs/${walkthrough.id}/authoring`, {
         method: "PATCH",
@@ -771,6 +801,30 @@ export function EditorShell({
         body: JSON.stringify({ op: "rename", id: stepId, ...patch }),
       }).then(() => router.refresh());
     }, 500);
+  }
+
+  /** Kick the continuous-narration synth on the director side. The endpoint
+   *  is a thin wrapper around `director synth-continuous <id>`; while it runs
+   *  the toolbar shows a busy spinner. The status flips back to "fresh" once
+   *  the response succeeds. */
+  async function regenerateContinuousVoice() {
+    setVoiceBusy(true);
+    try {
+      const r = await fetch(
+        `/api/walkthroughs/${walkthrough.id}/narration/regenerate`,
+        { method: "POST", headers: { "Content-Type": "application/json" } },
+      );
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data?.ok) {
+        setVoiceStale(false);
+        if (data.narration) setRealContinuous(data.narration as ContinuousNarration);
+        router.refresh();
+      } else {
+        console.warn("[narration] regenerate failed:", data);
+      }
+    } finally {
+      setVoiceBusy(false);
+    }
   }
 
   async function addNewStep() {
@@ -1153,6 +1207,7 @@ export function EditorShell({
                   assetVersion={assetVersion}
                   selectedClipId={selectedClipId}
                   onPatchClip={patchClipState}
+                  narration={continuousNarration}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);
@@ -1263,6 +1318,13 @@ export function EditorShell({
           onRegenerateStale={regenerateAllStale}
           regenBusy={busyAction === "regen-all"}
           onRemoveClip={removeClipState}
+          narration={continuousNarration}
+          voiceStale={voiceStale}
+          voiceBusy={voiceBusy}
+          onRegenerateVoice={regenerateContinuousVoice}
+          showScriptLane={showScriptLane}
+          onToggleScriptLane={() => setShowScriptLane((v) => !v)}
+          onEditStepNarration={(id, text) => editStepInYaml(id, { narration: text })}
         />
       ) : (
         <Timeline

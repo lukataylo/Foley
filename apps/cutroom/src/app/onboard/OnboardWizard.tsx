@@ -34,6 +34,7 @@ export function OnboardWizard() {
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<Repo | null>(null);
+  const [devUrl, setDevUrl] = useState("http://localhost:3001");
   const [bootstrapMsg, setBootstrapMsg] = useState("");
   const [bootstrapHref, setBootstrapHref] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,21 +69,10 @@ export function OnboardWizard() {
     setPicked(repo);
     setStep("bootstrap");
     setError(null);
-    const stages = [
-      "Cloning repo metadata…",
-      "Analyzing pages and components…",
-      "Detecting brand palette…",
-      "Drafting your first walkthrough…",
-      "Wiring up the studio…",
-    ];
-    let cancelled = false;
-    (async () => {
-      for (const s of stages) {
-        if (cancelled) return;
-        setBootstrapMsg(s);
-        await new Promise((r) => setTimeout(r, 700));
-      }
-    })();
+
+    // Phase 1 — disk scaffold (always succeeds, fast).
+    setBootstrapMsg("Cloning repo metadata…");
+    let bootstrapJson: { id: string; href: string; display_name: string };
     try {
       const res = await fetch("/api/onboard/bootstrap", {
         method: "POST",
@@ -91,26 +81,79 @@ export function OnboardWizard() {
           full_name: repo.full_name,
           default_branch: repo.default_branch,
           description: repo.description,
+          dev_url: devUrl,
         }),
       });
       if (!res.ok) {
-        cancelled = true;
         const text = await res.text();
         setError(`Bootstrap failed: ${text}`);
         return;
       }
-      const json = (await res.json()) as { id: string; href: string; display_name: string };
-      // Hold on the last stage briefly so the animation reads.
-      await new Promise((r) => setTimeout(r, 500));
-      cancelled = true;
-      setBootstrapMsg(`Walkthrough \"${json.display_name}\" is ready.`);
-      setBootstrapHref(json.href);
-      setStep("done");
-      setTimeout(() => router.push(json.href), 1400);
+      bootstrapJson = (await res.json()) as {
+        id: string;
+        href: string;
+        display_name: string;
+      };
     } catch (e) {
-      cancelled = true;
       setError(e instanceof Error ? e.message : "Bootstrap error");
+      return;
     }
+
+    // Phase 2 — Claude drafts the steps. Slow (≈20–40s) because the model
+    // is using adaptive thinking with effort=high and we fetch the dev URL's
+    // HTML for grounding. We show staged status so the wait reads as
+    // intentional rather than hung.
+    const stages = [
+      "Fetching landing page…",
+      "Reading page structure…",
+      "Drafting your first walkthrough…",
+      "Writing steps to disk…",
+    ];
+    let stageIdx = 0;
+    setBootstrapMsg(stages[0]);
+    const stageTimer = setInterval(() => {
+      stageIdx = Math.min(stageIdx + 1, stages.length - 1);
+      setBootstrapMsg(stages[stageIdx]);
+    }, 5000);
+
+    try {
+      const res = await fetch("/api/onboard/propose-steps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walkthrough_id: bootstrapJson.id,
+          dev_url: devUrl,
+          description: repo.description ?? "",
+        }),
+      });
+      clearInterval(stageTimer);
+      if (!res.ok) {
+        // The scaffold is on disk — let the user open the studio anyway and
+        // tell them the auto-draft fell through.
+        const json = (await res.json().catch(() => ({}))) as { detail?: string };
+        setError(
+          `Auto-draft failed (${json.detail?.slice(0, 200) ?? "unknown"}). The scaffold is saved — you can edit walkthrough.yaml and try again.`,
+        );
+        setBootstrapMsg(`Walkthrough "${bootstrapJson.display_name}" is ready.`);
+        setBootstrapHref(bootstrapJson.href);
+        setStep("done");
+        return;
+      }
+    } catch (e) {
+      clearInterval(stageTimer);
+      setError(
+        `Auto-draft errored: ${e instanceof Error ? e.message : "unknown"}. The scaffold is saved — open the studio to continue manually.`,
+      );
+      setBootstrapMsg(`Walkthrough "${bootstrapJson.display_name}" is ready.`);
+      setBootstrapHref(bootstrapJson.href);
+      setStep("done");
+      return;
+    }
+
+    setBootstrapMsg(`Walkthrough "${bootstrapJson.display_name}" is ready.`);
+    setBootstrapHref(bootstrapJson.href);
+    setStep("done");
+    setTimeout(() => router.push(bootstrapJson.href), 1400);
   }
 
   return (
@@ -168,6 +211,21 @@ export function OnboardWizard() {
                 ? "Showing your most recently active repos."
                 : "Demo mode — these are example repositories. Add a GITHUB_PAT env var to see your own."}
             </p>
+            <label className="onboard-field">
+              <span className="onboard-field-label">Dev URL</span>
+              <input
+                type="url"
+                className="onboard-search"
+                placeholder="http://localhost:3001"
+                value={devUrl}
+                onChange={(e) => setDevUrl(e.target.value)}
+                spellCheck={false}
+              />
+              <span className="onboard-field-hint">
+                Where the product is running. We&apos;ll fetch its landing page so the
+                first-draft narration matches what users actually see.
+              </span>
+            </label>
             <input
               type="text"
               className="onboard-search"

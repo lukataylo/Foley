@@ -9,6 +9,9 @@ interface BootstrapBody {
   full_name: string; // e.g. "yourname/loop"
   default_branch: string;
   description: string | null;
+  /** Where the user's product is running locally. The proposer fetches this
+   *  URL to ground its draft actions in the real DOM. */
+  dev_url?: string;
 }
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
@@ -66,8 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     display_name,
     target_app: {
       repo: body.full_name,
-      dev_url: "http://localhost:3000",
-      default_branch: body.default_branch || "main",
+      dev_url: body.dev_url || "http://localhost:3001",
     },
     brand_ref: "brand.yaml",
     steps: [
@@ -112,6 +114,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     id: slug,
     display_name,
-    href: `/walkthroughs/${slug}`,
+    // Land in the step editor so the user immediately sees the drafted
+    // walkthrough and the "Render clips" button. The plain detail view at
+    // /walkthroughs/<id> is empty until a master take exists.
+    href: `/walkthroughs/${slug}/edit`,
   });
 }

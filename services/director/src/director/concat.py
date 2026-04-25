@@ -117,11 +117,20 @@ def assemble_master(
     segments_dir.mkdir(parents=True, exist_ok=True)
     master_path = out_dir / "master.mp4"
 
+    # Continuous-narration mode: when a director synth-continuous run has
+    # produced narration.mp3 at the walkthrough root, prefer it over the
+    # per-step mp3s. We build silent-video segments, concatenate, and then
+    # mix the single continuous take onto the assembled video. Segment
+    # reuse from a parent take is disabled here because parent segments
+    # carry per-step audio that doesn't match silent-video segments.
+    continuous_mp3 = walkthroughs_dir / walkthrough.id / "narration.mp3"
+    use_continuous = continuous_mp3.exists() and continuous_mp3.stat().st_size > 0
+
     # For non-master takes, reuse the parent's segments byte-for-byte for any
     # step the agent classified UNCHANGED. This is what makes the byte-identity
     # claim hold — parent-take segments are immutable; we never re-encode them.
     reuse_from_parent: dict[str, Path] = {}
-    if step_diffs is not None and parent_take_id is not None:
+    if step_diffs is not None and parent_take_id is not None and not use_continuous:
         parent = take_dir(walkthroughs_dir, walkthrough.id, parent_take_id)
         parent_segments = parent / "segments"
         unchanged_ids = {d.step_id for d in step_diffs if d.status is StepStatus.UNCHANGED}
@@ -152,7 +161,10 @@ def assemble_master(
                     raise FileNotFoundError(
                         f"missing clip for step {step.id}: {paths['clip']} — run `director ingest` first"
                     )
-                _build_segment(paths["clip"], paths["narration"], seg_path, step.duration_ms)
+                # In continuous mode, segments carry only video — the joined
+                # narration is mixed onto the assembled master in one pass.
+                narration_arg = None if use_continuous else paths["narration"]
+                _build_segment(paths["clip"], narration_arg, seg_path, step.duration_ms)
                 source = "rebuilt"
 
             seg_sha = _file_sha256(seg_path)
@@ -171,14 +183,38 @@ def assemble_master(
         concat_list = segments_dir / "concat.txt"
         concat_list.write_text("\n".join(concat_lines) + "\n")
 
-        _ffmpeg([
-            "-f", "concat",
-            "-safe", "0",
-            "-i", str(concat_list),
-            "-c", "copy",
-            "-movflags", "+faststart",
-            str(master_path),
-        ])
+        if use_continuous:
+            # Concat silent-video segments to a temp file, then mix the
+            # continuous narration as the master's audio track in a single
+            # encode pass. The result is one mp4 with one audio stream.
+            silent_master = segments_dir / "_silent_master.mp4"
+            _ffmpeg([
+                "-f", "concat",
+                "-safe", "0",
+                "-i", str(concat_list),
+                "-c", "copy",
+                str(silent_master),
+            ])
+            _ffmpeg([
+                "-i", str(silent_master),
+                "-i", str(continuous_mp3),
+                "-map", "0:v",
+                "-map", "1:a",
+                "-shortest",
+                *ENCODE_ARGS,
+                "-movflags", "+faststart",
+                str(master_path),
+            ])
+            silent_master.unlink(missing_ok=True)
+        else:
+            _ffmpeg([
+                "-f", "concat",
+                "-safe", "0",
+                "-i", str(concat_list),
+                "-c", "copy",
+                "-movflags", "+faststart",
+                str(master_path),
+            ])
 
     manifest = {
         "walkthrough_id": walkthrough.id,

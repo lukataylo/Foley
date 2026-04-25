@@ -1,0 +1,60 @@
+# Imported by Foley Recorder on 2026-04-25T13:16:13.749Z
+# Source: chrome://newtab/
+version: 1
+target_app:
+  repo: imported/newtab
+  dev_url: 'null'
+brand_ref: brand.yaml
+steps:
+  - id: step_01-search
+    title: Click the "Search" dropdown
+    narration: Click the "Search" dropdown
+    duration_ms: 4000
+    viewport:
+      width: 1200
+      height: 942
+    actions:
+      - kind: goto
+        url: https://www.google.com/
+      - kind: wait
+        ms: 800
+      - kind: click
+        selector: '#APjFqb'
+      - kind: wait
+        ms: 1500
+  - id: step_02-search
+    title: Type "testing" into the "Search" dropdown
+    narration: Type "testing" into the "Search" dropdown
+    duration_ms: 4000
+    viewport:
+      width: 1200
+      height: 942
+    actions:
+      - kind: goto
+        url: https://www.google.com/
+      - kind: wait
+        ms: 800
+      - kind: fill
+        selector: '#APjFqb'
+        value: testing
+      - kind: wait
+        ms: 1500
+  - id: step_03
+    title: Click a link
+    narration: Click a link
+    duration_ms: 4000
+    viewport:
+      width: 1200
+      height: 942
+    actions:
+      - kind: goto
+        url: >-
+          https://www.google.com/search?q=testing&sca_esv=d378d7b468f52dd5&sxsrf=ANbL-n5uYVlDzQnZ1aNITV-skHJLcGPBrA%3A1777122958201&source=hp&ei=jr7sabCUCpy1hbIPj8eXoAI&iflsig=AFdpzrgAAAAAaezMni2oOTHcfCCQPjjq-L_u0f7MCcJS&ved=0ahUKEwiwk5P1iomUAxWcWkEAHY_jBSQQ4dUDCCA&uact=5&oq=testing&gs_lp=Egdnd3Mtd2l6Igd0ZXN0aW5nMgoQIxiABBiKBRgnMgoQABiABBiKBRhDMgoQLhiABBiKBRhDMgoQABiABBiKBRhDMgoQABiABBiKBRhDMgoQLhiABBiKBRhDMgoQABiABBiKBRhDMgUQABiABDIFEAAYgAQyBRAAGIAESLEKUPcEWM0JcAF4AJABAJgBQaABmgOqAQE3uAEDyAEA-AEBmAIIoAK2A6gCCsICBxAjGOoCGCfCAg0QIxjwBRjJAhjqAhgnwgIQEAAYgAQYigUYQxixAxiDAcICCBAAGIAEGLEDwgIOEC4YgAQYsQMYxwEY0QPCAg0QABiABBiKBRhDGLEDwgILEAAYgAQYsQMYgwHCAhEQLhiABBixAxjHARivARiOBcICBRAuGIAEwgIOEC4YgAQYxwEYrwEYjgXCAgoQABiABBgUGIcCmAMG8QVNk2gTQlSoOZIHATigB8NCsgcBN7gHrwPCBwUwLjYuMsgHFIAIAQ&sclient=gws-wiz
+      - kind: wait
+        ms: 800
+      - kind: click
+        selector: >-
+          div.N54PNb.BToiNc > div.kb0PBd.A9Y9g:nth-of-type(1) > div.yuRUbf > div.b8lM7 > span.V9tjod
+          > a.zReHs
+      - kind: wait
+        ms: 1500

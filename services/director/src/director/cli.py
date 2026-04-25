@@ -19,11 +19,14 @@ from .agent import review_pr as run_agent
 from .bake_master import bake_master
 from .concat import assemble_master, diff_takes
 from .config import settings
+from .continuous_narration import synth_continuous
 from .github import fetch_pr_diff, fetch_pr_meta
 from .logfire_setup import configure as configure_logfire
 from .models import StepDiff, StepStatus, TakeStatus
 from .narrator import synth as synth_narration
 from .playwright_runner import capture_step
+from .proposer import propose_steps as run_proposer
+from .proposer import write_proposed_steps
 from .walkthrough_loader import load_walkthrough
 
 app = typer.Typer(
@@ -108,6 +111,58 @@ def master(
     rprint(
         f"[green]master[/] {walkthrough_id}/{take_id}: "
         f"{len(manifest['segments'])} segments, sha256={manifest['master_sha256'][:12]}…"
+    )
+
+
+@app.command("propose-steps")
+def propose_steps_cmd(
+    walkthrough_id: str = typer.Argument(..., help="Walkthrough id (e.g. the slug from onboarding)."),
+    dev_url: str | None = typer.Option(
+        None,
+        "--dev-url",
+        help="Override the dev_url to fetch the landing page from. Defaults to walkthrough.yaml's target_app.dev_url.",
+    ),
+    description: str = typer.Option(
+        "",
+        "--description",
+        help="Short product description for the model — usually the GitHub repo description.",
+    ),
+) -> None:
+    """Draft 3–8 walkthrough steps for a freshly onboarded project.
+
+    Reads the bootstrapped walkthrough.yaml, calls Claude with the dev URL's
+    landing-page HTML for grounding, and writes the proposed Steps back into
+    the same file (replacing the stub `intro` step from onboarding).
+    """
+    wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
+    proposed = run_proposer(wt, description=description, dev_url=dev_url)
+    write_proposed_steps(_walkthrough_dir(walkthrough_id), proposed)
+    rprint(
+        f"[green]propose-steps[/] {walkthrough_id}: "
+        f"{len(proposed.steps)} steps drafted — {proposed.summary}"
+    )
+
+
+@app.command("synth-continuous")
+def synth_continuous_cmd(
+    walkthrough_id: str = typer.Argument("v1"),
+) -> None:
+    """Synth one continuous ElevenLabs narration for the whole walkthrough.
+
+    Joins every step's narration into a single TTS call so prosody carries
+    across boundaries (no choppy per-step concatenation), then writes:
+
+      walkthroughs/<id>/narration.mp3
+      walkthroughs/<id>/narration.timing.json
+      walkthroughs/<id>/narration.waveform.json
+
+    The cutroom timeline picks these up the next time it loads.
+    """
+    wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
+    timing = synth_continuous(wt, settings.walkthroughs_dir)
+    rprint(
+        f"[green]synth-continuous[/] {walkthrough_id}: "
+        f"{timing['duration_ms'] / 1000:.1f}s, {len(timing['steps'])} steps mapped"
     )
 
 
