@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DocPage, DocKind } from "@/lib/docs";
+import { EditableTitle } from "./EditableTitle";
 
 interface Props {
   walkthroughId: string;
@@ -76,10 +77,11 @@ export function WalkthroughLayout({
         <div className="actions">{headerActions}</div>
       </header>
 
-      <div className="wt-titleblock">
-        <p className="detail-eyebrow">Project · v{walkthroughVersion}</p>
-        <h1 className="detail-title">{walkthroughTitle}</h1>
-      </div>
+      <EditableTitle
+        walkthroughId={walkthroughId}
+        walkthroughVersion={walkthroughVersion}
+        initialTitle={walkthroughTitle}
+      />
 
       <aside className="wt-sidebar" aria-hidden={!open}>
         <div className="wt-sidebar-inner">

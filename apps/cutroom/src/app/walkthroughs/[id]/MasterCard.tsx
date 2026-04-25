@@ -1,0 +1,122 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+interface TakeChoice {
+  id: string;
+  pr_title: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface Props {
+  walkthroughId: string;
+  totalDurationMs: number;
+  masterSha?: string | null;
+  promotedFrom?: string | null;
+  videoUrl: string;
+  takeOptions: TakeChoice[];
+}
+
+export function MasterCard({
+  walkthroughId,
+  totalDurationMs,
+  masterSha,
+  promotedFrom,
+  videoUrl,
+  takeOptions,
+}: Props) {
+  const router = useRouter();
+  const [picking, setPicking] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function promote(takeId: string) {
+    if (!confirm(`Promote ${takeId} to master? The current master will be archived.`)) return;
+    setBusyId(takeId);
+    try {
+      const res = await fetch(`/api/walkthroughs/${walkthroughId}/master`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ take_id: takeId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "Promote failed");
+      } else {
+        setPicking(false);
+        router.refresh();
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="sticky sticky-sky">
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Master</h2>
+        <button
+          type="button"
+          className="brand-edit-btn"
+          onClick={() => setPicking((p) => !p)}
+          style={{ marginLeft: "auto" }}
+        >
+          {picking ? "Cancel" : "Change master"}
+        </button>
+      </div>
+
+      {/* Cache-bust the player when the master swaps so the user sees the new clip. */}
+      <video
+        controls
+        preload="metadata"
+        src={`${videoUrl}?t=${masterSha ?? "x"}`}
+        key={masterSha ?? videoUrl}
+      />
+
+      <div className="meta">
+        {(totalDurationMs / 1000).toFixed(1)}s
+        {masterSha ? <> · sha {masterSha.slice(0, 12)}…</> : null}
+        {promotedFrom ? (
+          <span style={{ marginLeft: 8, color: "var(--muted)" }}>
+            ← from <strong>{promotedFrom}</strong>
+          </span>
+        ) : null}
+      </div>
+
+      <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
+        <Link href={`/takes/master`} className="btn-secondary">Open in editor</Link>
+      </div>
+
+      {picking ? (
+        <div className="master-picker">
+          <div className="master-picker-label">Promote a take to master</div>
+          {takeOptions.length === 0 ? (
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>No other takes yet.</p>
+          ) : (
+            <ul>
+              {takeOptions.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    className="master-picker-row"
+                    onClick={() => promote(t.id)}
+                    disabled={busyId !== null}
+                  >
+                    <span className="mono">{t.id}</span>
+                    <span className={`status status-${t.status}`}>{t.status}</span>
+                    <span className="title">{t.pr_title ?? "—"}</span>
+                    <span className="cta">
+                      {busyId === t.id ? "Promoting…" : "Promote →"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}

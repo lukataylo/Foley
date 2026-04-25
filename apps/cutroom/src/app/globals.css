@@ -409,6 +409,122 @@ div > .folder-card.placeholder { cursor: default; }
 /* Project section: just lets the sticky-grid breathe under it */
 .wt-project-section { margin-bottom: 40px; }
 
+/* Tall sticky variant — used by Recent activity. Doubles its visible
+   density inside the masonry column. */
+.sticky-tall { min-height: 540px; }
+
+/* In-card edit affordances (Brand + Master) */
+.brand-edit-btn {
+  background: rgba(0,0,0,0.06);
+  border: 1px solid transparent;
+  color: var(--fg-2);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.brand-edit-btn:hover { background: rgba(0,0,0,0.10); }
+.brand-edit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.brand-edit-btn.brand-edit-primary { background: var(--fg-2); color: var(--bg); }
+.brand-edit-btn.brand-edit-primary:hover { opacity: 0.85; background: var(--fg-2); }
+[data-theme="dark"] .brand-edit-btn { background: rgba(255,255,255,0.08); }
+[data-theme="dark"] .brand-edit-btn:hover { background: rgba(255,255,255,0.14); }
+
+.brand-input {
+  font: inherit;
+  font-size: 13px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--fg);
+  text-align: right;
+  font-weight: 500;
+}
+.brand-input:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+[data-theme="dark"] .brand-input {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.18);
+}
+
+/* Master picker drawer (inside the Master sticky card) */
+.master-picker {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
+}
+[data-theme="dark"] .master-picker {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.10);
+}
+.master-picker-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.master-picker ul { list-style: none; margin: 0; padding: 0; }
+.master-picker .master-picker-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 6px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--fg);
+}
+.master-picker .master-picker-row:hover { background: rgba(0,0,0,0.05); }
+[data-theme="dark"] .master-picker .master-picker-row:hover { background: rgba(255,255,255,0.05); }
+.master-picker .master-picker-row .title {
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.master-picker .master-picker-row .cta {
+  color: var(--link);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.master-picker .master-picker-row[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* Inline-editable title (the project name across the top) */
+.detail-title.editable { cursor: text; display: inline-flex; align-items: baseline; gap: 6px; }
+.detail-title.editable .rename-hint {
+  opacity: 0;
+  font-size: 0.5em;
+  color: var(--muted);
+  transition: opacity 120ms ease;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.detail-title.editable:hover .rename-hint { opacity: 1; }
+.detail-title-input {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--fg-2);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--link);
+  padding: 0 0 4px;
+  font-family: inherit;
+  width: min(680px, 90%);
+  outline: none;
+}
+
 /* Sparkle decoration — used inside h2's of sticky cards + on doc cards. */
 .sparkle {
   display: inline-block;

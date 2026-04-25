@@ -13,6 +13,8 @@ import {
 } from "@/lib/fs";
 import { loadDocs } from "@/lib/docs";
 import { WalkthroughLayout } from "./WalkthroughLayout";
+import { EditableBrand } from "./EditableBrand";
+import { MasterCard } from "./MasterCard";
 
 export const dynamic = "force-dynamic";
 
@@ -55,42 +57,30 @@ export default async function WalkthroughDetailPage({
   const otherTakes = takes.filter((t) => t.id !== "master");
   const totalDuration = wt.steps.reduce((n, s) => n + s.duration_ms, 0);
 
+  const masterTakeJson = master as
+    | (typeof master & { promoted_from?: string | null })
+    | undefined;
+
   // The pinned project masonry — back to the original sticky cards.
   const projectStrip = (
     <div className="sticky-grid">
       {master ? (
-        <div className="sticky sticky-sky">
-          <h2>Master</h2>
-          <video
-            controls
-            preload="metadata"
-            src={takePublicPath(params.id, "master", "master.mp4")}
-          />
-          <div className="meta">
-            {(totalDuration / 1000).toFixed(1)}s
-            {masterManifest ? <> · sha {masterManifest.master_sha256.slice(0, 12)}…</> : null}
-          </div>
-          <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
-            <Link href={`/takes/master`} className="btn-secondary">Open in editor</Link>
-          </div>
-        </div>
+        <MasterCard
+          walkthroughId={params.id}
+          totalDurationMs={totalDuration}
+          masterSha={masterManifest?.master_sha256 ?? null}
+          promotedFrom={masterTakeJson?.promoted_from ?? null}
+          videoUrl={takePublicPath(params.id, "master", "master.mp4")}
+          takeOptions={otherTakes.map((t) => ({
+            id: t.id,
+            pr_title: t.pr_title,
+            status: t.status,
+            created_at: t.created_at,
+          }))}
+        />
       ) : null}
 
-      <div className="sticky sticky-mint">
-        <h2>Brand <Sparkle /></h2>
-        <div className="row"><span className="k">Voice</span><span className="v">{wt.brand.voice_name} · en-GB</span></div>
-        <div className="row"><span className="k">Pacing</span><span className="v">{wt.brand.pacing_wpm} wpm</span></div>
-        <div className="row"><span className="k">Intro card</span><span className="v">{(wt.brand.intro_card_ms / 1000).toFixed(1)}s</span></div>
-        <div className="row"><span className="k">Font</span><span className="v">{wt.brand.font_family}</span></div>
-        <div className="row"><span className="k">Palette</span>
-          <span className="palette-dots">
-            <span style={{ background: wt.brand.palette_bg }} />
-            <span style={{ background: wt.brand.palette_fg }} />
-            <span style={{ background: wt.brand.palette_accent }} />
-          </span>
-        </div>
-        <div className="voice-locked">🔒 voice locked at the walkthrough level</div>
-      </div>
+      <EditableBrand walkthroughId={params.id} brand={wt.brand} />
 
       <div className="sticky sticky-cream">
         <h2>Dailies</h2>
@@ -146,34 +136,30 @@ export default async function WalkthroughDetailPage({
         <div className="row"><span className="k">Webhook</span><span className="v mono">/api/webhook/github</span></div>
       </div>
 
-      <div className="sticky sticky-peach">
-        <h2>Steps <Sparkle /></h2>
-        <ul className="step-list">
-          {wt.steps.map((s, i) => (
-            <li key={s.id}>
-              <span className="num">{String(i + 1).padStart(2, "0")}</span>
-              <span>{s.title}</span>
-              <span className="dur">{(s.duration_ms / 1000).toFixed(1)}s</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="sticky sticky-rose">
-        <h2>Recent activity</h2>
+      <div className="sticky sticky-rose sticky-tall">
+        <h2>Recent activity <Sparkle /></h2>
+        <div className="sub-label">{takes.length} entries</div>
         {takes
           .slice()
           .sort((a, b) => b.created_at.localeCompare(a.created_at))
-          .slice(0, 5)
           .map((t) => (
             <div key={t.id} className="activity">
               <span className="when">{formatTime(t.created_at)}</span>
               <span>
-                <strong>{t.id}</strong> <span style={{ color: "var(--muted)" }}>{t.status}</span>
+                <strong>{t.id}</strong>{" "}
+                <span className={`status status-${t.status}`}>{t.status}</span>
                 {t.pr_title ? <> · {t.pr_title}</> : null}
+                {(t as { promoted_from?: string | null }).promoted_from ? (
+                  <> · <span style={{ color: "var(--muted)" }}>promoted from {(t as { promoted_from?: string | null }).promoted_from}</span></>
+                ) : null}
               </span>
             </div>
           ))}
+        {takes.length < 4 ? (
+          <p style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 12, lineHeight: 1.5 }}>
+            New PRs add takes here. Promoting one to master is logged on this list too.
+          </p>
+        ) : null}
       </div>
     </div>
   );
