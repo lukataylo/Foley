@@ -47,12 +47,20 @@ export default async function EditWalkthroughPage({
 }) {
   if (!isValidWalkthroughId(params.id)) notFound();
 
-  let raw: RawWalkthrough;
+  let raw: RawWalkthrough = {};
+  let loadError: string | null = null;
+  const file = path.join(WALKTHROUGHS_DIR, params.id, "walkthrough.yaml");
   try {
-    const file = path.join(WALKTHROUGHS_DIR, params.id, "walkthrough.yaml");
     raw = (yaml.load(await readFile(file, "utf8")) ?? {}) as RawWalkthrough;
-  } catch {
-    notFound();
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+      notFound();
+    }
+    // Bad YAML — keep the editor visible with a banner rather than 404'ing.
+    loadError =
+      err instanceof Error
+        ? `walkthrough.yaml has invalid YAML syntax: ${err.message.split("\n")[0]}`
+        : "walkthrough.yaml could not be loaded.";
   }
 
   // Best-effort: pull per-step capture warnings + errors out of meta.json so
@@ -138,6 +146,7 @@ export default async function EditWalkthroughPage({
           initialDisplayName={raw.display_name ?? params.id}
           devUrl={raw.target_app?.dev_url ?? ""}
           initialSteps={steps}
+          loadError={loadError}
         />
       </div>
     </main>

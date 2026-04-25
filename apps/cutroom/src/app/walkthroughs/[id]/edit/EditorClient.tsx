@@ -31,6 +31,9 @@ interface Props {
   initialDisplayName: string;
   devUrl: string;
   initialSteps: ClientStep[];
+  /** Set when the server-side YAML load found a problem we couldn't recover
+   *  from cleanly. The editor stays visible with a banner. */
+  loadError?: string | null;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -54,7 +57,13 @@ interface RenderPoll {
   log_tail?: string | null;
 }
 
-export function EditorClient({ walkthroughId, initialDisplayName, devUrl, initialSteps }: Props) {
+export function EditorClient({
+  walkthroughId,
+  initialDisplayName,
+  devUrl,
+  initialSteps,
+  loadError = null,
+}: Props) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [titleStatus, setTitleStatus] = useState<SaveStatus>("idle");
@@ -141,7 +150,9 @@ export function EditorClient({ walkthroughId, initialDisplayName, devUrl, initia
       });
       const data = await r.json();
       if (!r.ok || !data.ok) {
-        setRenderError(data?.error ?? `HTTP ${r.status}`);
+        // Prefer the friendly `message` (412 missing key, 422 yaml invalid)
+        // over the raw `error` code.
+        setRenderError(data?.message ?? data?.error ?? `HTTP ${r.status}`);
         return;
       }
       setRender({ status: data.status });
@@ -236,6 +247,15 @@ export function EditorClient({ walkthroughId, initialDisplayName, devUrl, initia
 
   return (
     <div className="editor-grid">
+      {loadError ? (
+        <div className="editor-load-error" role="alert">
+          <strong>walkthrough.yaml has a problem:</strong>{" "}
+          <span>{loadError}</span>{" "}
+          <span className="editor-load-error-hint">
+            Fix it in your editor and reload — the steps below may be incomplete.
+          </span>
+        </div>
+      ) : null}
       {/* Title + summary card */}
       <section className="editor-title-card">
         <p className="detail-eyebrow">Walkthrough name</p>
