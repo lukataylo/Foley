@@ -978,8 +978,20 @@ export function EditorShell({
   const selectedStep = tracks.find((t) => t.id === selectedStepId) ?? null;
   const selectedStepIdx = tracks.findIndex((t) => t.id === selectedStepId);
 
+  if (mode === "preview") {
+    return (
+      <PreviewPage
+        walkthrough={walkthrough}
+        walkthroughDisplayName={walkthroughDisplayName}
+        masterUrl={masterUrl}
+        takeId={takeId}
+        onBackToEdit={() => setMode("edit")}
+      />
+    );
+  }
+
   return (
-    <div className={`editor ${mode === "preview" ? "mode-preview" : "mode-edit"}`}>
+    <div className="editor mode-edit">
       <header className="editor-header">
         <div className="left">
           <Link href={`/walkthroughs/${walkthrough.id}`} className="back" style={{ margin: 0 }}>
@@ -1294,5 +1306,81 @@ function ModeToggle({ mode, onChange }: { mode: "edit" | "preview"; onChange: (m
         Preview
       </button>
     </div>
+  );
+}
+
+// Docs-style preview that mirrors the public /docs/<id> page layout — master
+// video at the top, then a vertical step-by-step list with each step's
+// title, narration, and segment clip. Lets the user see the walkthrough as
+// the audience will, without leaving the editor.
+function PreviewPage({
+  walkthrough,
+  walkthroughDisplayName,
+  masterUrl,
+  takeId,
+  onBackToEdit,
+}: {
+  walkthrough: Walkthrough;
+  walkthroughDisplayName: string;
+  masterUrl: string;
+  takeId: string;
+  onBackToEdit: () => void;
+}) {
+  const totalMs = walkthrough.steps.reduce((n, s) => n + s.duration_ms, 0);
+  const repoTail = walkthrough.target_app.repo.split("/")[1] ?? walkthrough.id;
+  return (
+    <main
+      className="docs editor-preview-page"
+      style={{
+        ["--brand-accent" as string]: walkthrough.brand.palette_accent,
+      }}
+    >
+      <div className="docs-toolbar">
+        <button type="button" className="back" onClick={onBackToEdit} style={{ margin: 0, background: "none", border: 0, cursor: "pointer", font: "inherit", color: "inherit", padding: 0 }}>
+          ← back to edit
+        </button>
+        <ModeToggle mode="preview" onChange={(m) => { if (m === "edit") onBackToEdit(); }} />
+      </div>
+
+      <header className="docs-hero">
+        <div className="brand-band" />
+        <div className="docs-hero-inner">
+          <p className="docs-eyebrow">Walkthrough · v{walkthrough.version}</p>
+          <h1 className="docs-title">A tour of {repoTail}</h1>
+          <p className="docs-meta">
+            {walkthrough.steps.length} steps · {(totalMs / 1000).toFixed(0)}s · narrated by {walkthrough.brand.voice_name}
+          </p>
+        </div>
+      </header>
+
+      <div className="docs-master-frame">
+        <video src={masterUrl} controls playsInline preload="metadata" />
+      </div>
+
+      <ol className="docs-steps">
+        {walkthrough.steps.map((step, i) => (
+          <li key={step.id} className="docs-step">
+            <div className="docs-step-num">{String(i + 1).padStart(2, "0")}</div>
+            <div className="docs-step-body">
+              <h2>{step.title}</h2>
+              <p className="narration">{step.narration}</p>
+              <video
+                src={`/walkthroughs/${walkthrough.id}/takes/${takeId}/segments/${step.id}.mp4`}
+                poster={`/walkthroughs/${walkthrough.id}/steps/${step.id}.png`}
+                muted
+                playsInline
+                preload="none"
+                controls
+              />
+              <p className="docs-step-meta">{(step.duration_ms / 1000).toFixed(1)}s</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <footer className="docs-footer">
+        <p>Live preview of <strong>{walkthroughDisplayName}</strong>. This mirrors what the public /docs/{walkthrough.id} page renders.</p>
+      </footer>
+    </main>
   );
 }

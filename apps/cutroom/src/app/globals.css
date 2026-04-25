@@ -2245,6 +2245,31 @@ a.back:hover { color: var(--fg); }
   transition: background 120ms ease, color 120ms ease;
 }
 .docs-cta:hover { background: var(--brand-accent); color: var(--bg); }
+
+/* Editor Preview mode — master video framed at the top, above the
+   step-by-step list. Mirrors the public /docs page but with the video
+   inline (audience watches here directly). */
+.editor-preview-page { background: var(--bg); min-height: 100vh; }
+.docs-master-frame {
+  max-width: 1040px;
+  margin: 0 auto 48px;
+  padding: 0 32px;
+}
+.docs-master-frame video {
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+  aspect-ratio: 16 / 10;
+}
+.editor-preview-page .docs-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
 .docs-steps {
   list-style: none;
   padding: 0 32px 120px;
