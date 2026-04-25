@@ -1045,6 +1045,75 @@ div > .folder-card.placeholder { cursor: default; }
 .sticky .activity { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; font-size: 13px; }
 .sticky .activity .when { color: var(--muted); font-family: ui-monospace, monospace; font-size: 11.5px; }
 
+/* Recent activity — vertical timeline view inside the rose sticky card */
+.activity-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+.activity-bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.activity-bucket-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.1px;
+  margin-bottom: 2px;
+}
+.activity-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 6px;
+  border-left: 1.5px solid rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+}
+[data-theme="dark"] .activity-rail { border-left-color: rgba(255,255,255,0.18); }
+.activity-row {
+  display: grid;
+  grid-template-columns: 14px 44px 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 4px 4px 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  border-radius: 6px;
+  position: relative;
+  margin-left: -7px;
+}
+.activity-row:hover { background: rgba(0,0,0,0.04); }
+[data-theme="dark"] .activity-row:hover { background: rgba(255,255,255,0.04); }
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.35);
+  margin-left: -1px;
+  align-self: center;
+  box-shadow: 0 0 0 3px var(--pastel-rose);
+}
+[data-theme="dark"] .activity-dot { box-shadow: 0 0 0 3px var(--pastel-rose); }
+.activity-dot.status-ready    { background: #b87a00; }
+.activity-dot.status-approved { background: #1d8a4a; }
+.activity-dot.status-rejected { background: #c8281e; }
+.activity-dot.status-drafting { background: rgba(0,0,0,0.35); }
+
+.activity-when {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--muted);
+  font-size: 11px;
+}
+.activity-body {
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Nested mini-card inside a sticky note (e.g. each take inside the Dailies note) */
 .sticky-mini {
   display: block;

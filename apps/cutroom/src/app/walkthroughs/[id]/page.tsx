@@ -140,22 +140,7 @@ export default async function WalkthroughDetailPage({
       <div className="sticky sticky-rose sticky-tall">
         <h2>Recent activity <Sparkle /></h2>
         <div className="sub-label">{takes.length} entries</div>
-        {takes
-          .slice()
-          .sort((a, b) => b.created_at.localeCompare(a.created_at))
-          .map((t) => (
-            <div key={t.id} className="activity">
-              <span className="when">{formatTime(t.created_at)}</span>
-              <span>
-                <strong>{t.id}</strong>{" "}
-                <span className={`status status-${t.status}`}>{t.status}</span>
-                {t.pr_title ? <> · {t.pr_title}</> : null}
-                {(t as { promoted_from?: string | null }).promoted_from ? (
-                  <> · <span style={{ color: "var(--muted)" }}>promoted from {(t as { promoted_from?: string | null }).promoted_from}</span></>
-                ) : null}
-              </span>
-            </div>
-          ))}
+        <ActivityTimeline takes={takes} />
         {takes.length < 4 ? (
           <p style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 12, lineHeight: 1.5 }}>
             New PRs add takes here. Promoting one to master is logged on this list too.
@@ -190,6 +175,70 @@ export default async function WalkthroughDetailPage({
         headerActions={headerActions}
       />
     </main>
+  );
+}
+
+function activityBucketLabel(iso: string): { label: string; rank: number } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { label: "—", rank: -1 };
+  const today = new Date();
+  const yest = new Date(today);
+  yest.setDate(yest.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  if (sameDay(d, today)) return { label: "Today", rank: 100 };
+  if (sameDay(d, yest)) return { label: "Yesterday", rank: 99 };
+  return {
+    label: d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+    rank: -d.getTime(),
+  };
+}
+
+interface ActivityTake {
+  id: string;
+  status: string;
+  pr_title: string | null;
+  created_at: string;
+  promoted_from?: string | null;
+}
+
+function ActivityTimeline({ takes }: { takes: ActivityTake[] }) {
+  const sorted = [...takes].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const groups = new Map<string, { label: string; rank: number; entries: ActivityTake[] }>();
+  for (const t of sorted) {
+    const { label, rank } = activityBucketLabel(t.created_at);
+    const g = groups.get(label) ?? { label, rank, entries: [] };
+    g.entries.push(t);
+    groups.set(label, g);
+  }
+  const buckets = Array.from(groups.values()).sort((a, b) => b.rank - a.rank);
+
+  return (
+    <div className="activity-timeline">
+      {buckets.map((b) => (
+        <div key={b.label} className="activity-bucket">
+          <div className="activity-bucket-label">{b.label}</div>
+          <ol className="activity-rail">
+            {b.entries.map((t) => (
+              <li key={t.id} className="activity-row">
+                <span className={`activity-dot status-${t.status}`} />
+                <span className="activity-when">{formatTime(t.created_at)}</span>
+                <span className="activity-body">
+                  <strong>{t.id}</strong>{" "}
+                  <span className={`status status-${t.status}`}>{t.status}</span>
+                  {t.pr_title ? <> · {t.pr_title}</> : null}
+                  {t.promoted_from ? (
+                    <> · <span style={{ color: "var(--muted)" }}>promoted from {t.promoted_from}</span></>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
   );
 }
 
