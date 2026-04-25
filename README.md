@@ -4,16 +4,26 @@
 
 ## See it in action
 
-The clip below is a Foley walkthrough _of Foley_. It was scripted by Claude
+![Foley demo preview](walkthroughs/foley/preview.gif)
+
+The clip above is a Foley walkthrough _of Foley_. It was scripted by Claude
 from the running cutroom's HTML, captured by Playwright, narrated by ElevenLabs,
 and concatenated by ffmpeg — every artefact in this repo went through the same
 pipeline a user's would.
 
-▶️ **[Watch the auto-generated tour](walkthroughs/foley/takes/master/master.mp4)** · 24 seconds · 2.1 MB · 1440 × 900 · voiced
+▶️ **[Watch the full tour](walkthroughs/foley/takes/master/master.mp4)** · 29 seconds · 2.4 MB · 1440 × 900 · voiced · [captions](walkthroughs/foley/captions.vtt)
 
-(GitHub plays the file inline in its blob viewer when you click through. The
-clip lives at `walkthroughs/foley/takes/master/master.mp4` so it travels with
-the repo.)
+## What's new in this build
+
+- **Smooth playback across step boundaries.** One continuous narration mp3 spans the take; the next video clip pre-rolls 250 ms before the cut so the swap is instant.
+- **Auto-onboarding.** The /onboard wizard takes a GitHub repo + a dev URL, and a Claude Sonnet 4.6 proposer drafts 3–8 grounded Playwright steps with text-locator selectors. New project → first take in under a minute.
+- **Resilient capture.** A bad selector no longer kills the whole ingest — the step records what it can, the editor flags it with a red dot, and a per-step **Retake** button heals it.
+- **Editor completeness.** Add steps with **+ Add step**, drag to reorder, retake any step inline, all without leaving the page.
+- **Subtitles + transcript with click-to-jump.** Generated for free from ElevenLabs' character-level alignment data.
+- **PR comment bot.** When a PR lands, Foley posts the new take's compare URL + a per-step diff table + an embedded preview.gif right back to the PR.
+- **Voice cloning upload.** Drop a 30 s audio sample into the Brand panel — ElevenLabs Instant Voice Cloning, brand.yaml updated, the next render is in your voice.
+- **Shareable docs.** Paste a `/docs/<id>` URL into Slack/Notion/Discord and it unfurls with a player thumbnail (OpenGraph + Twitter player card + oEmbed).
+- **Pre-flight checks + friendly errors.** Missing ffmpeg, ElevenLabs key, or malformed walkthrough.yaml are surfaced with actionable messages instead of stack traces.
 
 ## Quickstart for judges
 
@@ -310,12 +320,13 @@ ngrok http 3000                     # paste the forwarding URL into the GitHub
 | Command | What it does |
 |---|---|
 | `director propose-steps <id>` | Draft 3–8 steps for a brand-new walkthrough from its dev URL's HTML |
-| `director ingest [id]` | Capture every step's clip + narration |
+| `director ingest [id]` | Capture every step's clip + narration; per-step failures don't abort the run |
 | `director retake <step_id>` | Re-run one step (force, ignore cache) |
 | `director synth-continuous [id]` | Synth one continuous narration mp3 spanning the whole take |
+| `director captions <id>` | Generate captions.vtt from narration.timing.json |
 | `director master [--take <id>]` | Concat current step artifacts into a new take |
 | `director bake-master [--intro X --outro Y]` | Add intro/outro PNG bookends with fades |
-| `director review <PR>` | Full PR loop: diff → agent → retake → master |
+| `director review <PR> [--no-comment]` | Full PR loop: diff → agent → retake → master, then post a comment to the PR |
 | `director diff-takes <a> <b>` | Per-segment SHA comparison between two takes |
 
 ---
