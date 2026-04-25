@@ -219,23 +219,21 @@ function ActivityTimeline({ takes }: { takes: ActivityTake[] }) {
     <div className="activity-timeline">
       {buckets.map((b) => (
         <div key={b.label} className="activity-bucket">
-          <div className="activity-bucket-label">{b.label}</div>
-          <ol className="activity-rail">
-            {b.entries.map((t) => (
-              <li key={t.id} className="activity-row">
-                <span className={`activity-dot status-${t.status}`} />
-                <span className="activity-when">{formatTime(t.created_at)}</span>
-                <span className="activity-body">
-                  <strong>{t.id}</strong>{" "}
-                  <span className={`status status-${t.status}`}>{t.status}</span>
-                  {t.pr_title ? <> · {t.pr_title}</> : null}
-                  {t.promoted_from ? (
-                    <> · <span style={{ color: "var(--muted)" }}>promoted from {t.promoted_from}</span></>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <div className="activity-bucket-head">{b.label}</div>
+          {b.entries.map((t) => (
+            <div key={t.id} className={`activity-row status-${t.status}`}>
+              <span className="activity-when">{formatTime(t.created_at)}</span>
+              <span className="activity-body">
+                <strong>{t.id}</strong>
+                {" "}
+                <span className={`status status-${t.status}`}>{t.status}</span>
+                {t.pr_title ? <> · {t.pr_title}</> : null}
+                {t.promoted_from ? (
+                  <> · <span style={{ color: "var(--muted)" }}>promoted from {t.promoted_from}</span></>
+                ) : null}
+              </span>
+            </div>
+          ))}
         </div>
       ))}
     </div>
