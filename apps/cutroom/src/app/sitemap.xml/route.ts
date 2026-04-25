@@ -32,7 +32,9 @@ function escapeXml(s: string): string {
 
 export async function GET(req: Request) {
   const base = dashboardBase(req);
-  const summaries = await listWalkthroughSummaries();
+  // Hidden walkthroughs are excluded from the sitemap so search engines
+  // don't index them.
+  const summaries = (await listWalkthroughSummaries()).filter((s) => !s.hidden);
   const now = new Date().toISOString().slice(0, 10);
 
   const urls: Array<{ loc: string; lastmod?: string; priority?: string }> = [

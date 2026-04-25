@@ -40,6 +40,15 @@ export async function generateMetadata({
   return {
     title,
     description,
+    robots: walkthrough.hidden
+      ? { index: false, follow: false, nocache: true }
+      : { index: true, follow: true },
+    alternates: {
+      canonical: pageUrl,
+      types: {
+        "application/json+oembed": `${DASHBOARD_URL}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
+      },
+    },
     openGraph: {
       title,
       description,
@@ -60,11 +69,6 @@ export async function generateMetadata({
     other: {
       // oEmbed responder lives at /api/oembed?url=<page>
       "oembed-link": `${DASHBOARD_URL}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
-    },
-    alternates: {
-      types: {
-        "application/json+oembed": `${DASHBOARD_URL}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
-      },
     },
   };
 }

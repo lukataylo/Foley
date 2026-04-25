@@ -26,7 +26,7 @@ function dashboardBase(req: Request): string {
 
 export async function GET(req: Request) {
   const base = dashboardBase(req);
-  const summaries = await listWalkthroughSummaries();
+  const summaries = (await listWalkthroughSummaries()).filter((s) => !s.hidden);
 
   const lines: string[] = [];
   lines.push("# Foley");

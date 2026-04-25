@@ -48,6 +48,9 @@ export interface Walkthrough {
   target_app: { repo: string; dev_url: string };
   brand: BrandConfig;
   steps: Step[];
+  /** When true, hidden from the home grid + sitemap + llms.txt and
+   *  /docs/<id> emits a robots:noindex meta. */
+  hidden?: boolean;
 }
 
 export interface StepDiff {

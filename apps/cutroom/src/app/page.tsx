@@ -66,7 +66,7 @@ function relativeTime(iso: string | null): string {
 }
 
 export default async function HomePage() {
-  const summaries = await listWalkthroughSummaries();
+  const summaries = (await listWalkthroughSummaries()).filter((s) => !s.hidden);
 
   // For each real walkthrough, take the first 3 step frame paths as thumbs.
   const real: FolderItem[] = await Promise.all(

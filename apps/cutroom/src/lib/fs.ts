@@ -40,6 +40,9 @@ export interface WalkthroughSummary {
   voice_name: string;
   last_activity: string | null; // ISO from latest take
   total_duration_s: number;     // from canonical step durations
+  /** Mirrors walkthrough.yaml's `hidden`. Public surfaces (home grid,
+   *  sitemap, llms.txt) skip rows where hidden=true. */
+  hidden: boolean;
 }
 
 const TITLECASE: Record<string, string> = {
@@ -64,6 +67,7 @@ export async function listWalkthroughSummaries(): Promise<WalkthroughSummary[]> 
         voice_name: wt.brand.voice_name,
         last_activity,
         total_duration_s: wt.steps.reduce((n, s) => n + s.duration_ms / 1000, 0),
+        hidden: wt.hidden ?? false,
       });
     } catch {
       /* skip broken walkthroughs */

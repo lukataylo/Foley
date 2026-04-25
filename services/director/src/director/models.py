@@ -157,6 +157,14 @@ class Walkthrough(BaseModel):
     target_app: TargetApp
     brand: BrandConfig
     steps: list[Step] = Field(min_length=1)
+    hidden: bool = Field(
+        default=False,
+        description=(
+            "When true, the walkthrough is excluded from /sitemap.xml, "
+            "/llms.txt, and the home folder grid; /docs/<id> ships a "
+            "robots `noindex` meta tag."
+        ),
+    )
 
     @model_validator(mode="after")
     def _unique_step_ids(self) -> Walkthrough:
