@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BrandConfig } from "@/lib/types";
 
@@ -30,6 +30,9 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
   const [draft, setDraft] = useState<BrandConfig>(brand);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cloneStatus, setCloneStatus] = useState<"idle" | "uploading" | "ok" | "error">("idle");
+  const [cloneMessage, setCloneMessage] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function patch(p: Partial<BrandConfig>) {
     setDraft((d) => ({ ...d, ...p }));
@@ -56,6 +59,36 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
   function cancel() {
     setDraft(brand);
     setEditing(false);
+  }
+
+  async function uploadVoiceSample(file: File) {
+    setCloneStatus("uploading");
+    setCloneMessage(null);
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const r = await fetch(`/api/walkthroughs/${walkthroughId}/brand/voice`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await r.json()) as {
+        ok: boolean;
+        voice_id?: string;
+        voice_name?: string;
+        message?: string;
+      };
+      if (!r.ok || !data.ok) {
+        setCloneStatus("error");
+        setCloneMessage(data.message ?? `HTTP ${r.status}`);
+        return;
+      }
+      setCloneStatus("ok");
+      setCloneMessage(`Cloned as "${data.voice_name}"`);
+      router.refresh();
+    } catch (err) {
+      setCloneStatus("error");
+      setCloneMessage(err instanceof Error ? err.message : "network error");
+    }
   }
 
   return (
@@ -183,6 +216,39 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
 
       <div className="voice-locked">
         🔒 voice locked at the walkthrough level
+      </div>
+
+      <div className="brand-clone">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4,audio/wav,audio/wave,audio/x-wav,audio/webm"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void uploadVoiceSample(f);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className="brand-clone-btn"
+          disabled={cloneStatus === "uploading"}
+          onClick={() => fileRef.current?.click()}
+        >
+          {cloneStatus === "uploading" ? "Cloning…" : "🎙 Clone my voice"}
+        </button>
+        {cloneStatus === "ok" && cloneMessage ? (
+          <span className="brand-clone-ok">✓ {cloneMessage}</span>
+        ) : null}
+        {cloneStatus === "error" && cloneMessage ? (
+          <span className="brand-clone-err">{cloneMessage}</span>
+        ) : null}
+        {cloneStatus === "idle" ? (
+          <span className="brand-clone-hint">
+            Drop a 30 s – 2 min clean recording — ElevenLabs Instant Voice Cloning.
+          </span>
+        ) : null}
       </div>
     </div>
   );
