@@ -40,6 +40,25 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
+async function readEnvKey(envPath: string, key: string): Promise<string> {
+  try {
+    const text = await fs.readFile(envPath, "utf8");
+    const re = new RegExp(`^${key}\\s*=\\s*(.*)$`, "m");
+    const m = text.match(re);
+    if (!m) return "";
+    let v = m[1].trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1);
+    }
+    return v;
+  } catch {
+    return "";
+  }
+}
+
 export async function runPreflight(): Promise<PreflightCheck[]> {
   const ffmpegPath = await which("ffmpeg");
   const uvPath = await which("uv");
@@ -71,6 +90,18 @@ export async function runPreflight(): Promise<PreflightCheck[]> {
 
   const envFile = path.join(REPO_ROOT, ".env");
   const envExists = await pathExists(envFile);
+
+  // Look inside .env for the two keys Foley actually needs at runtime.
+  // We don't validate them against the live API here — that's `/api/keys/test`'s
+  // job — but we do flag a configured-vs-blank state so the home banner
+  // can route the user to /welcome#keys instead of asking them to read
+  // the README.
+  const anthropicKey = envExists
+    ? await readEnvKey(envFile, "ANTHROPIC_API_KEY")
+    : "";
+  const elevenKey = envExists
+    ? await readEnvKey(envFile, "ELEVENLABS_API_KEY")
+    : "";
 
   return [
     {
@@ -107,8 +138,28 @@ export async function runPreflight(): Promise<PreflightCheck[]> {
       id: "env_file",
       label: ".env",
       ok: envExists,
-      detail: envExists ? envFile : "missing — `pnpm bootstrap` will create one from .env.example",
-      hint: envExists ? undefined : "Run `pnpm bootstrap`, then paste your API keys into `.env`.",
+      detail: envExists ? envFile : "missing — the welcome page can create one for you",
+      hint: envExists
+        ? undefined
+        : "Open /welcome and paste your API keys; we'll bootstrap .env for you.",
+    },
+    {
+      id: "anthropic_api_key",
+      label: "Anthropic API key",
+      ok: !!anthropicKey,
+      detail: anthropicKey ? "set" : "blank in .env",
+      hint: anthropicKey
+        ? undefined
+        : "Open /welcome#keys to paste it. We'll validate before saving.",
+    },
+    {
+      id: "elevenlabs_api_key",
+      label: "ElevenLabs API key",
+      ok: !!elevenKey,
+      detail: elevenKey ? "set" : "blank in .env",
+      hint: elevenKey
+        ? undefined
+        : "Open /welcome#keys to paste it. We'll validate before saving.",
     },
   ];
 }

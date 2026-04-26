@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { KeysPanel } from "@/components/KeysPanel";
 
 interface Repo {
   id: number;
@@ -26,6 +27,11 @@ const STEP_LABELS: Record<Step, string> = {
   done: "Open in studio",
 };
 
+interface KeyStatus {
+  configured: boolean;
+  masked: string;
+}
+
 export function OnboardWizard() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("auth");
@@ -35,9 +41,56 @@ export function OnboardWizard() {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<Repo | null>(null);
   const [devUrl, setDevUrl] = useState("http://localhost:3001");
+  const [devUrlTest, setDevUrlTest] = useState<
+    | null
+    | { state: "testing" }
+    | { state: "ok"; title: string | null }
+    | { state: "err"; message: string }
+  >(null);
   const [bootstrapMsg, setBootstrapMsg] = useState("");
   const [bootstrapHref, setBootstrapHref] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [keysReady, setKeysReady] = useState<boolean | null>(null);
+
+  // Poll the keys status so we can gate "Continue" behind a configured
+  // .env. Refresh when KeysPanel reports a save so the gate releases
+  // immediately.
+  async function refreshKeys() {
+    try {
+      const r = await fetch("/api/keys", { cache: "no-store" });
+      const j = (await r.json()) as {
+        status?: Record<string, KeyStatus>;
+      };
+      const status = j.status ?? {};
+      const a = status.ANTHROPIC_API_KEY?.configured ?? false;
+      const e = status.ELEVENLABS_API_KEY?.configured ?? false;
+      setKeysReady(a && e);
+    } catch {
+      setKeysReady(false);
+    }
+  }
+  useEffect(() => {
+    void refreshKeys();
+  }, []);
+
+  async function testDevUrl() {
+    setDevUrlTest({ state: "testing" });
+    try {
+      const r = await fetch(
+        `/api/preflight/dev-url?url=${encodeURIComponent(devUrl)}`,
+      );
+      const j = (await r.json()) as
+        | { ok: true; title: string | null }
+        | { ok: false; error: string };
+      if (j.ok) setDevUrlTest({ state: "ok", title: j.title });
+      else setDevUrlTest({ state: "err", message: j.error });
+    } catch (e) {
+      setDevUrlTest({
+        state: "err",
+        message: e instanceof Error ? e.message : "network error",
+      });
+    }
+  }
 
   const filteredRepos = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -194,18 +247,41 @@ export function OnboardWizard() {
               Foley reads your repository's structure to draft the first walkthrough,
               then watches `main` for changes and retakes only what's affected.
             </p>
+
+            {keysReady === false ? (
+              <div className="onboard-keys-block">
+                <p className="onboard-keys-warning">
+                  Foley needs Anthropic + ElevenLabs API keys before it can
+                  draft any steps. Paste them once and we'll write them to{" "}
+                  <code>.env</code> for you.
+                </p>
+                <KeysPanel onSaved={refreshKeys} />
+              </div>
+            ) : null}
+
             <ul className="onboard-checks">
               <li>Read access to repo metadata, files, and commits</li>
               <li>No write access — Foley never pushes</li>
               <li>Disconnect any time from the studio settings</li>
             </ul>
-            <button className="onboard-btn onboard-btn-primary" onClick={continueWithGithub}>
+            <button
+              className="onboard-btn onboard-btn-primary"
+              onClick={continueWithGithub}
+              disabled={keysReady === false}
+              title={
+                keysReady === false
+                  ? "Add API keys above first"
+                  : undefined
+              }
+            >
               <GithubGlyph /> Continue with GitHub
             </button>
             <div className="onboard-fineprint">
-              {process.env.NEXT_PUBLIC_GH_LIVE === "1"
-                ? "Using your live GitHub account."
-                : "No PAT configured — we'll show example repos so you can try the flow."}
+              {keysReady === false
+                ? "API keys missing — fill in the form above to continue."
+                : process.env.NEXT_PUBLIC_GH_LIVE === "1"
+                  ? "Using your live GitHub account."
+                  : "No PAT configured — we'll show example repos so you can try the flow."}
             </div>
           </div>
         )}
@@ -220,18 +296,43 @@ export function OnboardWizard() {
             </p>
             <label className="onboard-field">
               <span className="onboard-field-label">Dev URL</span>
-              <input
-                type="url"
-                className="onboard-search"
-                placeholder="http://localhost:3001"
-                value={devUrl}
-                onChange={(e) => setDevUrl(e.target.value)}
-                spellCheck={false}
-              />
-              <span className="onboard-field-hint">
-                Where the product is running. We&apos;ll fetch its landing page so the
-                first-draft narration matches what users actually see.
-              </span>
+              <div className="onboard-devurl-row">
+                <input
+                  type="url"
+                  className="onboard-search"
+                  placeholder="http://localhost:3001"
+                  value={devUrl}
+                  onChange={(e) => {
+                    setDevUrl(e.target.value);
+                    setDevUrlTest(null);
+                  }}
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  className="brand-edit-btn"
+                  onClick={testDevUrl}
+                  disabled={!devUrl || devUrlTest?.state === "testing"}
+                >
+                  {devUrlTest?.state === "testing" ? "Checking…" : "Test"}
+                </button>
+              </div>
+              {devUrlTest?.state === "ok" ? (
+                <span className="onboard-field-hint onboard-field-ok">
+                  ✓ Reachable
+                  {devUrlTest.title ? ` · "${devUrlTest.title}"` : ""}
+                </span>
+              ) : devUrlTest?.state === "err" ? (
+                <span className="onboard-field-hint onboard-field-err">
+                  ✗ {devUrlTest.message}. Foley can still draft a generic
+                  walkthrough, but grounding will be weaker.
+                </span>
+              ) : (
+                <span className="onboard-field-hint">
+                  Where the product is running. We&apos;ll fetch its landing page so the
+                  first-draft narration matches what users actually see.
+                </span>
+              )}
             </label>
             <input
               type="text"

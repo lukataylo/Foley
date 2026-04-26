@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { KeysPanel } from "@/components/KeysPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,10 @@ export default function WelcomePage() {
 
       <section className="welcome-mockup">
         <LaptopMockup />
+      </section>
+
+      <section className="welcome-keys-section">
+        <KeysPanel />
       </section>
 
       <section className="welcome-explainer">
