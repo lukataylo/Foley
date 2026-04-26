@@ -5,17 +5,25 @@ import { KeysPanel } from "@/components/KeysPanel";
 
 export const dynamic = "force-dynamic";
 
-const PUBLIC_HOSTS = new Set(["usefoley.com", "www.usefoley.com"]);
+const GITHUB_URL = "https://github.com/lukataylo/Foley";
+const GITHUB_QUICKSTART = "https://github.com/lukataylo/Foley/wiki/Quickstart-for-developers";
 
-function isPublicHost(): boolean {
+// Foley is local-first. The studio (onboard wizard, key entry, the editor)
+// only makes sense when the user is running a local install. On any
+// deployed host the welcome page becomes a GitHub-funnel for cloning the
+// repo. Localhost is the only host that gets the full studio chrome.
+function isLocalInstall(): boolean {
   const h = headers();
   const raw = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const host = raw.split(":")[0].toLowerCase();
-  return PUBLIC_HOSTS.has(host);
+  if (!host) return false;
+  if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return true;
+  if (host.endsWith(".local")) return true;
+  return false;
 }
 
 export default function WelcomePage() {
-  const publicHost = isPublicHost();
+  const local = isLocalInstall();
   return (
     <main className="welcome">
       <div className="welcome-topbar">
@@ -24,8 +32,10 @@ export default function WelcomePage() {
           <span className="welcome-brand-name">Foley</span>
         </div>
         <div className="welcome-topbar-actions">
-          {publicHost ? null : (
+          {local ? (
             <Link href="/" className="welcome-link">Open studio</Link>
+          ) : (
+            <a href={GITHUB_URL} className="welcome-link" target="_blank" rel="noopener noreferrer">GitHub →</a>
           )}
           <ThemeToggle />
         </div>
@@ -41,27 +51,58 @@ export default function WelcomePage() {
           maintain themselves.
         </h1>
         <p className="welcome-sub">
-          Auto-generate on-brand product documentation from your GitHub
-          repository — videos, step-by-step guides, and written tours that
-          stay current as your code evolves. Connect once. Ships forever.
+          {local ? (
+            <>
+              Auto-generate on-brand product documentation from your GitHub
+              repository — videos, step-by-step guides, and written tours that
+              stay current as your code evolves. Connect once. Ships forever.
+            </>
+          ) : (
+            <>
+              Foley is a local-first tool that turns your GitHub repo into a
+              self-updating product walkthrough video. Clone it, add your keys,
+              ship walkthroughs that re-render on every PR. No SaaS — your repo
+              and keys never leave your machine.
+            </>
+          )}
         </p>
 
         <div className="welcome-cta-row">
-          <Link href="/onboard" className="welcome-cta welcome-cta-primary">
-            <GithubGlyph />
-            <span>
-              <span className="welcome-cta-pre">Connect</span>
-              <span className="welcome-cta-main">a GitHub repo</span>
-            </span>
-          </Link>
-          {publicHost ? (
-            <Link href="/docs/foley" className="welcome-cta welcome-cta-ghost">
-              <span className="welcome-cta-main">See sample walkthrough</span>
+          {local ? (
+            <Link href="/onboard" className="welcome-cta welcome-cta-primary">
+              <GithubGlyph />
+              <span>
+                <span className="welcome-cta-pre">Connect</span>
+                <span className="welcome-cta-main">a GitHub repo</span>
+              </span>
             </Link>
           ) : (
+            <a
+              href={GITHUB_URL}
+              className="welcome-cta welcome-cta-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <GithubGlyph />
+              <span>
+                <span className="welcome-cta-pre">Clone</span>
+                <span className="welcome-cta-main">from GitHub</span>
+              </span>
+            </a>
+          )}
+          {local ? (
             <Link href="/" className="welcome-cta welcome-cta-ghost">
               <span className="welcome-cta-main">Open the studio</span>
             </Link>
+          ) : (
+            <a
+              href={GITHUB_QUICKSTART}
+              className="welcome-cta welcome-cta-ghost"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="welcome-cta-main">Read the quickstart</span>
+            </a>
           )}
         </div>
       </section>
@@ -70,11 +111,11 @@ export default function WelcomePage() {
         <LaptopMockup />
       </section>
 
-      {publicHost ? null : (
+      {local ? (
         <section className="welcome-keys-section">
           <KeysPanel />
         </section>
-      )}
+      ) : null}
 
       <section className="welcome-explainer">
         <div className="welcome-explainer-grid">
@@ -120,17 +161,40 @@ export default function WelcomePage() {
 
       <section className="welcome-final-cta">
         <h2>Stop maintaining docs by hand.</h2>
-        <p>Foley does it autonomously, end-to-end, on brand.</p>
+        <p>
+          {local
+            ? "Foley does it autonomously, end-to-end, on brand."
+            : "Clone the repo. Add your keys. Render your first walkthrough in under 2 minutes."}
+        </p>
         <div className="welcome-cta-row welcome-cta-row-center">
-          <Link href="/onboard" className="welcome-cta welcome-cta-primary">
-            <span className="welcome-cta-main">Connect a repository</span>
-          </Link>
-          <Link
-            href={publicHost ? "/docs/foley" : "/"}
-            className="welcome-cta welcome-cta-ghost"
-          >
-            <span className="welcome-cta-main">See sample walkthrough</span>
-          </Link>
+          {local ? (
+            <Link href="/onboard" className="welcome-cta welcome-cta-primary">
+              <span className="welcome-cta-main">Connect a repository</span>
+            </Link>
+          ) : (
+            <a
+              href={GITHUB_URL}
+              className="welcome-cta welcome-cta-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="welcome-cta-main">View on GitHub</span>
+            </a>
+          )}
+          {local ? (
+            <Link href="/" className="welcome-cta welcome-cta-ghost">
+              <span className="welcome-cta-main">See sample walkthrough</span>
+            </Link>
+          ) : (
+            <a
+              href={GITHUB_QUICKSTART}
+              className="welcome-cta welcome-cta-ghost"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="welcome-cta-main">Read the quickstart</span>
+            </a>
+          )}
         </div>
       </section>
 

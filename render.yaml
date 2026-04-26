@@ -13,9 +13,6 @@ services:
       pnpm install --frozen-lockfile
       cd apps/cutroom && pnpm build
     startCommand: cd apps/cutroom && pnpm start
-    domains:
-      - usefoley.com
-      - www.usefoley.com
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
