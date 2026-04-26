@@ -99,8 +99,9 @@ export async function POST(req: Request) {
   await mkdir(stepsDir, { recursive: true });
 
   const stepIdMap = new Map<string, string>(); // captured id -> stable slug
+  const usedStepIds = new Set<string>();
   payload.steps.forEach((s, i) => {
-    stepIdMap.set(s.id, uniqueSlug(slugForIndex(i, s), new Set()));
+    stepIdMap.set(s.id, uniqueSlug(slugForIndex(i, s), usedStepIds));
   });
 
   for (const captured of payload.steps) {
