@@ -131,6 +131,7 @@
       margin: 0; padding: 18px 20px;
       font-family: var(--mono); font-size: 13.5px; line-height: 1.7;
       color: var(--ink); overflow-x: auto;
+      text-align: left; /* override .hero text-align: center */
     }
     .install pre .c { color: var(--ink-faint); }
     .install pre .k { color: var(--amber); }
@@ -143,11 +144,12 @@
 
     /* Demo */
     .demo {
-      margin: 80px 0 60px;
-      display: flex; justify-content: center;
+      margin: 80px auto 60px;
+      text-align: center;
     }
     .laptop {
       width: 100%; max-width: 880px;
+      margin: 0 auto;
       background: linear-gradient(180deg, #2a2420 0%, #1f1a16 100%);
       border: 1px solid var(--border); border-radius: 18px;
       padding: 12px;
