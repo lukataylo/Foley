@@ -1460,6 +1460,11 @@ export function EditorShell({
                 currentTime={currentTime}
                 isPlaying={isPlaying}
               />
+              {currentCaption ? (
+                <div className="live-caption" aria-live="polite">
+                  {currentCaption}
+                </div>
+              ) : null}
             </div>
           )}
           <div className="tabs">
