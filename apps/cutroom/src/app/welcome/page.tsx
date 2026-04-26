@@ -1,10 +1,21 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { KeysPanel } from "@/components/KeysPanel";
 
 export const dynamic = "force-dynamic";
 
+const PUBLIC_HOSTS = new Set(["usefoley.com", "www.usefoley.com"]);
+
+function isPublicHost(): boolean {
+  const h = headers();
+  const raw = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const host = raw.split(":")[0].toLowerCase();
+  return PUBLIC_HOSTS.has(host);
+}
+
 export default function WelcomePage() {
+  const publicHost = isPublicHost();
   return (
     <main className="welcome">
       <div className="welcome-topbar">
@@ -13,7 +24,9 @@ export default function WelcomePage() {
           <span className="welcome-brand-name">Foley</span>
         </div>
         <div className="welcome-topbar-actions">
-          <Link href="/" className="welcome-link">Open studio</Link>
+          {publicHost ? null : (
+            <Link href="/" className="welcome-link">Open studio</Link>
+          )}
           <ThemeToggle />
         </div>
       </div>
@@ -41,9 +54,15 @@ export default function WelcomePage() {
               <span className="welcome-cta-main">a GitHub repo</span>
             </span>
           </Link>
-          <Link href="/" className="welcome-cta welcome-cta-ghost">
-            <span className="welcome-cta-main">Open the studio</span>
-          </Link>
+          {publicHost ? (
+            <Link href="/docs/foley" className="welcome-cta welcome-cta-ghost">
+              <span className="welcome-cta-main">See sample walkthrough</span>
+            </Link>
+          ) : (
+            <Link href="/" className="welcome-cta welcome-cta-ghost">
+              <span className="welcome-cta-main">Open the studio</span>
+            </Link>
+          )}
         </div>
       </section>
 
@@ -51,9 +70,11 @@ export default function WelcomePage() {
         <LaptopMockup />
       </section>
 
-      <section className="welcome-keys-section">
-        <KeysPanel />
-      </section>
+      {publicHost ? null : (
+        <section className="welcome-keys-section">
+          <KeysPanel />
+        </section>
+      )}
 
       <section className="welcome-explainer">
         <div className="welcome-explainer-grid">
@@ -104,7 +125,10 @@ export default function WelcomePage() {
           <Link href="/onboard" className="welcome-cta welcome-cta-primary">
             <span className="welcome-cta-main">Connect a repository</span>
           </Link>
-          <Link href="/" className="welcome-cta welcome-cta-ghost">
+          <Link
+            href={publicHost ? "/docs/foley" : "/"}
+            className="welcome-cta welcome-cta-ghost"
+          >
             <span className="welcome-cta-main">See sample walkthrough</span>
           </Link>
         </div>
