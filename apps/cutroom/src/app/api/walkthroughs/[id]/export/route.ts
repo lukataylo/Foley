@@ -159,26 +159,17 @@ export async function POST(
     overlay?.clips.filter((c): c is MusicClip => c.kind === "music" && !!c.asset_url) ?? [];
 
   // Load transition specs from the take. Older takes don't have this file —
-  // that's fine, just means no title cards to splice. We probe two
-  // locations: the correct per-walkthrough path, and the legacy /v1/ path
-  // that the takes/[id]/transitions PUT route still writes to. Either is a
-  // valid source until that route is fixed.
-  const transitionsPathPrimary = path.join(takeDir, "transitions.json");
-  const transitionsPathLegacy = path.join(
-    REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json",
-  );
+  // that's fine, just means no title cards to splice.
+  const transitionsPath = path.join(takeDir, "transitions.json");
   let transitions: TransitionSpec[] = [];
-  for (const p of [transitionsPathPrimary, transitionsPathLegacy]) {
-    try {
-      const raw = await readFile(p, "utf8");
-      const parsed = JSON.parse(raw) as { transitions?: unknown[] };
-      if (Array.isArray(parsed.transitions) && parsed.transitions.length > 0) {
-        transitions = parsed.transitions.map((t) => migrateTransition(t as TransitionSpec));
-        break;
-      }
-    } catch {
-      /* try next */
+  try {
+    const raw = await readFile(transitionsPath, "utf8");
+    const parsed = JSON.parse(raw) as { transitions?: unknown[] };
+    if (Array.isArray(parsed.transitions) && parsed.transitions.length > 0) {
+      transitions = parsed.transitions.map((t) => migrateTransition(t as TransitionSpec));
     }
+  } catch {
+    /* none on disk */
   }
 
   const exportsDir = path.join(REPO_ROOT, "walkthroughs", params.id, "exports");

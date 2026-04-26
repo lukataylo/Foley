@@ -46,23 +46,21 @@ export async function GET(
     overlay = migrateOverlay(JSON.parse(raw));
   } catch { /* none */ }
 
-  // Transitions for this take. Probe both the proper path and the legacy
-  // /v1/ location for backwards-compat with takes that were saved before
-  // the API path bug was fixed.
+  // Transitions for this take. The legacy `/v1/...` fallback that used to
+  // live here was a footgun: every non-v1 walkthrough with a "master" take
+  // would silently inherit v1's transitions into its project bundle. Read
+  // strictly from the owning walkthrough.
   let transitions: unknown = null;
-  for (const p of [
-    path.join(REPO_ROOT, "walkthroughs", params.id, "takes", takeId, "transitions.json"),
-    path.join(REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json"),
-  ]) {
-    try {
-      const raw = await readFile(p, "utf8");
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.transitions)) {
-        transitions = parsed;
-        break;
-      }
-    } catch { /* try next */ }
-  }
+  try {
+    const raw = await readFile(
+      path.join(REPO_ROOT, "walkthroughs", params.id, "takes", takeId, "transitions.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.transitions)) {
+      transitions = parsed;
+    }
+  } catch { /* none on disk */ }
 
   const bundle = {
     schema: "foley.project/1",

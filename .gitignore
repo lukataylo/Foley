@@ -40,3 +40,7 @@ walkthroughs/*/.feedback.jsonl
 *.log
 .tmp/
 scratch/
+
+# Playwright e2e artifacts (HTML reports, trace zips, video recordings).
+apps/cutroom/test-results/
+apps/cutroom/playwright-report/

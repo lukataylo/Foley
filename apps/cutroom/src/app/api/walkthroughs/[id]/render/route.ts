@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isValidWalkthroughId } from "@/lib/ids";
 import { writeJsonAtomic } from "@/lib/atomic-io";
+import { readEnvKey } from "@/lib/preflight";
 
 const execFileP = promisify(execFile);
 
@@ -151,6 +152,35 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
   }
   const skipNarration = parsed.data.skip_narration ?? false;
+
+  // Preflight key check. The director subprocess will raise MISSING_API_KEY
+  // and die anyway, but the failure shows up via log-tail polling 10–30s
+  // later — a frustrating delay when the user's mistake is just an empty
+  // .env. Catch it here so they see a friendly callout immediately.
+  const envPath = path.join(REPO_ROOT, ".env");
+  const requiredKeys: string[] = ["ANTHROPIC_API_KEY"];
+  if (!skipNarration) requiredKeys.push("ELEVENLABS_API_KEY");
+  const missing: string[] = [];
+  for (const k of requiredKeys) {
+    const v = process.env[k] ?? (await readEnvKey(envPath, k));
+    if (!v) missing.push(k);
+  }
+  if (missing.length > 0) {
+    const labels: Record<string, string> = {
+      ANTHROPIC_API_KEY: "Anthropic",
+      ELEVENLABS_API_KEY: "ElevenLabs",
+    };
+    const friendly = missing.map((k) => labels[k] ?? k).join(" + ");
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "missing_api_key",
+        missing_keys: missing,
+        message: `${friendly} API key${missing.length > 1 ? "s" : ""} not set. Open /welcome#keys to paste ${missing.length > 1 ? "them" : "it"} — Foley validates against the live provider before saving.`,
+      },
+      { status: 412 },
+    );
+  }
 
   // Reject if a render is already in flight for this walkthrough.
   const existing = await readStatus(params.id);

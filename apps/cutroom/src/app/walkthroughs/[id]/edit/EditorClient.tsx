@@ -735,7 +735,20 @@ function RenderPanel({
         </div>
       ) : null}
 
-      {error ? <div className="render-error">Couldn&apos;t start render: {error}</div> : null}
+      {error ? (
+        <div className="render-error">
+          {error}
+          {/* The 412 missing-key path always mentions /welcome#keys in its
+              message — turn that bare URL into a real link so the user can
+              click it instead of hunting through the topbar. */}
+          {error.includes("/welcome#keys") ? (
+            <>
+              {" "}
+              <a href="/welcome#keys">→ Open keys settings</a>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {isFailed ? (
         <details className="render-error" open>
           <summary>Render failed — last log lines</summary>

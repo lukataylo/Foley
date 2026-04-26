@@ -343,11 +343,13 @@ Shipped end-to-end:
 - MCP stdio server (`apps/foley-mcp`) + Claude Code skill (`skills/foley`)
 - Atomic writes everywhere; preflight banner for missing keys / ffmpeg / dev URL
 - `/docs/<id>` + `/docs/<id>.md` + `/api/walkthroughs/<id>/{ask,transcript,captions,poster,preview.gif,changelog.rss}`
-- 8-layer smoke-test suite
+- 9-layer smoke-test suite (now includes Playwright UI smoke for the onboarding wizard)
+
+> **Single-tenant by design.** Foley runs as one user editing one set of walkthroughs on one machine. There's no auth boundary, no per-user storage, no rate limiting on the API routes. Multi-tenant deployment is a real project, not a config flag — start with the points below before pointing public traffic at it.
 
 Out of scope (start here if you adopt Foley for real):
 
-- No auth, no rate limits, no per-user isolation. Single-tenant by design.
+- No auth, no rate limits, no per-user isolation.
 - No CDN — every asset is served by Next.js itself.
 - No queue — every render is a detached child process.
 - No observability beyond Logfire spans.

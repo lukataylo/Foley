@@ -40,7 +40,10 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
-async function readEnvKey(envPath: string, key: string): Promise<string> {
+/** Read a single key from .env. Exported so other server-side routes
+ *  (e.g. the render preflight) can do the same check without depending
+ *  on dotenv being loaded into process.env. */
+export async function readEnvKey(envPath: string, key: string): Promise<string> {
   try {
     const text = await fs.readFile(envPath, "utf8");
     const re = new RegExp(`^${key}\\s*=\\s*(.*)$`, "m");

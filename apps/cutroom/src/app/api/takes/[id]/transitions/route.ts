@@ -8,14 +8,8 @@ import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
-/** Resolve transitions.json under the right walkthrough. Old data lived
- *  at walkthroughs/v1/takes/<takeId>/transitions.json — back when this
- *  route was hardcoded to v1 — so we keep that as a read fallback. */
 function file(walkthroughId: string, takeId: string): string {
   return path.join(REPO_ROOT, "walkthroughs", walkthroughId, "takes", takeId, "transitions.json");
-}
-function legacyFile(takeId: string): string {
-  return path.join(REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json");
 }
 
 function readWidQuery(req: NextRequest): string | null {
@@ -30,19 +24,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
   }
   const wid = readWidQuery(req) ?? (await findTakeWalkthroughId(params.id));
-  const candidates = wid
-    ? [file(wid, params.id), legacyFile(params.id)]
-    : [legacyFile(params.id)];
-  for (const p of candidates) {
-    try {
-      const raw = await fs.readFile(p, "utf8");
-      return NextResponse.json(JSON.parse(raw));
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException)?.code === "ENOENT") continue;
-      throw err;
-    }
+  if (!wid) {
+    return NextResponse.json({ transitions: [] });
   }
-  return NextResponse.json({ transitions: [] });
+  try {
+    const raw = await fs.readFile(file(wid, params.id), "utf8");
+    return NextResponse.json(JSON.parse(raw));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return NextResponse.json({ transitions: [] });
+    }
+    throw err;
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
