@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  findTakeWalkthroughId,
   loadManifest,
   loadTake,
   loadWalkthrough,
@@ -11,16 +12,21 @@ export const dynamic = "force-dynamic";
 
 export default async function ComparePage({
   params,
+  searchParams,
 }: {
   params: { id: string; other: string };
+  searchParams?: { wt?: string };
 }) {
+  const wtId = await findTakeWalkthroughId(params.id, searchParams?.wt);
+  if (!wtId) notFound();
+
   let aTake, bTake, aManifest, bManifest, walkthrough;
   try {
-    aTake = await loadTake("v1", params.id);
-    bTake = await loadTake("v1", params.other);
-    aManifest = await loadManifest("v1", params.id);
-    bManifest = await loadManifest("v1", params.other);
-    walkthrough = await loadWalkthrough("v1");
+    aTake = await loadTake(wtId, params.id);
+    bTake = await loadTake(wtId, params.other);
+    aManifest = await loadManifest(wtId, params.id);
+    bManifest = await loadManifest(wtId, params.other);
+    walkthrough = await loadWalkthrough(wtId);
   } catch {
     notFound();
   }
@@ -32,7 +38,7 @@ export default async function ComparePage({
 
   return (
     <main className="cutroom">
-      <Link href={`/takes/${params.id}`} className="back">← {params.id}</Link>
+      <Link href={`/takes/${params.id}?wt=${wtId}`} className="back">← {params.id}</Link>
       <header className="cutroom-header">
         <div>
           <h1>Compare</h1>
@@ -45,12 +51,12 @@ export default async function ComparePage({
       <div className="compare-grid">
         <div>
           <h3>{params.id}</h3>
-          <video src={takePublicPath("v1", params.id, "master.mp4")} controls preload="metadata" />
+          <video src={takePublicPath(wtId, params.id, "master.mp4")} controls preload="metadata" />
           <div className="player-meta">sha {aManifest.master_sha256.slice(0, 16)}…</div>
         </div>
         <div>
           <h3>{params.other}</h3>
-          <video src={takePublicPath("v1", params.other, "master.mp4")} controls preload="metadata" />
+          <video src={takePublicPath(wtId, params.other, "master.mp4")} controls preload="metadata" />
           <div className="player-meta">sha {bManifest.master_sha256.slice(0, 16)}…</div>
         </div>
       </div>

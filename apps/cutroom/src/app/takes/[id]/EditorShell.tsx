@@ -192,13 +192,13 @@ export function EditorShell({
   const persistTransitions = useCallback((next: TransitionSpec[]) => {
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      void fetch(`/api/takes/${takeId}/transitions`, {
+      void fetch(`/api/takes/${takeId}/transitions?wt=${encodeURIComponent(walkthrough.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transitions: next }),
       });
     }, 350);
-  }, [takeId]);
+  }, [takeId, walkthrough.id]);
 
   function updateTransition(id: string, patch: Partial<TransitionSpec>) {
     setTransitions((curr) => {
@@ -496,7 +496,7 @@ export function EditorShell({
   async function decide(action: "approve" | "reject") {
     setBusyAction(action);
     try {
-      const r = await fetch(`/api/takes/${takeId}/${action}`, { method: "POST" });
+      const r = await fetch(`/api/takes/${takeId}/${action}?wt=${encodeURIComponent(walkthrough.id)}`, { method: "POST" });
       if (!r.ok) {
         const text = await r.text().catch(() => `HTTP ${r.status}`);
         alert(`${action === "approve" ? "Approve" : "Send back"} failed: ${text}`);
@@ -512,13 +512,20 @@ export function EditorShell({
   async function aiReRunReview() {
     setBusyAction("rebake");
     try {
-      await fetch(`/api/director/rebake-take`, {
+      const r = await fetch(`/api/director/rebake-take`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ take_id: takeId }),
+        body: JSON.stringify({ take_id: takeId, walkthrough_id: walkthrough.id }),
       });
+      if (!r.ok) {
+        const text = await r.text().catch(() => `HTTP ${r.status}`);
+        alert(`Re-run review failed: ${text}`);
+        return;
+      }
       // Refresh to surface the new master + segments.
       router.refresh();
+    } catch (err) {
+      alert(`Re-run review errored: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusyAction(null);
     }
@@ -538,12 +545,19 @@ export function EditorShell({
     if (!step) return;
     setBusyAction("renarrate");
     try {
-      await fetch(`/api/director/renarrate`, {
+      const r = await fetch(`/api/director/renarrate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ take_id: takeId, step_id: step.id }),
+        body: JSON.stringify({ take_id: takeId, step_id: step.id, walkthrough_id: walkthrough.id }),
       });
+      if (!r.ok) {
+        const text = await r.text().catch(() => `HTTP ${r.status}`);
+        alert(`Re-narrate failed: ${text}`);
+        return;
+      }
       router.refresh();
+    } catch (err) {
+      alert(`Re-narrate errored: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusyAction(null);
     }

@@ -4,6 +4,7 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import { writeJsonAtomic } from "@/lib/atomic-io";
+import { findTakeWalkthroughId } from "@/lib/fs";
 import { isValidStepId, isValidTakeId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     take_id?: string;
     step_id?: string;
     narration?: string;
+    walkthrough_id?: string;
   };
   const { take_id, step_id, narration } = body;
   if (!take_id || !step_id) {
@@ -29,11 +31,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_step_id" }, { status: 400 });
   }
 
+  const wtId = await findTakeWalkthroughId(take_id, body.walkthrough_id ?? null);
+  if (!wtId) {
+    return NextResponse.json({ error: "take not found" }, { status: 404 });
+  }
+
   if (typeof narration === "string") {
     const takeFile = path.join(
       REPO_ROOT,
       "walkthroughs",
-      "v1",
+      wtId,
       "takes",
       take_id,
       "take.json",
@@ -57,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const child = spawn(
     "uv",
-    ["--directory", "services/director", "run", "director", "retake", step_id, "v1"],
+    ["--directory", "services/director", "run", "director", "retake", step_id, wtId],
     {
       cwd: REPO_ROOT,
       detached: true,
@@ -67,5 +74,5 @@ export async function POST(req: NextRequest) {
   );
   child.unref();
 
-  return NextResponse.json({ ok: true, enqueued: { action: "renarrate", step_id } });
+  return NextResponse.json({ ok: true, enqueued: { action: "renarrate", step_id, walkthrough_id: wtId } });
 }

@@ -131,7 +131,7 @@ export default async function WalkthroughDetailPage({
               {},
             );
             return (
-              <Link key={t.id} href={`/takes/${t.id}`} className="sticky-mini">
+              <Link key={t.id} href={`/takes/${t.id}?wt=${params.id}`} className="sticky-mini">
                 <div className="mini-row">
                   <span className="mini-id">{t.id}</span>
                   <span className={`status status-${t.status}`}>{t.status}</span>

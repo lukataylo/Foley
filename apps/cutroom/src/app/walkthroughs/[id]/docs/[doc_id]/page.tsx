@@ -51,7 +51,7 @@ export default async function DocDetailPage({
                 poster={`/walkthroughs/${params.id}/steps/intro.png`}
               />
               <div className="doc-view-actions">
-                <Link href={`/takes/${doc.video_take_id}`} className="btn-primary">
+                <Link href={`/takes/${doc.video_take_id}?wt=${params.id}`} className="btn-primary">
                   Open in editor →
                 </Link>
                 <Link href={`/docs/${params.id}`} className="btn-secondary">

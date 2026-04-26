@@ -121,7 +121,7 @@ export function MasterCard({
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <Link href={`/takes/master`} className="btn-secondary">Open in editor</Link>
+        <Link href={`/takes/master?wt=${walkthroughId}`} className="btn-secondary">Open in editor</Link>
         <button
           type="button"
           className="brand-edit-btn"

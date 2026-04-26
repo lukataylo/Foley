@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { promises as fs } from "fs";
 import path from "path";
 import {
+  findTakeWalkthroughId,
   loadContinuousNarration,
   loadManifest,
   loadStepWaveform,
@@ -20,12 +21,24 @@ import type { TransitionSpec } from "@/lib/transitions";
 
 export const dynamic = "force-dynamic";
 
-export default async function TakePage({ params }: { params: { id: string } }) {
+export default async function TakePage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { wt?: string };
+}) {
+  // Resolve which walkthrough owns this take. Pages that link here pass
+  // `?wt=<id>` so we don't have to scan; without the hint we fall back to
+  // disk scan and pick the first walkthrough that has this take.
+  const wtId = await findTakeWalkthroughId(params.id, searchParams?.wt);
+  if (!wtId) notFound();
+
   let take, manifest, walkthrough;
   try {
-    take = await loadTake("v1", params.id);
-    manifest = await loadManifest("v1", params.id);
-    walkthrough = await loadWalkthrough("v1");
+    take = await loadTake(wtId, params.id);
+    manifest = await loadManifest(wtId, params.id);
+    walkthrough = await loadWalkthrough(wtId);
   } catch {
     notFound();
   }
@@ -45,9 +58,9 @@ export default async function TakePage({ params }: { params: { id: string } }) {
 
   const [waveforms, continuousNarration] = await Promise.all([
     Promise.all(
-      steps.map(async (s) => ({ id: s.id, wf: await loadStepWaveform("v1", s.id) })),
+      steps.map(async (s) => ({ id: s.id, wf: await loadStepWaveform(wtId, s.id) })),
     ),
-    loadContinuousNarration("v1"),
+    loadContinuousNarration(wtId),
   ]);
 
   const segmentsByStep = Object.fromEntries(
@@ -64,7 +77,7 @@ export default async function TakePage({ params }: { params: { id: string } }) {
     duration_ms: s.duration_ms,
     diff_status: stepDiffsByStep[s.id]?.status ?? "unchanged",
     diff_reason: stepDiffsByStep[s.id]?.reason ?? "",
-    frame_url: publicPath("v1", "steps", `${s.id}.png`),
+    frame_url: publicPath(wtId, "steps", `${s.id}.png`),
     waveform: waveforms.find((w) => w.id === s.id)?.wf ?? null,
     segment_sha256: segmentsByStep[s.id]?.segment_sha256 ?? null,
   }));

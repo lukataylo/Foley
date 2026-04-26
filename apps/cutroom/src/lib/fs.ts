@@ -33,6 +33,42 @@ export async function listWalkthroughIds(): Promise<string[]> {
   return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
 }
 
+/** Find which walkthrough owns a given take id by scanning disk.
+ *  Returns null when the take is missing everywhere.
+ *
+ *  When `hint` is supplied (typically the `?wt=` query param the linking
+ *  page passed through), we check it first — this disambiguates the
+ *  common case where multiple walkthroughs both have a take called
+ *  "master". Without a hint, the alphabetically-first match wins. */
+export async function findTakeWalkthroughId(
+  takeId: string,
+  hint?: string | null,
+): Promise<string | null> {
+  assertTakeId(takeId);
+  async function has(wtId: string): Promise<boolean> {
+    try {
+      const s = await stat(
+        path.join(WALKTHROUGHS_DIR, wtId, "takes", takeId, "take.json"),
+      );
+      return s.isFile();
+    } catch {
+      return false;
+    }
+  }
+  if (hint) {
+    try {
+      assertWalkthroughId(hint);
+      if (await has(hint)) return hint;
+    } catch {
+      /* invalid hint — fall through to scan */
+    }
+  }
+  for (const wtId of await listWalkthroughIds()) {
+    if (await has(wtId)) return wtId;
+  }
+  return null;
+}
+
 export interface WalkthroughSummary {
   id: string;
   display_name: string;

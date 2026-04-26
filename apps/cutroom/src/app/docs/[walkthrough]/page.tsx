@@ -128,7 +128,7 @@ export default async function DocsPage({ params }: { params: { walkthrough: stri
           <p className="docs-meta">
             {walkthrough.steps.length} steps · {(totalMs / 1000).toFixed(0)}s · narrated by {walkthrough.brand.voice_name}
           </p>
-          <Link href={`/takes/${masterTakeId}`} className="docs-cta">
+          <Link href={`/takes/${masterTakeId}?wt=${params.walkthrough}`} className="docs-cta">
             Watch the video →
           </Link>
         </div>
