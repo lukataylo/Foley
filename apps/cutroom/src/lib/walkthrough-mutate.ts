@@ -117,6 +117,11 @@ export async function appendStep(
 ): Promise<RawStep> {
   const raw = await readRaw(id);
   const newId = opts.step_id ?? nextStepId(raw.steps);
+  assertStepId(newId);
+  const durationMs = opts.duration_ms ?? 5000;
+  if (!Number.isInteger(durationMs) || durationMs < 500 || durationMs > 30_000) {
+    throw new Error("duration_ms must be an integer between 500 and 30000");
+  }
   if (raw.steps.some((s) => s.id === newId)) {
     return raw.steps.find((s) => s.id === newId)!;
   }
@@ -124,10 +129,10 @@ export async function appendStep(
     id: newId,
     title: opts.title ?? "New step",
     narration: opts.narration ?? "Describe what's on screen for this step.",
-    duration_ms: opts.duration_ms ?? 5000,
+    duration_ms: durationMs,
     actions: [
       { kind: "goto", url: "/" },
-      { kind: "wait", ms: opts.duration_ms ?? 4500 },
+      { kind: "wait", ms: Math.max(0, durationMs - 500) },
     ],
   };
   raw.steps.push(step);
@@ -141,10 +146,17 @@ export async function reorderSteps(
   id: string,
   orderedIds: string[],
 ): Promise<string[]> {
+  for (const orderedId of orderedIds) {
+    assertStepId(orderedId);
+  }
   const raw = await readRaw(id);
   const have = new Set(raw.steps.map((s) => s.id));
   const wanted = new Set(orderedIds);
-  if (have.size !== wanted.size || [...have].some((s) => !wanted.has(s))) {
+  if (
+    have.size !== wanted.size ||
+    orderedIds.length !== wanted.size ||
+    [...have].some((s) => !wanted.has(s))
+  ) {
     throw new Error(
       `reorder ids must match: have [${[...have].sort().join(",")}], wanted [${[...wanted].sort().join(",")}]`,
     );

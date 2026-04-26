@@ -25,6 +25,42 @@ interface PostBody {
   question: string;
 }
 
+function parseAskEnvelope(stdout: string): { answer: string; citations: string[] } {
+  const lines = stdout
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      const parsed = JSON.parse(lines[i]) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "answer" in parsed &&
+        "citations" in parsed
+      ) {
+        const envelope = parsed as { answer: unknown; citations: unknown };
+        if (
+          typeof envelope.answer === "string" &&
+          Array.isArray(envelope.citations) &&
+          envelope.citations.every((c) => typeof c === "string")
+        ) {
+          return {
+            answer: envelope.answer,
+            citations: envelope.citations,
+          };
+        }
+      }
+    } catch {
+      /* keep scanning older log lines */
+    }
+  }
+
+  throw new Error("director ask returned no JSON answer envelope");
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -70,14 +106,7 @@ export async function POST(
       ],
       { cwd: REPO_ROOT, env, timeout: 60_000, maxBuffer: 4 * 1024 * 1024 },
     );
-    // CLI prints a single-line JSON envelope after a logfire status line;
-    // grab the last JSON object.
-    const lastBrace = stdout.lastIndexOf("{");
-    const trailing = lastBrace >= 0 ? stdout.slice(lastBrace) : stdout;
-    const parsed = JSON.parse(trailing) as {
-      answer: string;
-      citations: string[];
-    };
+    const parsed = parseAskEnvelope(stdout);
     return NextResponse.json({ ok: true, ...parsed });
   } catch (err) {
     return directorErrorResponse(err, "ask_failed");
