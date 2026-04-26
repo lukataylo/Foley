@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Foley · logo mockups</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --bg: #1a1715;
+      --bg-soft: #221d1a;
+      --bg-card: #2a2420;
+      --border: #3a322c;
+      --ink: #f5ede0;
+      --ink-dim: #b8aa97;
+      --ink-faint: #8a7d6c;
+      --amber: #f5b94a;
+      --amber-deep: #e08c2e;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+      color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 980px; margin: 0 auto; padding: 56px 24px 80px; }
+    h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 8px; font-weight: 600; }
+    p.lead { color: var(--ink-dim); margin: 0 0 48px; max-width: 640px; }
+
+    .grid { display: grid; gap: 24px; grid-template-columns: 1fr; }
+    .card {
+      background: var(--bg-soft); border: 1px solid var(--border); border-radius: 14px;
+      padding: 28px;
+    }
+    .card-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .card-num {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+      letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .card h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+    .card p { margin: 8px 0 0; font-size: 14px; color: var(--ink-dim); line-height: 1.55; }
+
+    .preview-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px;
+    }
+    .preview {
+      border-radius: 10px; padding: 36px 24px;
+      display: flex; align-items: center; gap: 28px; justify-content: center;
+    }
+    .preview.dark  { background: var(--bg); border: 1px solid var(--border); }
+    .preview.light { background: #f6efe2; border: 1px solid #e2d8c4; }
+    .preview span.size {
+      font-family: var(--mono); font-size: 10px; color: var(--ink-faint);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .preview.light span.size { color: #8a7d6c; }
+    .stack { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+    .lockup {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-weight: 600; font-size: 22px; letter-spacing: -0.01em;
+    }
+    .preview.light .lockup { color: #1d1d1f; }
+    .lockup-row {
+      grid-column: 1 / -1;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 24px; display: flex; gap: 36px; align-items: center; justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .pick-bar {
+      margin-top: 64px; padding: 20px 24px;
+      background: var(--bg-soft); border: 1px solid var(--border); border-radius: 12px;
+      font-size: 14px; color: var(--ink-dim);
+    }
+    .pick-bar strong { color: var(--ink); }
+    code { font-family: var(--mono); font-size: 13px; color: var(--amber); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Logo mockups</h1>
+    <p class="lead">Four directions, each rendered at the sizes that actually ship: 28&nbsp;px in the topbar, 64&nbsp;px in the hero lockup, plus a wordmark preview on dark and on light. Pick one and I'll wire it through the static landing + the in-app welcome.</p>
+
+    <div class="grid">
+
+      <!-- ============== 1: YELLOW TILE + GITHUB OCTOCAT ============== -->
+      <article class="card">
+        <div class="card-head"><span class="card-num">01</span></div>
+        <h2>Yellow tile · GitHub octocat</h2>
+        <p>The simplest, most legible read: <em>"this is the GitHub-walkthrough thing."</em> Borrows GH's recognition, keeps the brand amber. Works at favicon size because it's one shape on a flat ground.</p>
+        <div class="preview-row">
+          <div class="preview dark">
+            <div class="stack"><svg width="28" height="28" viewBox="0 0 32 32"><defs><linearGradient id="o1a" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5b94a"/><stop offset="100%" stop-color="#e08c2e"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#o1a)"/><g transform="translate(8 8)" fill="#1d1d1f"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></g></svg><span class="size">28 px</span></div>
+            <div class="stack"><svg width="64" height="64" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#o1a)"/><g transform="translate(8 8)" fill="#1d1d1f"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></g></svg><span class="size">64 px</span></div>
+          </div>
+          <div class="preview light">
+            <div class="lockup"><svg width="36" height="36" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#o1a)"/><g transform="translate(8 8)" fill="#1d1d1f"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></g></svg><span>Foley</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============== 2: FOLDER WITH GITHUB MARK INSIDE ============== -->
+      <article class="card">
+        <div class="card-head"><span class="card-num">02</span></div>
+        <h2>Folder · with GitHub mark inside</h2>
+        <p>Your suggested combo. The folder shape carries "local-first / your repo on disk", the octocat carries "GitHub-driven". Two ideas in one mark — denser, less reproducible at favicon size, but more on-message.</p>
+        <div class="preview-row">
+          <div class="preview dark">
+            <div class="stack"><svg width="28" height="28" viewBox="0 0 64 64"><defs><linearGradient id="o2a" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5b94a"/><stop offset="100%" stop-color="#e08c2e"/></linearGradient></defs><path d="M6 18 Q6 14 10 14 L24 14 L28 18 L54 18 Q58 18 58 22 L58 50 Q58 54 54 54 L10 54 Q6 54 6 50 Z" fill="url(#o2a)"/><g transform="translate(20 24)" fill="#1d1d1f"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.28-.01-1.04-.02-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.31 1.23A11.5 11.5 0 0 1 12 5.8a11.5 11.5 0 0 1 3.01.4c2.3-1.55 3.31-1.23 3.31-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></g></svg><span class="size">28 px</span></div>
+            <div class="stack"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M6 18 Q6 14 10 14 L24 14 L28 18 L54 18 Q58 18 58 22 L58 50 Q58 54 54 54 L10 54 Q6 54 6 50 Z" fill="url(#o2a)"/><g transform="translate(20 24)" fill="#1d1d1f"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.28-.01-1.04-.02-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.31 1.23A11.5 11.5 0 0 1 12 5.8a11.5 11.5 0 0 1 3.01.4c2.3-1.55 3.31-1.23 3.31-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></g></svg><span class="size">64 px</span></div>
+          </div>
+          <div class="preview light">
+            <div class="lockup"><svg width="40" height="40" viewBox="0 0 64 64"><path d="M6 18 Q6 14 10 14 L24 14 L28 18 L54 18 Q58 18 58 22 L58 50 Q58 54 54 54 L10 54 Q6 54 6 50 Z" fill="url(#o2a)"/><g transform="translate(20 24)" fill="#1d1d1f"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.28-.01-1.04-.02-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.31 1.23A11.5 11.5 0 0 1 12 5.8a11.5 11.5 0 0 1 3.01.4c2.3-1.55 3.31-1.23 3.31-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></g></svg><span>Foley</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============== 3: YELLOW TILE + GIT BRANCH GLYPH ============== -->
+      <article class="card">
+        <div class="card-head"><span class="card-num">03</span></div>
+        <h2>Yellow tile · git branch glyph</h2>
+        <p>An abstract version-control mark — two nodes, one branching, in the same lineage as Git's own branding. More generic than the octocat but doesn't borrow another company's mark. Reads as "diff-aware tooling."</p>
+        <div class="preview-row">
+          <div class="preview dark">
+            <div class="stack"><svg width="28" height="28" viewBox="0 0 64 64"><defs><linearGradient id="o3a" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5b94a"/><stop offset="100%" stop-color="#e08c2e"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#o3a)"/><g fill="none" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 14 L22 50"/><path d="M22 26 Q22 32 28 32 L36 32 Q42 32 42 38 L42 50"/><circle cx="22" cy="14" r="4" fill="#1d1d1f"/><circle cx="22" cy="50" r="4" fill="#1d1d1f"/><circle cx="42" cy="50" r="4" fill="#1d1d1f"/></g></svg><span class="size">28 px</span></div>
+            <div class="stack"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o3a)"/><g fill="none" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 14 L22 50"/><path d="M22 26 Q22 32 28 32 L36 32 Q42 32 42 38 L42 50"/><circle cx="22" cy="14" r="4" fill="#1d1d1f"/><circle cx="22" cy="50" r="4" fill="#1d1d1f"/><circle cx="42" cy="50" r="4" fill="#1d1d1f"/></g></svg><span class="size">64 px</span></div>
+          </div>
+          <div class="preview light">
+            <div class="lockup"><svg width="40" height="40" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o3a)"/><g fill="none" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 14 L22 50"/><path d="M22 26 Q22 32 28 32 L36 32 Q42 32 42 38 L42 50"/><circle cx="22" cy="14" r="4" fill="#1d1d1f"/><circle cx="22" cy="50" r="4" fill="#1d1d1f"/><circle cx="42" cy="50" r="4" fill="#1d1d1f"/></g></svg><span>Foley</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============== 4: YELLOW TILE + FOLDER WITH PLAY ARROW ============== -->
+      <article class="card">
+        <div class="card-head"><span class="card-num">04</span></div>
+        <h2>Yellow tile · folder with play arrow</h2>
+        <p>"Your walkthroughs folder, but it plays." Carries the local-first message (folder = on disk) plus the medium (play = video). No GitHub borrowing. Most distinct from competitors.</p>
+        <div class="preview-row">
+          <div class="preview dark">
+            <div class="stack"><svg width="28" height="28" viewBox="0 0 64 64"><defs><linearGradient id="o4a" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5b94a"/><stop offset="100%" stop-color="#e08c2e"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#o4a)"/><path d="M14 22 Q14 19 17 19 L26 19 L29 22 L47 22 Q50 22 50 25 L50 45 Q50 48 47 48 L17 48 Q14 48 14 45 Z" fill="#1d1d1f"/><path d="M28 28 L28 40 L40 34 Z" fill="#fdf3d8"/></svg><span class="size">28 px</span></div>
+            <div class="stack"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o4a)"/><path d="M14 22 Q14 19 17 19 L26 19 L29 22 L47 22 Q50 22 50 25 L50 45 Q50 48 47 48 L17 48 Q14 48 14 45 Z" fill="#1d1d1f"/><path d="M28 28 L28 40 L40 34 Z" fill="#fdf3d8"/></svg><span class="size">64 px</span></div>
+          </div>
+          <div class="preview light">
+            <div class="lockup"><svg width="40" height="40" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o4a)"/><path d="M14 22 Q14 19 17 19 L26 19 L29 22 L47 22 Q50 22 50 25 L50 45 Q50 48 47 48 L17 48 Q14 48 14 45 Z" fill="#1d1d1f"/><path d="M28 28 L28 40 L40 34 Z" fill="#fdf3d8"/></svg><span>Foley</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============== ALL FOUR LOCKUPS, SIDE BY SIDE ============== -->
+      <article class="card">
+        <div class="card-head"><span class="card-num">side-by-side</span></div>
+        <h2>Together at brand size</h2>
+        <p>How they look in the topbar lockup, the way visitors first see them.</p>
+        <div class="preview-row" style="grid-template-columns: 1fr;">
+          <div class="preview dark" style="gap: 48px; flex-wrap: wrap; padding: 32px 24px;">
+            <div class="lockup" style="font-size: 18px;"><svg width="28" height="28" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#o1a)"/><g transform="translate(8 8)" fill="#1d1d1f"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></g></svg><span>Foley</span></div>
+            <div class="lockup" style="font-size: 18px;"><svg width="28" height="28" viewBox="0 0 64 64"><path d="M6 18 Q6 14 10 14 L24 14 L28 18 L54 18 Q58 18 58 22 L58 50 Q58 54 54 54 L10 54 Q6 54 6 50 Z" fill="url(#o2a)"/><g transform="translate(20 24)" fill="#1d1d1f"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.28-.01-1.04-.02-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.31 1.23A11.5 11.5 0 0 1 12 5.8a11.5 11.5 0 0 1 3.01.4c2.3-1.55 3.31-1.23 3.31-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></g></svg><span>Foley</span></div>
+            <div class="lockup" style="font-size: 18px;"><svg width="28" height="28" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o3a)"/><g fill="none" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 14 L22 50"/><path d="M22 26 Q22 32 28 32 L36 32 Q42 32 42 38 L42 50"/><circle cx="22" cy="14" r="4" fill="#1d1d1f"/><circle cx="22" cy="50" r="4" fill="#1d1d1f"/><circle cx="42" cy="50" r="4" fill="#1d1d1f"/></g></svg><span>Foley</span></div>
+            <div class="lockup" style="font-size: 18px;"><svg width="28" height="28" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#o4a)"/><path d="M14 22 Q14 19 17 19 L26 19 L29 22 L47 22 Q50 22 50 25 L50 45 Q50 48 47 48 L17 48 Q14 48 14 45 Z" fill="#1d1d1f"/><path d="M28 28 L28 40 L40 34 Z" fill="#fdf3d8"/></svg><span>Foley</span></div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="pick-bar">
+      Pick one — reply with <strong>"go with #1"</strong> (or 2/3/4) and I'll wire the chosen mark through <code>docs/index.html</code> and <code>apps/cutroom/src/app/welcome/page.tsx</code>, including the favicon and the in-app brand mark.
+    </div>
+  </div>
+</body>
+</html>

@@ -221,14 +221,22 @@
     }
     .why-local ul {
       margin: 18px 0 0; padding: 0; list-style: none;
-      display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr);
+      display: grid; gap: 14px 32px; grid-template-columns: repeat(2, 1fr);
     }
     @media (max-width: 720px) { .why-local ul { grid-template-columns: 1fr; } }
     .why-local li {
-      display: flex; gap: 10px; font-size: 14px; color: var(--ink-dim);
+      position: relative;
+      padding-left: 22px;
+      font-size: 14px; line-height: 1.6; color: var(--ink-dim);
     }
     .why-local li::before {
-      content: "→"; color: var(--amber); flex-shrink: 0;
+      content: "→"; color: var(--amber);
+      position: absolute; left: 0; top: 0;
+    }
+    .why-local code {
+      font-family: var(--mono); font-size: 12.5px;
+      color: var(--ink); background: rgba(245,185,74,0.08);
+      padding: 1px 6px; border-radius: 4px;
     }
 
     /* Final CTA */
