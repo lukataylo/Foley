@@ -46,7 +46,16 @@ No watermarks, no extra UI, no people, no hands. Output one image only.
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "GOOGLE_API_KEY not set" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "missing_api_key",
+        missing_keys: ["GOOGLE_API_KEY"],
+        message:
+          "Google API key not set. Open /welcome#keys to paste a Gemini key — it powers stylized transition slides.",
+      },
+      { status: 412 },
+    );
   }
 
   const body = (await req.json()) as {

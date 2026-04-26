@@ -22,7 +22,16 @@ No additional people, hands, or props. The laptop should be the visual focus.
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "GOOGLE_API_KEY not set" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "missing_api_key",
+        missing_keys: ["GOOGLE_API_KEY"],
+        message:
+          "Google API key not set. Open /welcome#keys to paste a Gemini key — it powers Nano Banana laptop mockups + stylized transitions.",
+      },
+      { status: 412 },
+    );
   }
 
   const { walkthrough_id = "v1", step_id } = (await req.json()) as {

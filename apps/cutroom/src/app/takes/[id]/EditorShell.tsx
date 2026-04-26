@@ -312,12 +312,17 @@ export function EditorShell({
           screenshot_step_ids: activeTransition.screenshots.map((s) => s.step_id),
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        url?: string;
+        error?: string;
+        message?: string;
+      };
       if (json.ok && json.url) {
         const stylized = `${json.url}?t=${Date.now()}`;
         updateTransition(activeTransition.id, { stylized_url: stylized });
       } else {
-        alert(json.error ?? "Gemini call failed");
+        alert(json.message ?? json.error ?? "Gemini call failed");
       }
     } finally {
       setBusyAction(null);
@@ -573,12 +578,17 @@ export function EditorShell({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walkthrough_id: walkthrough.id, step_id: step.id }),
       });
-      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        url?: string;
+        error?: string;
+        message?: string;
+      };
       if (json.ok && json.url) {
         // Cache-bust so a re-run replaces the preview.
         setGenaiByStep((m) => ({ ...m, [step.id]: `${json.url}?t=${Date.now()}` }));
       } else {
-        alert(json.error ?? "Gemini call failed");
+        alert(json.message ?? json.error ?? "Gemini call failed");
       }
     } finally {
       setBusyAction(null);
@@ -951,11 +961,16 @@ export function EditorShell({
           prompt_override: found.prompt,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        url?: string;
+        error?: string;
+        message?: string;
+      };
       if (json.ok && json.url) {
         patchClipState(clipId, { asset_url: `${json.url}?t=${Date.now()}` });
       } else {
-        alert(json.error ?? "Banana failed");
+        alert(json.message ?? json.error ?? "Nano Banana failed");
       }
     } finally {
       setBusyAction(null);

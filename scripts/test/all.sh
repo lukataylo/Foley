@@ -31,6 +31,7 @@ LAYERS=(
   "40-ai.sh"
   "50-checker.sh"
   "60-fs.sh"
+  "70-keys-mcp.sh"
 )
 
 declare -a LAYER_RESULTS

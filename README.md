@@ -245,11 +245,24 @@ If you adopt Foley for real, start there.
 git clone https://github.com/lukataylo/Foley.git
 cd Foley
 pnpm bootstrap        # checks ffmpeg/uv/pnpm, installs deps, copies .env.example → .env
-# open .env, paste an ANTHROPIC_API_KEY and an ELEVENLABS_API_KEY
 pnpm dev              # http://localhost:3000
 ```
 
+Open `http://localhost:3000/welcome` and paste your **Anthropic** + **ElevenLabs** keys into the in-page form — Foley validates them against the live providers before writing them to `.env`. A **Google API key** is optional but unlocks the "Nano Banana" (Gemini 2.5 Flash Image) clip type for laptop-mockup + stylized-transition slides in the take editor.
+
 Click **+ New walkthrough** on the home page to onboard a project, or open the seeded **Loop** walkthrough to play a finished take. The full **Quickstart for judges** lives in the wiki.
+
+**Right-click any walkthrough on the home grid to delete it.**
+
+### Plug Foley into your AI editor
+
+```bash
+pnpm --filter foley-mcp build
+claude mcp add foley node "$(pwd)/apps/foley-mcp/dist/index.js"
+mkdir -p ~/.claude/skills && ln -s "$(pwd)/skills/foley" ~/.claude/skills/foley
+```
+
+After that, Claude Code (or any MCP-aware editor) can `list_walkthroughs`, `ask_walkthrough`, and `get_transcript` against your local cutroom — and the bundled skill teaches Claude the Foley vocabulary so it cites step ids correctly.
 
 The smoke test suite is `bash scripts/test/all.sh` (`SKIP_AI=1` skips the layer that calls Claude).
 

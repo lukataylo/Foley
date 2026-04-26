@@ -6,7 +6,11 @@
 
 import { useEffect, useState } from "react";
 
-type KeyId = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "GITHUB_TOKEN";
+type KeyId =
+  | "ANTHROPIC_API_KEY"
+  | "ELEVENLABS_API_KEY"
+  | "GOOGLE_API_KEY"
+  | "GITHUB_TOKEN";
 
 interface KeyMeta {
   label: string;
@@ -30,6 +34,13 @@ const META: Record<KeyId, KeyMeta> = {
     placeholder: "sk_…",
     help: "Used to synthesize narration. Paste a Creator-tier or higher key.",
     href: "https://elevenlabs.io/app/settings/api-keys",
+  },
+  GOOGLE_API_KEY: {
+    label: "Google API key",
+    required: false,
+    placeholder: "AIza…",
+    help: "Optional — unlocks Nano Banana (Gemini 2.5 Flash Image) for laptop-mockup + stylized-transition clips in the take editor.",
+    href: "https://aistudio.google.com/apikey",
   },
   GITHUB_TOKEN: {
     label: "GitHub token",
@@ -63,6 +74,7 @@ export function KeysPanel({ collapseWhenReady = true, onSaved }: Props) {
   const [drafts, setDrafts] = useState<Record<KeyId, string>>({
     ANTHROPIC_API_KEY: "",
     ELEVENLABS_API_KEY: "",
+    GOOGLE_API_KEY: "",
     GITHUB_TOKEN: "",
   });
   const [results, setResults] = useState<Record<string, TestResult> | null>(null);
@@ -139,7 +151,12 @@ export function KeysPanel({ collapseWhenReady = true, onSaved }: Props) {
         return;
       }
       setSavedNote(sj.note ?? "Saved.");
-      setDrafts({ ANTHROPIC_API_KEY: "", ELEVENLABS_API_KEY: "", GITHUB_TOKEN: "" });
+      setDrafts({
+        ANTHROPIC_API_KEY: "",
+        ELEVENLABS_API_KEY: "",
+        GOOGLE_API_KEY: "",
+        GITHUB_TOKEN: "",
+      });
       await refresh();
       onSaved?.();
     } finally {

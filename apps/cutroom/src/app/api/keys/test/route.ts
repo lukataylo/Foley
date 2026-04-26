@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 interface TestBody {
   ANTHROPIC_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
+  GOOGLE_API_KEY?: string;
   GITHUB_TOKEN?: string;
 }
 
@@ -75,6 +76,36 @@ async function testElevenLabs(key: string): Promise<KeyResult> {
   }
 }
 
+async function testGoogle(key: string): Promise<KeyResult> {
+  if (!key) return { ok: false, error: "empty key" };
+  // Cheapest validation: list models. Free, returns 200 if the key is
+  // good and Generative Language API is enabled on the project.
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(key)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (res.status === 200) {
+      const json = (await res.json().catch(() => ({}))) as {
+        models?: Array<{ name?: string }>;
+      };
+      const meta: Record<string, string> = {};
+      if (json.models?.length) meta.model_count = String(json.models.length);
+      return { ok: true, meta };
+    }
+    if (res.status === 400 || res.status === 403) {
+      return {
+        ok: false,
+        error: "key rejected — check Generative Language API is enabled",
+      };
+    }
+    if (res.status === 401) return { ok: false, error: "invalid key (401)" };
+    return { ok: false, error: `HTTP ${res.status}` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "network error" };
+  }
+}
+
 async function testGithub(key: string): Promise<KeyResult> {
   if (!key) return { ok: false, error: "empty key" };
   try {
@@ -115,6 +146,13 @@ export async function POST(req: Request) {
     tasks.push(
       testElevenLabs(body.ELEVENLABS_API_KEY).then((r) => {
         results.ELEVENLABS_API_KEY = r;
+      }),
+    );
+  }
+  if (typeof body.GOOGLE_API_KEY === "string" && body.GOOGLE_API_KEY) {
+    tasks.push(
+      testGoogle(body.GOOGLE_API_KEY).then((r) => {
+        results.GOOGLE_API_KEY = r;
       }),
     );
   }
