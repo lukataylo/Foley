@@ -1,7 +1,7 @@
 {
   "step_id": "intro",
-  "fingerprint": "7d8d64952c51e264",
-  "actual_duration_ms": 5645,
+  "fingerprint": "0f71098008792ee9",
+  "actual_duration_ms": 5579,
   "declared_duration_ms": 5000,
   "viewport": {
     "width": 1440,
@@ -14,7 +14,7 @@
     },
     {
       "kind": "wait",
-      "ms": 3500
+      "ms": 4500
     }
   ]
 }

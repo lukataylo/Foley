@@ -5,17 +5,11 @@
   "pr_number": null,
   "pr_title": null,
   "director_note": null,
-  "created_at": "2026-04-26T05:09:15.247528Z",
+  "created_at": "2026-04-26T05:53:48.166668Z",
   "status": "approved",
   "step_diffs": [
     {
       "step_id": "intro",
-      "status": "unchanged",
-      "reason": "initial master",
-      "proposed_step": null
-    },
-    {
-      "step_id": "browse_folders",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null
@@ -27,13 +21,7 @@
       "proposed_step": null
     },
     {
-      "step_id": "review_steps",
-      "status": "unchanged",
-      "reason": "initial master",
-      "proposed_step": null
-    },
-    {
-      "step_id": "approve_take",
+      "step_id": "open_editor",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null

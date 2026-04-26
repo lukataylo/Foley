@@ -1,0 +1,20 @@
+{
+  "step_id": "open_editor",
+  "fingerprint": "47fff3b3d2ace965",
+  "actual_duration_ms": 10250,
+  "declared_duration_ms": 8000,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/walkthroughs/v1/edit"
+    },
+    {
+      "kind": "wait",
+      "ms": 7500
+    }
+  ]
+}

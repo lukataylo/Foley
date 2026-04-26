@@ -2,46 +2,30 @@
   "walkthrough_id": "foley",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "59f16464c08ef4a8d621e833d27241eda72cb6a0c4ee5ba19132da2210636376",
+  "master_sha256": "23c91b8d236359a6e68fd8376c05d8dfa60e578952b25c0cf4f8abc5e7590268",
   "segments": [
     {
       "step_id": "intro",
-      "fingerprint": "7d8d64952c51e264",
+      "fingerprint": "0f71098008792ee9",
       "segment_path": "segments/intro.mp4",
-      "segment_sha256": "0408fe182f738a3fb15db988d6c6070ed9da396b33ace9955297d25a82431d9d",
+      "segment_sha256": "850ca2a221d50ac1e9f5a918134ddd41840d61f6e4c62e29c819da1abd645b79",
       "duration_ms": 5000,
       "source": "rebuilt"
     },
     {
-      "step_id": "browse_folders",
-      "fingerprint": "0d132a365d19a00f",
-      "segment_path": "segments/browse_folders.mp4",
-      "segment_sha256": "5e80f0fb5832974faf79c3408bb0fcc29d9039cb70fb79190a0d633d5a296129",
-      "duration_ms": 6000,
-      "source": "rebuilt"
-    },
-    {
       "step_id": "open_walkthrough",
-      "fingerprint": "b981001054d2f415",
+      "fingerprint": "7f16c510bdde424d",
       "segment_path": "segments/open_walkthrough.mp4",
-      "segment_sha256": "6258bb847f05d2b6644f687fab59c09f13ab6f50212b3a4af01caec98dcb2aa0",
+      "segment_sha256": "f62468d9d9d9bd9cf561a0f6d6d1469c418667a651ed53ad06939106b21e37cf",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
     {
-      "step_id": "review_steps",
-      "fingerprint": "4986226fcef0550e",
-      "segment_path": "segments/review_steps.mp4",
-      "segment_sha256": "eb1a260b236cfe54f443a94d9fcefbf23b8426bd66539bcceca6940e9bdcd747",
-      "duration_ms": 6500,
-      "source": "rebuilt"
-    },
-    {
-      "step_id": "approve_take",
-      "fingerprint": "cef8f977980abafb",
-      "segment_path": "segments/approve_take.mp4",
-      "segment_sha256": "6093be4a6ee9a6f15a2d7e2712209dbf0da8a77031a83414f31375928af94d75",
-      "duration_ms": 7000,
+      "step_id": "open_editor",
+      "fingerprint": "47fff3b3d2ace965",
+      "segment_path": "segments/open_editor.mp4",
+      "segment_sha256": "38b5e990d70c9836cfb37304c788122695717873216722228a05d4f1f4c28df7",
+      "duration_ms": 8000,
       "source": "rebuilt"
     }
   ]

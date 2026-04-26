@@ -7,66 +7,38 @@ target_app:
 brand_ref: brand.yaml
 steps:
 - id: intro
-  title: Welcome to Cutroom
-  narration: This is Foley's Cutroom, where auto-generated product walkthrough videos land for review.
+  title: Foley home
+  narration: This is Foley — every connected repo gets a folder showing its steps, takes, and last activity.
   actions:
   - kind: goto
     url: /
   - kind: wait
-    ms: 3500
+    ms: 4500
   duration_ms: 5000
-  viewport:
-    width: 1440
-    height: 900
-- id: browse_folders
-  title: Project folders
-  narration: Every connected repo gets its own folder, showing step counts, takes, and who last touched
-    it.
-  actions:
-  - kind: scroll
-    ms: 400
-  - kind: wait
-    ms: 2500
-  duration_ms: 6000
   viewport:
     width: 1440
     height: 900
 - id: open_walkthrough
   title: Open a walkthrough
-  narration: Opening the Foley project reveals the full walkthrough Foley built automatically from pull
-    request activity.
+  narration: Click into any walkthrough to see the master video, the takes Foley pulled from PRs, and the brand controls.
   actions:
   - kind: goto
-    url: /walkthroughs/foley
+    url: /walkthroughs/v1
   - kind: wait
-    ms: 2800
+    ms: 5500
   duration_ms: 6000
   viewport:
     width: 1440
     height: 900
-- id: review_steps
-  title: Review the steps
-  narration: Each step is a short clip with narration Foley generated to match the code change in that
-    PR.
+- id: open_editor
+  title: Edit and render
+  narration: Jump into the editor to draft new steps, retake any clip, and render a fresh master video.
   actions:
-  - kind: scroll
-    ms: 500
+  - kind: goto
+    url: /walkthroughs/v1/edit
   - kind: wait
-    ms: 2500
-  duration_ms: 6500
-  viewport:
-    width: 1440
-    height: 900
-- id: approve_take
-  title: Approve and ship
-  narration: Once you approve a take, Foley stitches the clips into a finished video and keeps it current
-    with every new PR.
-  actions:
-  - kind: scroll
-    ms: 500
-  - kind: wait
-    ms: 3000
-  duration_ms: 7000
+    ms: 7500
+  duration_ms: 8000
   viewport:
     width: 1440
     height: 900
