@@ -248,10 +248,16 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
   }, [speed, videos, voices]);
 
   // Drift-correction for the master audio (only when continuous mode is on).
+  // Skip when the playhead is past the audio's declared duration — the seek
+  // would clamp and the audio would then yank the parent back to that
+  // duration through onTimeUpdate, producing a "seek snaps back" feel
+  // when the user clicks on overlay clips that extend past the narration.
   useEffect(() => {
     if (!masterAudioUrl) return;
     const el = masterAudioRef.current;
     if (!el) return;
+    const audDur = el.duration || 0;
+    if (audDur > 0 && p.currentTime > audDur) return;
     if (Math.abs(el.currentTime - p.currentTime) > 0.3) {
       el.currentTime = Math.max(0, p.currentTime);
     }
@@ -353,7 +359,19 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         else if (!el.paused) el.pause();
       }
       if (masterAudioUrl && masterAudioRef.current) {
-        masterAudioRef.current.currentTime = Math.max(0, sec);
+        const aEl = masterAudioRef.current;
+        const audDur = aEl.duration || 0;
+        // If the user seeked past the audio's end, pause it instead of
+        // setting currentTime — the browser would clamp the seek to the
+        // audio's duration and the resulting `timeupdate` would yank the
+        // parent's playhead back to that duration. We need the playhead
+        // to live freely in the post-audio region (e.g. an overlay clip
+        // that extends past the master narration).
+        if (audDur > 0 && sec > audDur) {
+          if (!aEl.paused) aEl.pause();
+        } else {
+          aEl.currentTime = Math.max(0, sec);
+        }
       } else {
         for (const vo of voices) {
           const el = audioRefs.current[vo.id];
@@ -500,6 +518,12 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
               // mid-seek and would yank the playhead back, producing the
               // "cursor jumps around" symptom while scrubbing.
               if (el.seeking) return;
+              // After a seek past audio.duration the browser clamps to
+              // duration, fires `ended`, then keeps emitting timeupdate at
+              // that duration value. Propagating it would snap the parent's
+              // playhead back, defeating clicks on overlay clips beyond
+              // the narration.
+              if (el.ended) return;
               p.onTimeUpdate(el.currentTime);
             }}
             onSeeking={() => {
