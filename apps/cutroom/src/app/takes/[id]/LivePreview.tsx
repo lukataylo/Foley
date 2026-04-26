@@ -168,7 +168,10 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     if (!activeVideo) return;
     const el = videoRefs.current[activeVideo.id];
     if (!el) return;
-    const localPos = Math.max(0, (tMs - activeVideo.start_ms) / 1000);
+    // Account for source_offset_ms so split clips resume mid-source instead
+    // of restarting from 0.
+    const offset = (activeVideo.source_offset_ms ?? 0) / 1000;
+    const localPos = Math.max(0, offset + (tMs - activeVideo.start_ms) / 1000);
     if (Math.abs(el.currentTime - localPos) > 0.05) {
       el.currentTime = localPos;
     }
@@ -181,7 +184,8 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     if (!activeVideo) return;
     const el = videoRefs.current[activeVideo.id];
     if (!el) return;
-    const localPos = (tMs - activeVideo.start_ms) / 1000;
+    const offset = (activeVideo.source_offset_ms ?? 0) / 1000;
+    const localPos = offset + (tMs - activeVideo.start_ms) / 1000;
     if (Math.abs(el.currentTime - localPos) > 0.3) el.currentTime = localPos;
   }, [activeVideo, tMs]);
 
@@ -222,7 +226,8 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
       if (!el) continue;
       const active = inRange(vo, tMs);
       if (active) {
-        const localPos = (tMs - vo.start_ms) / 1000;
+        const offset = (vo.source_offset_ms ?? 0) / 1000;
+        const localPos = offset + (tMs - vo.start_ms) / 1000;
         if (Math.abs(el.currentTime - localPos) > 0.3) el.currentTime = localPos;
         // Linear fades + base volume.
         const fi = vo.fade_in_ms / 1000;
@@ -264,7 +269,8 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
       if (v) {
         const el = videoRefs.current[v.id];
         if (el) {
-          el.currentTime = Math.max(0, (tMs - v.start_ms) / 1000);
+          const offset = (v.source_offset_ms ?? 0) / 1000;
+          el.currentTime = Math.max(0, offset + (tMs - v.start_ms) / 1000);
           void el.play().catch(() => {});
         }
       }
@@ -276,7 +282,8 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
           if (!inRange(vo, tMs)) continue;
           const el = audioRefs.current[vo.id];
           if (!el) continue;
-          el.currentTime = Math.max(0, (tMs - vo.start_ms) / 1000);
+          const offset = (vo.source_offset_ms ?? 0) / 1000;
+          el.currentTime = Math.max(0, offset + (tMs - vo.start_ms) / 1000);
           void el.play().catch(() => {});
         }
       }
@@ -291,7 +298,10 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
       for (const v of videos) {
         const el = videoRefs.current[v.id];
         if (!el) continue;
-        if (inRange(v, ms)) el.currentTime = Math.max(0, (ms - v.start_ms) / 1000);
+        if (inRange(v, ms)) {
+          const offset = (v.source_offset_ms ?? 0) / 1000;
+          el.currentTime = Math.max(0, offset + (ms - v.start_ms) / 1000);
+        }
         else if (!el.paused) el.pause();
       }
       if (masterAudioUrl && masterAudioRef.current) {
@@ -300,7 +310,10 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         for (const vo of voices) {
           const el = audioRefs.current[vo.id];
           if (!el) continue;
-          if (inRange(vo, ms)) el.currentTime = Math.max(0, (ms - vo.start_ms) / 1000);
+          if (inRange(vo, ms)) {
+            const offset = (vo.source_offset_ms ?? 0) / 1000;
+            el.currentTime = Math.max(0, offset + (ms - vo.start_ms) / 1000);
+          }
           else if (!el.paused) el.pause();
         }
       }
@@ -329,7 +342,8 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
               // restart blip at section boundaries.
               if (masterAudioUrl) return;
               const local = (e.currentTarget as HTMLVideoElement).currentTime;
-              p.onTimeUpdate(v.start_ms / 1000 + local);
+              const offset = (v.source_offset_ms ?? 0) / 1000;
+              p.onTimeUpdate(v.start_ms / 1000 + (local - offset));
             }}
             onPlay={() => { if (activeVideo?.id === v.id) p.onPlayStateChange(true); }}
             onPause={() => { if (activeVideo?.id === v.id) p.onPlayStateChange(false); }}

@@ -44,6 +44,10 @@ interface Props {
   regenBusy?: boolean;
   /** Right-click delete on a clip. */
   onRemoveClip?: (id: string) => void;
+  /** Split a clip at the playhead. Returns true if the split happened — used
+   *  by the right-click menu to disable itself when the playhead is outside
+   *  the clip's body. */
+  onSplitClip?: (id: string) => boolean;
 
   /** ── Variant A / B props ────────────────────────────────────────── */
   /** One waveform spanning the whole take. When present, voice clips draw
@@ -406,36 +410,66 @@ export function Timeline2(p: Props) {
             ))}
             <GhostRow rowIndex={rows} zoom={p.zoom} currentTime={p.currentTime} />
           </div>
-          {ctxMenu && (
-            <div
-              className="tl3-ctxmenu"
-              style={{ left: ctxMenu.x, top: ctxMenu.y }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="tl3-ctxmenu-head">{ctxMenu.kind} clip</div>
-              <button
-                type="button"
-                className="tl3-ctxmenu-item"
-                onClick={() => {
-                  p.onSelectClip(ctxMenu.clipId);
-                  setCtxMenu(null);
-                }}
+          {ctxMenu && (() => {
+            // Compute split eligibility from the live clip — the right-click
+            // happened earlier, so we re-read the clip rather than trust a
+            // captured copy that might be stale after a drag.
+            const ctxClip = p.overlay.clips.find((c) => c.id === ctxMenu.clipId);
+            const tMs = p.currentTime * 1000;
+            const splitOk =
+              !!ctxClip &&
+              !ctxClip.locked &&
+              !!p.onSplitClip &&
+              tMs - ctxClip.start_ms >= SNAP_MS &&
+              ctxClip.start_ms + ctxClip.duration_ms - tMs >= SNAP_MS;
+            return (
+              <div
+                className="tl3-ctxmenu"
+                style={{ left: ctxMenu.x, top: ctxMenu.y }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
               >
-                Edit in inspector
-              </button>
-              <button
-                type="button"
-                className="tl3-ctxmenu-item danger"
-                onClick={() => {
-                  p.onRemoveClip?.(ctxMenu.clipId);
-                  setCtxMenu(null);
-                }}
-              >
-                Delete clip
-              </button>
-            </div>
-          )}
+                <div className="tl3-ctxmenu-head">{ctxMenu.kind} clip</div>
+                <button
+                  type="button"
+                  className="tl3-ctxmenu-item"
+                  onClick={() => {
+                    p.onSelectClip(ctxMenu.clipId);
+                    setCtxMenu(null);
+                  }}
+                >
+                  Edit in inspector
+                </button>
+                <button
+                  type="button"
+                  className="tl3-ctxmenu-item"
+                  disabled={!splitOk}
+                  title={
+                    splitOk
+                      ? "Split this clip at the playhead (S)"
+                      : "Move the playhead inside the clip body to split"
+                  }
+                  onClick={() => {
+                    if (!splitOk) return;
+                    p.onSplitClip?.(ctxMenu.clipId);
+                    setCtxMenu(null);
+                  }}
+                >
+                  Split at playhead
+                </button>
+                <button
+                  type="button"
+                  className="tl3-ctxmenu-item danger"
+                  onClick={() => {
+                    p.onRemoveClip?.(ctxMenu.clipId);
+                    setCtxMenu(null);
+                  }}
+                >
+                  Delete clip
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </section>

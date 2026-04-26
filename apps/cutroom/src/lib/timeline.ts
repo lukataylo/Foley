@@ -49,11 +49,19 @@ export interface VideoClip extends ClipBase {
   poster_url?: string | null;
   /** Narration overlay shown over the poster while the step is unrecorded. */
   placeholder_text?: string | null;
+  /** Where this clip starts inside its source mp4, in ms. Defaults to 0 — the
+   *  clip plays the source from the top. Bumped by splitClip() so the right
+   *  half of a cut continues from where the left half ended instead of
+   *  restarting the source. */
+  source_offset_ms?: number;
 }
 
 export interface VoiceClip extends ClipBase {
   kind: "voice";
   step_id: string;
+  /** See VideoClip.source_offset_ms — same semantic, applied to the per-step
+   *  narration mp3 in non-continuous mode. */
+  source_offset_ms?: number;
 }
 
 export interface MusicClip extends ClipBase {
@@ -258,6 +266,67 @@ export function addClip(overlay: EditOverlay, clip: Clip): EditOverlay {
 
 export function removeClip(overlay: EditOverlay, clipId: string): EditOverlay {
   return { ...overlay, clips: overlay.clips.filter((c) => c.id !== clipId) };
+}
+
+/** Minimum duration of either half after a split, in ms. Mirrors SNAP_MS in
+ *  the timeline UI so the user can never produce a sub-snap fragment. */
+export const SPLIT_MIN_MS = 250;
+
+/** Split `clip` at `splitMs` (absolute, ms). Returns the new overlay plus
+ *  the id of the right-hand clip so the caller can keep selection sensible.
+ *  No-op (returns null) when:
+ *    - the clip doesn't exist
+ *    - the split position is outside the clip body
+ *    - either resulting half would be shorter than SPLIT_MIN_MS
+ *  The right-half copies all kind-specific fields verbatim — for video/voice
+ *  both halves keep the same `step_id` (they're literally two windows on the
+ *  same source). The left half keeps the original fade-in and gets a fade-out
+ *  of 0; the right half mirrors that for fade-out. Locked clips are not split. */
+export function splitClip(
+  overlay: EditOverlay,
+  clipId: string,
+  splitMs: number,
+): { overlay: EditOverlay; rightId: string } | null {
+  const idx = overlay.clips.findIndex((c) => c.id === clipId);
+  if (idx < 0) return null;
+  const orig = overlay.clips[idx];
+  if (orig.locked) return null;
+  const localMs = Math.round(splitMs - orig.start_ms);
+  const leftDur = localMs;
+  const rightDur = orig.duration_ms - localMs;
+  if (leftDur < SPLIT_MIN_MS || rightDur < SPLIT_MIN_MS) return null;
+
+  const rightId = nextClipId(`${orig.kind}-split`);
+  const left: Clip = {
+    ...orig,
+    duration_ms: leftDur,
+    fade_out_ms: 0,
+  };
+  const right: Clip = {
+    ...orig,
+    id: rightId,
+    start_ms: orig.start_ms + leftDur,
+    duration_ms: rightDur,
+    fade_in_ms: 0,
+  };
+  // A "match_source_length" video clip is a window on its mp4 source; once we
+  // split it we can no longer claim it covers the full source — flip both
+  // halves to manual length so a future re-render doesn't snap them back.
+  if (orig.kind === "video" && (left as VideoClip).match_source_length) {
+    (left as VideoClip).match_source_length = false;
+    (right as VideoClip).match_source_length = false;
+  }
+  // Continue source playback across the cut: the right half resumes where
+  // the left ended in the underlying mp3/mp4. Without this, splitting a
+  // 4s video at 2s would make the right half replay the source from 0.
+  if (orig.kind === "video" || orig.kind === "voice") {
+    const baseOffset = (orig as VideoClip | VoiceClip).source_offset_ms ?? 0;
+    (right as VideoClip | VoiceClip).source_offset_ms = baseOffset + leftDur;
+  }
+  const clips = overlay.clips.slice();
+  clips[idx] = left;
+  clips.splice(idx + 1, 0, right);
+  return { overlay: { ...overlay, clips }, rightId };
 }
 
 let counter = 0;

@@ -31,6 +31,7 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { ChangesTimeline } from "./ChangesTimeline";
+import { PublishButton } from "@/app/walkthroughs/[id]/PublishButton";
 import {
   type ContinuousNarration,
   synthesizeContinuousFromTracks,
@@ -50,6 +51,7 @@ import {
   nextClipId,
   patchClip as patchClipPure,
   removeClip as removeClipPure,
+  splitClip as splitClipPure,
 } from "@/lib/timeline";
 
 export interface TrackEntry {
@@ -482,6 +484,7 @@ export function EditorShell({
   }
 
   function jumpStep(direction: -1 | 1) {
+    if (tracks.length === 0) return;
     const idx = tracks.findIndex((t) => t.id === selectedStepId);
     const next = Math.max(0, Math.min(tracks.length - 1, idx + direction));
     selectStep(tracks[next].id);
@@ -658,6 +661,25 @@ export function EditorShell({
     });
     if (selectedClipId === id) setSelectedClipId(null);
   }
+
+  /** Split a clip at the current playhead. Returns true if anything happened —
+   *  callers (keyboard shortcut, context menu) can decide whether to flash a
+   *  hint when the playhead is outside the clip's body. */
+  function splitClipAtPlayhead(id: string): boolean {
+    let didSplit = false;
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      const result = splitClipPure(curr, id, Math.round(currentTime * 1000));
+      if (!result) return curr;
+      didSplit = true;
+      commitOverlay(result.overlay, curr);
+      // Keep selection on the *left* half (the clip the user already had
+      // selected) so editing flow doesn't jump unexpectedly. The new right
+      // half is right next to it visually.
+      return result.overlay;
+    });
+    return didSplit;
+  }
   function addClipOfKind(kind: ClipKind) {
     setOverlay((curr) => {
       if (!curr) return curr;
@@ -713,7 +735,11 @@ export function EditorShell({
           transition_id: t.id,
         };
       } else if (kind === "video") {
-        const stepId = tracks[0]?.id ?? "";
+        const stepId = tracks[0]?.id;
+        if (!stepId) {
+          alert("Add a step to the walkthrough before inserting a video clip.");
+          return curr;
+        }
         clip = {
           id: nextClipId("v"), kind: "video", row,
           start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
@@ -722,7 +748,11 @@ export function EditorShell({
           match_source_length: false,
         };
       } else if (kind === "voice") {
-        const stepId = tracks[0]?.id ?? "";
+        const stepId = tracks[0]?.id;
+        if (!stepId) {
+          alert("Add a step to the walkthrough before inserting a voice clip.");
+          return curr;
+        }
         clip = {
           id: nextClipId("vo"), kind: "voice", row,
           start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
@@ -943,7 +973,8 @@ export function EditorShell({
     }
   }
 
-  // Keyboard shortcuts: Delete clip, Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo.
+  // Keyboard shortcuts: Delete clip, Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo,
+  // S to split the selected clip at the playhead.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -963,10 +994,14 @@ export function EditorShell({
         e.preventDefault();
         removeClipState(selectedClipId);
       }
+      if ((e.key === "s" || e.key === "S") && !mod && selectedClipId) {
+        e.preventDefault();
+        splitClipAtPlayhead(selectedClipId);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedClipId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedClipId, currentTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Source frames keyed by step_id, for thumbnails in clip blocks.
   const sourceById = useMemo(() => {
@@ -1090,6 +1125,12 @@ export function EditorShell({
               Compare with {take.parent_take_id}
             </Link>
           ) : null}
+          <PublishButton
+            walkthroughId={walkthrough.id}
+            displayName={walkthroughDisplayName}
+            videoUrl={masterUrl}
+            takeId={takeId}
+          />
           {take.status === "ready" ? (
             <>
               <button
@@ -1318,6 +1359,7 @@ export function EditorShell({
           onRegenerateStale={regenerateAllStale}
           regenBusy={busyAction === "regen-all"}
           onRemoveClip={removeClipState}
+          onSplitClip={splitClipAtPlayhead}
           narration={continuousNarration}
           voiceStale={voiceStale}
           voiceBusy={voiceBusy}
