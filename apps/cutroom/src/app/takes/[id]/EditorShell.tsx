@@ -31,6 +31,7 @@ export const DEFAULT_STEP_ZOOM: StepZoom = {
 import { Timeline } from "./Timeline";
 import { Timeline2 } from "./Timeline2";
 import { ChangesTimeline } from "./ChangesTimeline";
+import { PublishButton } from "@/app/walkthroughs/[id]/PublishButton";
 import {
   type ContinuousNarration,
   synthesizeContinuousFromTracks,
@@ -40,6 +41,7 @@ import { MusicMixer, type MusicMixerHandle } from "./MusicMixer";
 import { LivePreview, type LivePreviewHandle } from "./LivePreview";
 import type { MusicClip } from "@/lib/timeline";
 import { ClipInspector } from "./ClipInspector";
+import { ShortcutsOverlay } from "./ShortcutsOverlay";
 import {
   type Clip,
   type ClipKind,
@@ -50,6 +52,9 @@ import {
   nextClipId,
   patchClip as patchClipPure,
   removeClip as removeClipPure,
+  splitClip as splitClipPure,
+  duplicateClip as duplicateClipPure,
+  synthesizeOverlay,
 } from "@/lib/timeline";
 
 export interface TrackEntry {
@@ -114,6 +119,18 @@ export function EditorShell({
 
   const [selectedStepId, setSelectedStepId] = useState<string | null>(initialStep);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  // Multi-selection — additional clips beyond the primary `selectedClipId`.
+  // Shift-click in Timeline2 adds/removes ids here. Delete removes the whole
+  // set. The inspector still operates on the primary so per-clip edits
+  // remain unambiguous.
+  const [extraSelectedClipIds, setExtraSelectedClipIds] = useState<string[]>([]);
+  // Mirror state into a ref so the global keyboard handler — which captures
+  // by closure and can't list every state in its deps without re-binding on
+  // every keystroke — can read the latest set when Delete fires.
+  const extraSelectedClipIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    extraSelectedClipIdsRef.current = extraSelectedClipIds;
+  }, [extraSelectedClipIds]);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
 
   // ── Continuous narration view ───────────────────────────────────────────
@@ -166,6 +183,7 @@ export function EditorShell({
   const [captionsOn, setCaptionsOn] = useState(false);
   const [editNarrationTrigger, setEditNarrationTrigger] = useState(0);
   const [genaiByStep, setGenaiByStep] = useState<Record<string, string>>({});
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   // Per-step zoom (Steps panel). Demo-state only — not persisted.
   const [stepZooms, setStepZooms] = useState<Record<string, StepZoom>>({});
@@ -195,7 +213,7 @@ export function EditorShell({
       void fetch(`/api/takes/${takeId}/transitions?wt=${encodeURIComponent(walkthrough.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transitions: next }),
+        body: JSON.stringify({ transitions: next, walkthrough_id: walkthrough.id }),
       });
     }, 350);
   }, [takeId, walkthrough.id]);
@@ -470,7 +488,7 @@ export function EditorShell({
     // Snapshot the overlay once at drag start so undo restores the
     // pre-drag state, not every intermediate tick.
     if (overlay) {
-      undoStack.current.push(overlay);
+      undoStack.current.push({ kind: "overlay", prev: overlay });
       if (undoStack.current.length > 100) undoStack.current.shift();
       redoStack.current = [];
       dragSnapshotPushed.current = true;
@@ -487,6 +505,7 @@ export function EditorShell({
   }
 
   function jumpStep(direction: -1 | 1) {
+    if (tracks.length === 0) return;
     const idx = tracks.findIndex((t) => t.id === selectedStepId);
     const next = Math.max(0, Math.min(tracks.length - 1, idx + direction));
     selectStep(tracks[next].id);
@@ -622,11 +641,16 @@ export function EditorShell({
     }, 350);
   }, [walkthrough.id]);
 
-  // Undo/redo ring buffer of overlay snapshots. Pushed by every mutator
-  // that goes through commitOverlay(). Drag/resize coalesces — we only
-  // snapshot when a drag ends (handled in onInteractionEnd).
-  const undoStack = useRef<EditOverlay[]>([]);
-  const redoStack = useRef<EditOverlay[]>([]);
+  // Undo/redo ring buffer. Each entry is either an overlay snapshot (most
+  // common — every clip-level mutation) or a YAML step-edit delta we can
+  // PATCH back. Drag/resize coalesces — we only snapshot when a drag ends
+  // (handled in onInteractionEnd).
+  type StepEditPatch = { title?: string; narration?: string; duration_ms?: number };
+  type UndoEntry =
+    | { kind: "overlay"; prev: EditOverlay }
+    | { kind: "yaml"; stepId: string; before: StepEditPatch; after: StepEditPatch };
+  const undoStack = useRef<UndoEntry[]>([]);
+  const redoStack = useRef<UndoEntry[]>([]);
   const dragSnapshotPushed = useRef(false);
   const [, forceRender] = useState(0);
   const bumpRender = () => forceRender((n) => n + 1);
@@ -638,30 +662,70 @@ export function EditorShell({
 
   function commitOverlay(next: EditOverlay, prev: EditOverlay | null) {
     if (prev) {
-      undoStack.current.push(prev);
+      undoStack.current.push({ kind: "overlay", prev });
       if (undoStack.current.length > 100) undoStack.current.shift();
       redoStack.current = [];
     }
     persistOverlay(next);
     bumpRender();
   }
+  /** Apply a step edit to the YAML and stash an undo entry so Cmd+Z can
+   *  revert it. Skips the undo stack when called from undo() itself. */
+  function commitYamlEdit(stepId: string, before: StepEditPatch, after: StepEditPatch, recordUndo: boolean) {
+    if (recordUndo) {
+      undoStack.current.push({ kind: "yaml", stepId, before, after });
+      if (undoStack.current.length > 100) undoStack.current.shift();
+      redoStack.current = [];
+    }
+    void fetch(`/api/walkthroughs/${walkthrough.id}/authoring`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ op: "rename", id: stepId, ...after }),
+    }).then(() => router.refresh());
+    bumpRender();
+  }
   function undo() {
-    const curr = overlay;
-    const prev = undoStack.current.pop();
-    if (!prev || !curr) return;
-    redoStack.current.push(curr);
-    setOverlay(prev);
-    persistOverlay(prev);
+    const entry = undoStack.current.pop();
+    if (!entry) return;
+    if (entry.kind === "overlay") {
+      const curr = overlay;
+      if (!curr) return;
+      redoStack.current.push({ kind: "overlay", prev: curr });
+      setOverlay(entry.prev);
+      persistOverlay(entry.prev);
+    } else {
+      // YAML undo: re-apply the `before` snapshot. Push a redo so Shift+⌘Z
+      // can replay the change.
+      redoStack.current.push(entry);
+      commitYamlEdit(entry.stepId, entry.after, entry.before, false);
+    }
     bumpRender();
   }
   function redo() {
-    const curr = overlay;
-    const next = redoStack.current.pop();
-    if (!next || !curr) return;
-    undoStack.current.push(curr);
-    setOverlay(next);
-    persistOverlay(next);
+    const entry = redoStack.current.pop();
+    if (!entry) return;
+    if (entry.kind === "overlay") {
+      const curr = overlay;
+      if (!curr) return;
+      undoStack.current.push({ kind: "overlay", prev: curr });
+      setOverlay(entry.prev);
+      persistOverlay(entry.prev);
+    } else {
+      undoStack.current.push(entry);
+      commitYamlEdit(entry.stepId, entry.before, entry.after, false);
+    }
     bumpRender();
+  }
+  function resetAllEdits() {
+    if (!overlay) return;
+    if (!window.confirm("Discard every edit and rebuild the timeline from the source steps? This cannot be undone except by Cmd+Z.")) {
+      return;
+    }
+    const fresh = synthesizeOverlay(walkthrough);
+    commitOverlay(fresh, overlay);
+    setOverlay(fresh);
+    setSelectedClipId(null);
+    setExtraSelectedClipIds([]);
   }
 
   function patchClipState(id: string, patch: Partial<Clip>) {
@@ -686,6 +750,38 @@ export function EditorShell({
       return next;
     });
     if (selectedClipId === id) setSelectedClipId(null);
+  }
+
+  /** Duplicate a clip — places the copy directly after the original on the
+   *  same row and selects it so the user can drag it elsewhere. */
+  function duplicateClipState(id: string) {
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      const result = duplicateClipPure(curr, id);
+      if (!result) return curr;
+      commitOverlay(result.overlay, curr);
+      setSelectedClipId(result.newId);
+      return result.overlay;
+    });
+  }
+
+  /** Split a clip at the current playhead. Returns true if anything happened —
+   *  callers (keyboard shortcut, context menu) can decide whether to flash a
+   *  hint when the playhead is outside the clip's body. */
+  function splitClipAtPlayhead(id: string): boolean {
+    let didSplit = false;
+    setOverlay((curr) => {
+      if (!curr) return curr;
+      const result = splitClipPure(curr, id, Math.round(currentTime * 1000));
+      if (!result) return curr;
+      didSplit = true;
+      commitOverlay(result.overlay, curr);
+      // Keep selection on the *left* half (the clip the user already had
+      // selected) so editing flow doesn't jump unexpectedly. The new right
+      // half is right next to it visually.
+      return result.overlay;
+    });
+    return didSplit;
   }
   function addClipOfKind(kind: ClipKind) {
     setOverlay((curr) => {
@@ -742,7 +838,11 @@ export function EditorShell({
           transition_id: t.id,
         };
       } else if (kind === "video") {
-        const stepId = tracks[0]?.id ?? "";
+        const stepId = tracks[0]?.id;
+        if (!stepId) {
+          alert("Add a step to the walkthrough before inserting a video clip.");
+          return curr;
+        }
         clip = {
           id: nextClipId("v"), kind: "video", row,
           start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
@@ -751,7 +851,11 @@ export function EditorShell({
           match_source_length: false,
         };
       } else if (kind === "voice") {
-        const stepId = tracks[0]?.id ?? "";
+        const stepId = tracks[0]?.id;
+        if (!stepId) {
+          alert("Add a step to the walkthrough before inserting a voice clip.");
+          return curr;
+        }
         clip = {
           id: nextClipId("vo"), kind: "voice", row,
           start_ms: startMs, duration_ms: 4000, fade_in_ms: 0, fade_out_ms: 0, volume: 1,
@@ -769,6 +873,28 @@ export function EditorShell({
   const [musicErrorByClip, setMusicErrorByClip] = useState<
     Record<string, { message: string; suggestion: string | null } | null>
   >({});
+  const [bananaErrorByClip, setBananaErrorByClip] = useState<
+    Record<string, { message: string } | null>
+  >({});
+  // Brief "just generated!" markers so successful banana/music regenerations
+  // give the user explicit feedback (the asset URL changing is otherwise a
+  // silent swap). Each entry auto-clears after ~2.5s.
+  const [recentlyGeneratedIds, setRecentlyGeneratedIds] = useState<Set<string>>(() => new Set());
+  function flashGenerated(clipId: string) {
+    setRecentlyGeneratedIds((curr) => {
+      const next = new Set(curr);
+      next.add(clipId);
+      return next;
+    });
+    window.setTimeout(() => {
+      setRecentlyGeneratedIds((curr) => {
+        if (!curr.has(clipId)) return curr;
+        const next = new Set(curr);
+        next.delete(clipId);
+        return next;
+      });
+    }, 2500);
+  }
 
   async function generateMusicClip(clipId: string) {
     if (!overlay) return;
@@ -796,6 +922,7 @@ export function EditorShell({
           generated_duration_ms: json.duration_ms ?? f.duration_ms,
           source_sha256_at_edit: narrationHashNow,
         });
+        flashGenerated(clipId);
       } else {
         setMusicErrorByClip((m) => ({
           ...m,
@@ -818,17 +945,33 @@ export function EditorShell({
   // Debounced authoring writes — typing in the step title/narration shouldn't
   // hammer the YAML file on every keystroke.
   const authoringTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  function editStepInYaml(stepId: string, patch: { title?: string; narration?: string; duration_ms?: number }) {
+
+  // Cancel every pending debounce on unmount so a navigation-away mid-typing
+  // doesn't fire setState / fetch on an unmounted component.
+  useEffect(() => {
+    const authoringMap = authoringTimers.current;
+    return () => {
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+      if (overlayPersistTimer.current) clearTimeout(overlayPersistTimer.current);
+      for (const t of Object.values(authoringMap)) clearTimeout(t);
+    };
+  }, []);
+  function editStepInYaml(stepId: string, patch: StepEditPatch) {
     if (authoringTimers.current[stepId]) clearTimeout(authoringTimers.current[stepId]);
     // A narration edit invalidates the continuous take — flip the stale pill
     // so the user sees a "regenerate voice" prompt in the toolbar.
     if (patch.narration !== undefined) setVoiceStale(true);
     authoringTimers.current[stepId] = setTimeout(() => {
-      void fetch(`/api/walkthroughs/${walkthrough.id}/authoring`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "rename", id: stepId, ...patch }),
-      }).then(() => router.refresh());
+      // Snapshot the before-values from the current walkthrough props so
+      // undo can revert this PATCH. Only fields the patch touches go in
+      // the snapshot — undoing a title-only edit shouldn't restore the
+      // narration that someone else might have changed in the meantime.
+      const step = walkthrough.steps.find((s) => s.id === stepId);
+      const before: StepEditPatch = {};
+      if (patch.title !== undefined && step?.title !== undefined) before.title = step.title;
+      if (patch.narration !== undefined && step?.narration !== undefined) before.narration = step.narration;
+      if (patch.duration_ms !== undefined && step?.duration_ms !== undefined) before.duration_ms = step.duration_ms;
+      commitYamlEdit(stepId, before, patch, true);
     }, 500);
   }
 
@@ -856,22 +999,22 @@ export function EditorShell({
     }
   }
 
-  async function addNewStep() {
-    const id = window.prompt("New step id (a-z0-9_-)");
-    if (!id) return;
-    const slug = id.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
-    if (!slug) return;
-    const res = await fetch(`/api/walkthroughs/${walkthrough.id}/authoring`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ op: "add", step: { id: slug, title: slug, duration_ms: 5000 } }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      alert(`Couldn't add step: ${j.error ?? res.statusText}`);
-      return;
+  async function addNewStep(stepId: string, title: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`/api/walkthroughs/${walkthrough.id}/authoring`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "add", step: { id: stepId, title, duration_ms: 5000 } }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        return { ok: false, error: j.error ?? res.statusText };
+      }
+      router.refresh();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Network error" };
     }
-    router.refresh();
   }
 
   /** Walk every clip, regenerate the stale ones (banana/music). For
@@ -905,10 +1048,8 @@ export function EditorShell({
   }) {
     setPreviewSuggestion(s);
     setCanvasMode("suggestion");
-    // Briefly auto-dismiss so the canvas returns to playback after a beat.
-    window.setTimeout(() => {
-      setCanvasMode((m) => (m === "suggestion" ? "video" : m));
-    }, 7000);
+    // The canvas stays on the suggestion until the user clicks "Back to
+    // video" — the previous 7s timer made readers feel rushed.
   }
   function insertSuggestionAsClip(s: {
     step_id: string; title: string; narration: string; duration_ms: number;
@@ -951,6 +1092,7 @@ export function EditorShell({
     if (!f || f.kind !== "banana" || !f.prompt) return;
     const found = f;
     setBusyAction("banana");
+    setBananaErrorByClip((m) => ({ ...m, [clipId]: null }));
     try {
       const res = await fetch(`/api/genai/laptop-mockup`, {
         method: "POST",
@@ -969,15 +1111,21 @@ export function EditorShell({
       };
       if (json.ok && json.url) {
         patchClipState(clipId, { asset_url: `${json.url}?t=${Date.now()}` });
+        flashGenerated(clipId);
       } else {
-        alert(json.message ?? json.error ?? "Nano Banana failed");
+        // Prefer the friendly `message` (412 missing-key) over the raw error.
+        setBananaErrorByClip((m) => ({
+          ...m,
+          [clipId]: { message: json.message ?? json.error ?? "Banana generation failed" },
+        }));
       }
     } finally {
       setBusyAction(null);
     }
   }
 
-  // Keyboard shortcuts: Delete clip, Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo.
+  // Keyboard shortcuts: Delete clip, Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo,
+  // S to split the selected clip at the playhead.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -995,12 +1143,29 @@ export function EditorShell({
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedClipId) {
         e.preventDefault();
-        removeClipState(selectedClipId);
+        // Multi-delete the primary plus every extra-selected clip. Read
+        // extras through the ref so we see the latest set without having
+        // to re-bind the listener on every shift-click.
+        const ids = [selectedClipId, ...extraSelectedClipIdsRef.current];
+        for (const id of ids) removeClipState(id);
+        setExtraSelectedClipIds([]);
+      }
+      if ((e.key === "s" || e.key === "S") && !mod && selectedClipId) {
+        e.preventDefault();
+        splitClipAtPlayhead(selectedClipId);
+      }
+      if (mod && (e.key === "d" || e.key === "D") && selectedClipId) {
+        e.preventDefault();
+        duplicateClipState(selectedClipId);
+      }
+      if (e.key === "?" && !mod) {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedClipId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedClipId, currentTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Source frames keyed by step_id, for thumbnails in clip blocks.
   const sourceById = useMemo(() => {
@@ -1113,7 +1278,25 @@ export function EditorShell({
             >
               ↷
             </button>
+            <button
+              type="button"
+              className="undo-btn"
+              onClick={resetAllEdits}
+              disabled={!overlay}
+              title="Discard all timeline edits and rebuild from source steps"
+            >
+              ⟲
+            </button>
           </div>
+          <button
+            type="button"
+            className="undo-btn"
+            onClick={() => setShortcutsOpen(true)}
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+          >
+            ?
+          </button>
           <ModeToggle mode={mode} onChange={setMode} />
           <ThemeToggle />
           {take.parent_take_id ? (
@@ -1124,6 +1307,12 @@ export function EditorShell({
               Compare with {take.parent_take_id}
             </Link>
           ) : null}
+          <PublishButton
+            walkthroughId={walkthrough.id}
+            displayName={walkthroughDisplayName}
+            videoUrl={masterUrl}
+            takeId={takeId}
+          />
           {take.status === "ready" ? (
             <>
               <button
@@ -1242,6 +1431,9 @@ export function EditorShell({
                   selectedClipId={selectedClipId}
                   onPatchClip={patchClipState}
                   narration={continuousNarration}
+                  transitions={transitions}
+                  framesByStepId={Object.fromEntries(tracks.map((t) => [t.id, t.frame_url]))}
+                  speed={speed}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);
@@ -1307,6 +1499,8 @@ export function EditorShell({
             onGenerateBanana={generateBananaClip}
             onGenerateMusic={generateMusicClip}
             musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
+            bananaError={selectedClipId ? bananaErrorByClip[selectedClipId] ?? null : null}
+            recentlyGenerated={selectedClipId ? recentlyGeneratedIds.has(selectedClipId) : false}
             onApplyMusicSuggestion={applyMusicSuggestion}
             transitions={transitions}
             onUpdateTransition={updateTransition}
@@ -1323,6 +1517,7 @@ export function EditorShell({
       </div>
 
 
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <div className="bottom-pane">
         {overlay ? (
         <Timeline2
@@ -1333,7 +1528,18 @@ export function EditorShell({
           isPlaying={isPlaying}
           zoom={zoom}
           speed={speed}
-          onSelectClip={(id) => {
+          extraSelectedClipIds={extraSelectedClipIds}
+          onSelectClip={(id, mods) => {
+            // Shift-click: toggle this clip in the multi-select set without
+            // touching the primary. Plain click: clear set, set primary,
+            // and seek the active step to its source.
+            if (mods?.shift && id) {
+              setExtraSelectedClipIds((curr) =>
+                curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id],
+              );
+              return;
+            }
+            setExtraSelectedClipIds([]);
             setSelectedClipId(id);
             if (id) {
               const found = overlay.clips.find((c) => c.id === id);
@@ -1343,6 +1549,7 @@ export function EditorShell({
           onPatchClip={patchClipState}
           onSeek={seekTo}
           onTogglePlay={togglePlay}
+          onSpeed={(n) => setSpeed(n)}
           onJump={jumpStep}
           onZoom={(n) => setZoom(Math.max(12, Math.min(160, n)))}
           onAddClip={addClipOfKind}
@@ -1352,6 +1559,12 @@ export function EditorShell({
           onRegenerateStale={regenerateAllStale}
           regenBusy={busyAction === "regen-all"}
           onRemoveClip={removeClipState}
+          onSplitClip={splitClipAtPlayhead}
+          onDuplicateClip={duplicateClipState}
+          searchStepLabel={(id) => {
+            const t = sourceById[id];
+            return [t?.title, t?.narration].filter(Boolean).join(" ");
+          }}
           narration={continuousNarration}
           voiceStale={voiceStale}
           voiceBusy={voiceBusy}
