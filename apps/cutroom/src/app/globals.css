@@ -2827,29 +2827,73 @@ a.back:hover { color: var(--fg); }
   100% { background: rgba(245, 185, 74, 0.0); }
 }
 
-.brand-clone {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-  display: flex; flex-direction: column; gap: 6px;
-}
-.brand-clone-btn {
-  background: rgba(0,112,243,0.08);
-  border: 1px solid rgba(0,112,243,0.35);
-  color: var(--link, #0070f3);
-  padding: 8px 12px;
-  border-radius: 8px;
-  font: inherit; font-size: 13px; font-weight: 500;
+/* Brand panel ⋯ menu (holds "Clone my voice" so the brand sticky stays
+ * scannable). Triggered next to Edit; click-outside closes via JS. */
+.brand-menu-btn {
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 7px;
+  width: 32px; height: 28px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--fg-2);
   cursor: pointer;
-  align-self: flex-start;
+  padding: 0;
 }
-.brand-clone-btn:hover:not(:disabled) { background: rgba(0,112,243,0.14); }
-.brand-clone-btn:disabled { opacity: 0.6; cursor: progress; }
-.brand-clone-hint { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
-.brand-clone-ok { font-size: 12.5px; color: #2a8254; font-weight: 500; }
-.brand-clone-err { font-size: 12px; color: #b13a30; line-height: 1.4; }
-[data-theme="dark"] .brand-clone-ok { color: #6ad48a; }
-[data-theme="dark"] .brand-clone-err { color: #ff9d92; }
+.brand-menu-btn:hover { background: rgba(0,0,0,0.10); }
+[data-theme="dark"] .brand-menu-btn { background: rgba(255,255,255,0.08); }
+[data-theme="dark"] .brand-menu-btn:hover { background: rgba(255,255,255,0.14); }
+.brand-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.18);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.brand-menu-item {
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg-2);
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 9px;
+}
+.brand-menu-item:hover:not(:disabled) { background: rgba(0,112,243,0.08); color: var(--link, #0070f3); }
+.brand-menu-item:disabled { opacity: 0.55; cursor: progress; }
+.brand-menu-glyph { font-size: 14px; flex-shrink: 0; }
+.brand-menu-hint {
+  padding: 4px 10px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.brand-clone-status {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: rgba(0,0,0,0.04);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+[data-theme="dark"] .brand-clone-status { background: rgba(255,255,255,0.06); }
+.brand-clone-status.brand-clone-ok { color: #2a8254; background: rgba(46, 194, 126, 0.10); font-weight: 500; }
+.brand-clone-status.brand-clone-err { color: #b13a30; background: rgba(220, 80, 70, 0.10); }
+[data-theme="dark"] .brand-clone-status.brand-clone-ok { color: #6ad48a; }
+[data-theme="dark"] .brand-clone-status.brand-clone-err { color: #ff9d92; }
 
 .transcript-panel {
   margin-top: 12px;

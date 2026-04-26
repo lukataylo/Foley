@@ -17,10 +17,13 @@ const execFileP = promisify(execFile);
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 const WALKTHROUGHS_DIR = path.join(REPO_ROOT, "walkthroughs");
 
-// Tune for "small file, recognisable motion". 6 fps × 5 s × 720 wide
-// usually lands around 250-450 KB after palette quantisation.
-const GIF_DURATION_S = 5;
-const GIF_FPS = 6;
+// Tuned to fit the README's "see it in action" frame: home grid →
+// overview page → walkthrough player. The seeded foley walkthrough is
+// ~26 s long with 5 steps, so 20 s spans the first three. 5 fps × 20 s ×
+// 720 wide lands ~1.5–2 MB after palette+dither — acceptable for an
+// inline README badge.
+const GIF_DURATION_S = 20;
+const GIF_FPS = 5;
 const GIF_MAX_WIDTH = 720;
 
 async function statOk(file: string): Promise<{ size: number; mtimeMs: number } | null> {

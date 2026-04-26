@@ -24,32 +24,8 @@ interface FolderItem {
   tag?: "sample" | "soon";
 }
 
-const PLACEHOLDERS: FolderItem[] = [
-  {
-    id: "acme-cloud",
-    name: "Acme Cloud",
-    mark: "ac—",
-    sub: "12 steps · 1 take",
-    meta: "George · Last 09:14",
-    href: null,
-    variant: "muted",
-    tone: "amber",
-    thumbs: [],
-    tag: "sample",
-  },
-  {
-    id: "beam",
-    name: "Beam",
-    mark: "be—",
-    sub: "9 steps · 0 takes",
-    meta: "Charlotte · not bootstrapped",
-    href: null,
-    variant: "muted",
-    tone: "graphite",
-    thumbs: [],
-    tag: "soon",
-  },
-];
+// No placeholder folders — the home grid only shows real walkthroughs
+// from disk plus the "+ New walkthrough" tile that links to /onboard.
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -95,7 +71,7 @@ export default async function HomePage() {
     }),
   );
 
-  const items: FolderItem[] = [...real, ...PLACEHOLDERS];
+  const items: FolderItem[] = real;
 
   return (
     <main className="home">

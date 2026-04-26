@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BrandConfig } from "@/lib/types";
 
@@ -32,7 +32,21 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
   const [busy, setBusy] = useState(false);
   const [cloneStatus, setCloneStatus] = useState<"idle" | "uploading" | "ok" | "error">("idle");
   const [cloneMessage, setCloneMessage] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside to close the ⋯ menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (!menuRef.current) return;
+      if (menuRef.current.contains(e.target as Node)) return;
+      setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
   function patch(p: Partial<BrandConfig>) {
     setDraft((d) => ({ ...d, ...p }));
@@ -117,14 +131,49 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className="brand-edit-btn"
-            onClick={() => setEditing(true)}
-            style={{ marginLeft: "auto" }}
+          <div
+            ref={menuRef}
+            style={{ marginLeft: "auto", display: "inline-flex", gap: 6, position: "relative" }}
           >
-            Edit
-          </button>
+            <button
+              type="button"
+              className="brand-edit-btn"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="brand-menu-btn"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="More brand actions"
+              title="More"
+            >
+              ⋯
+            </button>
+            {menuOpen ? (
+              <div className="brand-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="brand-menu-item"
+                  disabled={cloneStatus === "uploading"}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    fileRef.current?.click();
+                  }}
+                >
+                  <span className="brand-menu-glyph">🎙</span>
+                  {cloneStatus === "uploading" ? "Cloning…" : "Clone my voice"}
+                </button>
+                <div className="brand-menu-hint">
+                  Drop a 30 s – 2 min clean recording — ElevenLabs Instant Voice Cloning.
+                </div>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
 
@@ -218,38 +267,30 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
         🔒 voice locked at the walkthrough level
       </div>
 
-      <div className="brand-clone">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4,audio/wav,audio/wave,audio/x-wav,audio/webm"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void uploadVoiceSample(f);
-            e.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          className="brand-clone-btn"
-          disabled={cloneStatus === "uploading"}
-          onClick={() => fileRef.current?.click()}
-        >
-          {cloneStatus === "uploading" ? "Cloning…" : "🎙 Clone my voice"}
-        </button>
-        {cloneStatus === "ok" && cloneMessage ? (
-          <span className="brand-clone-ok">✓ {cloneMessage}</span>
-        ) : null}
-        {cloneStatus === "error" && cloneMessage ? (
-          <span className="brand-clone-err">{cloneMessage}</span>
-        ) : null}
-        {cloneStatus === "idle" ? (
-          <span className="brand-clone-hint">
-            Drop a 30 s – 2 min clean recording — ElevenLabs Instant Voice Cloning.
-          </span>
-        ) : null}
-      </div>
+      {/* Hidden file input shared with the ⋯ menu's "Clone my voice" item.
+          The previously-prominent button + hint block lives inside the
+          menu now; only ok / error pills surface here so users see the
+          result of an in-flight clone. */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4,audio/wav,audio/wave,audio/x-wav,audio/webm"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void uploadVoiceSample(f);
+          e.target.value = "";
+        }}
+      />
+      {cloneStatus === "uploading" ? (
+        <div className="brand-clone-status">Cloning your voice…</div>
+      ) : null}
+      {cloneStatus === "ok" && cloneMessage ? (
+        <div className="brand-clone-status brand-clone-ok">✓ {cloneMessage}</div>
+      ) : null}
+      {cloneStatus === "error" && cloneMessage ? (
+        <div className="brand-clone-status brand-clone-err">{cloneMessage}</div>
+      ) : null}
     </div>
   );
 }
