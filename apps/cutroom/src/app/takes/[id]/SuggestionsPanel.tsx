@@ -27,7 +27,9 @@ interface Props {
   selectedClipId: string | null;
   onPreview: (suggestion: Suggestion) => void;
   onInsert: (suggestion: Suggestion) => void;
-  onAddStep?: () => void;
+  /** Append a fresh step to walkthrough.yaml. Returns ok:true on success or
+   *  an error string for the inline form to surface. */
+  onAddStep?: (stepId: string, title: string) => Promise<{ ok: boolean; error?: string }>;
   busy: boolean;
 }
 
@@ -110,18 +112,87 @@ export function SuggestionsPanel(p: Props) {
       <footer className="sgx-foot">
         <span>Selected:</span>
         <code>{p.selectedClipId ?? "—"}</code>
-        {p.onAddStep ? (
-          <button
-            className="sgx-foot-action"
-            type="button"
-            onClick={p.onAddStep}
-            title="Append a fresh step to walkthrough.yaml"
-          >
-            + Add step
-          </button>
-        ) : null}
+        {p.onAddStep ? <AddStepForm onSubmit={p.onAddStep} /> : null}
       </footer>
     </div>
+  );
+}
+
+function AddStepForm({
+  onSubmit,
+}: {
+  onSubmit: (stepId: string, title: string) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [stepId, setStepId] = useState("");
+  const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setStepId(""); setTitle(""); setError(null); setOpen(false);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const slug = stepId.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!slug) {
+      setError("Step id is required (a-z, 0-9, _, -).");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onSubmit(slug, title.trim() || slug);
+      if (result.ok) reset();
+      else setError(result.error ?? "Couldn't add step.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        className="sgx-foot-action"
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Append a fresh step to walkthrough.yaml"
+      >
+        + Add step
+      </button>
+    );
+  }
+
+  return (
+    <form className="sgx-add-form" onSubmit={submit}>
+      <input
+        type="text"
+        autoFocus
+        placeholder="step_id (e.g. choose_repo)"
+        value={stepId}
+        onChange={(e) => setStepId(e.target.value)}
+        disabled={busy}
+        aria-label="Step id"
+      />
+      <input
+        type="text"
+        placeholder="Title (optional)"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        disabled={busy}
+        aria-label="Step title"
+      />
+      <div className="sgx-add-form-actions">
+        <button type="submit" className="sgx-foot-action sgx-foot-action-primary" disabled={busy}>
+          {busy ? "Adding…" : "Add"}
+        </button>
+        <button type="button" className="sgx-foot-action" onClick={reset} disabled={busy}>
+          Cancel
+        </button>
+      </div>
+      {error ? <p className="sgx-add-form-error">{error}</p> : null}
+    </form>
   );
 }
 

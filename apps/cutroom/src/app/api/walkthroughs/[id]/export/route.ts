@@ -23,8 +23,12 @@ export const maxDuration = 600; // ffmpeg + Remotion can take a while
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
+type ExportFormat = "mp4" | "webm" | "gif" | "mp3";
+const VALID_FORMATS: readonly ExportFormat[] = ["mp4", "webm", "gif", "mp3"];
+
 interface Body {
   take_id?: string; // defaults to "master"
+  format?: ExportFormat; // defaults to "mp4"
 }
 
 function runFfmpeg(args: string[]): Promise<void> {
@@ -94,6 +98,7 @@ export async function POST(
 ): Promise<NextResponse> {
   const body = (await req.json().catch(() => ({}))) as Body;
   const takeId = body.take_id ?? "master";
+  const format: ExportFormat = body.format && VALID_FORMATS.includes(body.format) ? body.format : "mp4";
   if (!isValidWalkthroughId(params.id)) {
     return NextResponse.json({ error: "invalid_id" }, { status: 400 });
   }
@@ -152,8 +157,9 @@ export async function POST(
   // Render every transition clip up front. We do this before computing the
   // hash so that the hash includes the resolved transition video bytes — a
   // spec edit that changes the rendered MP4 should bust the cache too.
+  // Audio-only exports skip the Remotion render entirely.
   let prepared: PreparedTransition[] = [];
-  if (overlay) {
+  if (overlay && format !== "mp3") {
     try {
       prepared = await prepareTransitions({
         walkthroughId: params.id,
@@ -174,6 +180,7 @@ export async function POST(
   // hashed by renderTransition().
   const hashInput = JSON.stringify({
     takeId,
+    format,
     music: musicClips.map((c) => ({
       url: c.asset_url, start: c.start_ms, dur: c.duration_ms, vol: c.volume,
       fi: c.fade_in_ms, fo: c.fade_out_ms,
@@ -183,24 +190,25 @@ export async function POST(
     })),
   });
   const hash = crypto.createHash("sha256").update(hashInput).digest("hex").slice(0, 12);
-  const outPath = path.join(exportsDir, `${takeId}-${hash}.mp4`);
-  const publicUrl = publicPath(params.id, "exports", `${takeId}-${hash}.mp4`);
+  const outPath = path.join(exportsDir, `${takeId}-${hash}.${format}`);
+  const publicUrl = publicPath(params.id, "exports", `${takeId}-${hash}.${format}`);
 
   try {
     const s = await stat(outPath);
     return NextResponse.json({
-      ok: true, url: publicUrl, bytes: s.size, cached: true,
+      ok: true, url: publicUrl, bytes: s.size, cached: true, format,
       music_tracks: musicClips.length,
       transitions: prepared.length,
     });
   } catch { /* not cached, render */ }
 
-  // Fast path: no music, no transitions — copy master byte-for-byte.
-  if (musicClips.length === 0 && prepared.length === 0) {
+  // Fast path: no music, no transitions, mp4 → copy master byte-for-byte.
+  // For other formats we still have to transcode below.
+  if (format === "mp4" && musicClips.length === 0 && prepared.length === 0) {
     const buf = await readFile(masterPath);
     await writeFile(outPath, buf);
     return NextResponse.json({
-      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0, transitions: 0,
+      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0, transitions: 0, format,
     });
   }
 
@@ -287,16 +295,44 @@ export async function POST(
     audioOutLabel = "aout";
   }
 
-  // Encode: re-encode video when there are transitions (filter applied),
-  // copy otherwise (cheaper, identical bytes for the music-only path).
-  const videoCodecArgs = prepared.length > 0
-    ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"]
-    : ["-c:v", "copy"];
-
-  try {
-    await runFfmpeg([
-      ...inputs,
-      "-filter_complex", filterParts.join(";"),
+  // ── Format-specific encoder + map args ────────────────────────────────
+  // mp3 has no video stream; gif has no audio. mp4/webm have both. Each
+  // path picks its own codecs but reuses the same filter graph.
+  let formatArgs: string[];
+  if (format === "mp3") {
+    formatArgs = [
+      "-map", `[${audioOutLabel}]`,
+      "-c:a", "libmp3lame",
+      "-b:a", "192k",
+      "-ar", "44100",
+      "-shortest",
+    ];
+  } else if (format === "gif") {
+    // GIF is a separate filter chain because palette generation is needed
+    // for tolerable colors. We compose: scaled video → palettegen → paletteuse.
+    // Audio is dropped (GIF spec doesn't carry it).
+    filterParts.push(
+      `[${videoOutLabel}]fps=12,scale=720:-2:flags=lanczos,split[gif1][gif2];` +
+        `[gif1]palettegen=stats_mode=diff[pal];[gif2][pal]paletteuse=dither=bayer[gifout]`,
+    );
+    formatArgs = [
+      "-map", "[gifout]",
+      "-loop", "0",
+    ];
+  } else if (format === "webm") {
+    formatArgs = [
+      "-map", `[${videoOutLabel}]`,
+      "-map", `[${audioOutLabel}]`,
+      "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "32", "-row-mt", "1",
+      "-c:a", "libopus", "-b:a", "128k",
+      "-shortest",
+    ];
+  } else {
+    // mp4 (default)
+    const videoCodecArgs = prepared.length > 0
+      ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"]
+      : ["-c:v", "copy"];
+    formatArgs = [
       "-map", `[${videoOutLabel}]`,
       "-map", `[${audioOutLabel}]`,
       ...videoCodecArgs,
@@ -305,6 +341,14 @@ export async function POST(
       "-ar", "44100",
       "-movflags", "+faststart",
       "-shortest",
+    ];
+  }
+
+  try {
+    await runFfmpeg([
+      ...inputs,
+      "-filter_complex", filterParts.join(";"),
+      ...formatArgs,
       outPath,
     ]);
   } catch (e) {
@@ -319,6 +363,7 @@ export async function POST(
     ok: true,
     url: publicUrl,
     bytes: s.size,
+    format,
     music_tracks: musicClips.length,
     transitions: prepared.length,
   });

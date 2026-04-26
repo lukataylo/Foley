@@ -67,6 +67,9 @@ interface Props {
    * editor builds this from the same `tracks` array it uses elsewhere.
    */
   framesByStepId?: Record<string, string>;
+  /** Playback rate (1.0 = real time). Applied to the active video and the
+   *  master audio so the user can scrub at half/double speed. */
+  speed?: number;
 }
 
 const TYPED_BG_PRESETS = new Set([
@@ -81,6 +84,18 @@ const TYPED_BG_PRESETS = new Set([
 
 function inRange(c: { start_ms: number; duration_ms: number }, tMs: number) {
   return tMs >= c.start_ms && tMs < c.start_ms + c.duration_ms;
+}
+
+/** Keep voices natural-sounding at 1.5x/2x by enabling pitch preservation.
+ *  Spelled differently across browsers — Safari uses webkitPreservesPitch. */
+function setPreservesPitch(el: HTMLMediaElement): void {
+  const pe = el as unknown as { preservesPitch?: boolean; webkitPreservesPitch?: boolean };
+  if (typeof pe.preservesPitch === "boolean" || "preservesPitch" in pe) {
+    pe.preservesPitch = true;
+  }
+  if (typeof pe.webkitPreservesPitch === "boolean" || "webkitPreservesPitch" in pe) {
+    pe.webkitPreservesPitch = true;
+  }
 }
 
 export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePreview(
@@ -230,6 +245,29 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     if (p.isPlaying && el.paused) void el.play().catch(() => {});
     if (!p.isPlaying && !el.paused) el.pause();
   }, [masterAudioUrl, p.isPlaying]);
+
+  // Propagate `speed` to every video/audio element so the timeline-level
+  // speed dropdown actually changes playback rate. Defaults to 1.0 when
+  // unset; preservesPitch=true keeps voices natural-sounding at 1.5x/2x.
+  const speed = p.speed ?? 1.0;
+  useEffect(() => {
+    for (const v of videos) {
+      const el = videoRefs.current[v.id];
+      if (el) el.playbackRate = speed;
+    }
+    for (const vo of voices) {
+      const el = audioRefs.current[vo.id];
+      if (el) {
+        el.playbackRate = speed;
+        // Most browsers expose preservesPitch, Safari uses webkitPreservesPitch.
+        setPreservesPitch(el);
+      }
+    }
+    if (masterAudioRef.current) {
+      masterAudioRef.current.playbackRate = speed;
+      setPreservesPitch(masterAudioRef.current);
+    }
+  }, [speed, videos, voices]);
 
   // Drift-correction for the master audio (only when continuous mode is on).
   useEffect(() => {
@@ -419,11 +457,14 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             for the clip's duration. Reset key flips when the clip enters
             range so the typed-text headline restarts cleanly. */}
         {activeTransition && activeTransitionSpec ? (
-          <div className="live-transition">
+          <div className="live-transition" key={`${activeTransition.id}-${activeTransition.start_ms}`}>
+            {/* The outer key forces a remount when the playhead leaves and
+              * re-enters a transition (or when the clip moves) so the typed
+              * headline animation restarts cleanly each time. */}
             <TransitionSlide
               spec={activeTransitionSpec}
               framesByStepId={p.framesByStepId ?? {}}
-              resetKey={`${activeTransition.id}-${activeTransition.start_ms}`}
+              resetKey={`${activeTransition.id}-${activeTransition.start_ms}-${activeTransitionSpec.text}`}
             />
           </div>
         ) : null}

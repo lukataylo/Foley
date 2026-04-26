@@ -22,14 +22,17 @@ interface Props {
   overlay: EditOverlay;
   sourceById: Record<string, TrackEntry>;
   selectedClipId: string | null;
+  /** Additional clips selected via shift-click. */
+  extraSelectedClipIds?: string[];
   currentTime: number;
   isPlaying: boolean;
   zoom: number;
   speed: number;
-  onSelectClip: (id: string | null) => void;
+  onSelectClip: (id: string | null, modifiers?: { shift?: boolean }) => void;
   onPatchClip: (id: string, patch: Partial<Clip>) => void;
   onSeek: (s: number) => void;
   onTogglePlay: () => void;
+  onSpeed?: (n: number) => void;
   onZoom: (n: number) => void;
   onJump: (dir: -1 | 1) => void;
   onAddClip: (kind: ClipKind) => void;
@@ -48,6 +51,11 @@ interface Props {
    *  by the right-click menu to disable itself when the playhead is outside
    *  the clip's body. */
   onSplitClip?: (id: string) => boolean;
+  /** Duplicate a clip — copy lands directly after the original on the same row. */
+  onDuplicateClip?: (id: string) => void;
+  /** Step lookup — search "step_id title narration" pulls from this when
+   *  matching video/voice clips. Defaults to sourceById. */
+  searchStepLabel?: (stepId: string) => string;
 
   /** ── Variant A / B props ────────────────────────────────────────── */
   /** One waveform spanning the whole take. When present, voice clips draw
@@ -91,6 +99,32 @@ export function Timeline2(p: Props) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string; kind: ClipKind } | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Build a coarse "haystack" string per clip for the search filter. Includes
+  // the clip id, kind label, any user-authored text (transitions, captions,
+  // typed strings, music labels, banana prompts), and — for video/voice
+  // clips — the step's title via the `searchStepLabel` callback.
+  function clipMatches(c: Clip, q: string): boolean {
+    if (!q) return false;
+    const needle = q.trim().toLowerCase();
+    if (!needle) return false;
+    const parts: string[] = [c.id, c.kind];
+    if (c.kind === "video" || c.kind === "voice") {
+      parts.push(c.step_id, p.searchStepLabel?.(c.step_id) ?? "");
+    }
+    if (c.kind === "music") parts.push(c.label, c.prompt ?? "");
+    if (c.kind === "transition") parts.push(c.transition_id);
+    if (c.kind === "caption") parts.push(c.text);
+    if (c.kind === "banana") parts.push(c.prompt);
+    if (c.kind === "typed") parts.push(...c.strings);
+    return parts.some((s) => s.toLowerCase().includes(needle));
+  }
+  const matchedIds = useMemo(() => {
+    if (!search.trim()) return new Set<string>();
+    return new Set(p.overlay.clips.filter((c) => clipMatches(c, search)).map((c) => c.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, p.overlay]);
 
   const totalMs = Math.max(totalDurationMs(p.overlay), 1);
   const totalSeconds = totalMs / 1000;
@@ -316,7 +350,21 @@ export function Timeline2(p: Props) {
             {p.isPlaying ? "❚❚" : "▶"}
           </button>
           <button className="ctrl-icon" onClick={() => p.onJump(1)} title="Next clip (L)">⏭</button>
-          <span className="speed">{p.speed.toFixed(1)}x</span>
+          {p.onSpeed ? (
+            <select
+              className="speed-select"
+              value={p.speed.toFixed(2)}
+              onChange={(e) => p.onSpeed?.(Number(e.target.value))}
+              aria-label="Playback speed"
+              title="Playback speed"
+            >
+              {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
+                <option key={s} value={s.toFixed(2)}>{s}x</option>
+              ))}
+            </select>
+          ) : (
+            <span className="speed">{p.speed.toFixed(1)}x</span>
+          )}
           <span className="timestamp">{fmt(p.currentTime)} / {fmt(totalSeconds)}</span>
           {staleCount > 0 ? (
             <button
@@ -359,6 +407,14 @@ export function Timeline2(p: Props) {
             </button>
           ) : null}
         </div>
+        <input
+          className="tl3-search"
+          type="search"
+          placeholder="Find clip…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search clips"
+        />
         <div className="zoom">
           <button className="ctrl-icon" onClick={() => p.onZoom(p.zoom - 8)} title="Zoom out">－</button>
           <input
@@ -398,6 +454,9 @@ export function Timeline2(p: Props) {
                 zoom={p.zoom}
                 sourceById={p.sourceById}
                 selectedClipId={p.selectedClipId}
+                extraSelectedClipIds={p.extraSelectedClipIds}
+                matchedClipIds={matchedIds}
+                searchActive={search.trim().length > 0}
                 currentTime={p.currentTime}
                 isClipStale={p.isClipStale}
                 onSelectClip={p.onSelectClip}
@@ -459,6 +518,18 @@ export function Timeline2(p: Props) {
                 </button>
                 <button
                   type="button"
+                  className="tl3-ctxmenu-item"
+                  disabled={!p.onDuplicateClip}
+                  title="Duplicate this clip (⌘D)"
+                  onClick={() => {
+                    p.onDuplicateClip?.(ctxMenu.clipId);
+                    setCtxMenu(null);
+                  }}
+                >
+                  Duplicate clip
+                </button>
+                <button
+                  type="button"
                   className="tl3-ctxmenu-item danger"
                   onClick={() => {
                     p.onRemoveClip?.(ctxMenu.clipId);
@@ -482,9 +553,12 @@ interface RowProps {
   zoom: number;
   sourceById: Record<string, TrackEntry>;
   selectedClipId: string | null;
+  extraSelectedClipIds?: string[];
+  matchedClipIds?: Set<string>;
+  searchActive?: boolean;
   currentTime: number;
   isClipStale?: (clip: Clip) => boolean;
-  onSelectClip: (id: string | null) => void;
+  onSelectClip: (id: string | null, modifiers?: { shift?: boolean }) => void;
   onClipPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
   onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
   narration: ContinuousNarration | null;
@@ -558,6 +632,9 @@ function Row(p: RowProps) {
             zoom={p.zoom}
             sourceById={p.sourceById}
             selected={p.selectedClipId === c.id}
+            multiSelected={p.extraSelectedClipIds?.includes(c.id) ?? false}
+            matched={p.matchedClipIds?.has(c.id) ?? false}
+            dimmed={!!p.searchActive && !(p.matchedClipIds?.has(c.id) ?? false)}
             stale={p.isClipStale?.(c) ?? false}
             narration={p.narration}
             showScriptLane={p.showScriptLane}
@@ -592,10 +669,16 @@ interface ClipProps {
   zoom: number;
   sourceById: Record<string, TrackEntry>;
   selected: boolean;
+  /** True when this clip is part of a multi-selection (shift-click). */
+  multiSelected?: boolean;
+  /** True when the search query matches this clip. */
+  matched?: boolean;
+  /** True when search is active and this clip is NOT a match. */
+  dimmed?: boolean;
   stale: boolean;
   narration: ContinuousNarration | null;
   showScriptLane: boolean;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string | null, modifiers?: { shift?: boolean }) => void;
   onPointerDown: (clip: Clip, mode: DragMode, e: React.PointerEvent) => void;
   onContextMenu?: (clip: Clip, e: React.MouseEvent) => void;
   onEditStepNarration?: (step_id: string, text: string) => void;
@@ -684,15 +767,20 @@ function ClipBlock(p: ClipProps) {
 
   return (
     <div
-      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""} ${p.stale ? "stale" : ""} ${isVoiceRiver ? "kind-voice-river" : ""}`}
+      className={`tl3-clip kind-${p.clip.kind} ${p.selected ? "selected" : ""} ${p.multiSelected ? "multi-selected" : ""} ${p.matched ? "matched" : ""} ${p.dimmed ? "dimmed" : ""} ${p.stale ? "stale" : ""} ${isVoiceRiver ? "kind-voice-river" : ""}`}
       style={{ left, width }}
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest(".tl3-handle")) return;
         p.onPointerDown(p.clip, "move", e);
       }}
-      onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id); }}
+      onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id, { shift: e.shiftKey }); }}
       onContextMenu={(e) => p.onContextMenu?.(p.clip, e)}
-      title={`${label} — right-click for menu`}
+      title={[
+        `${KIND_LABEL[p.clip.kind]} — ${label}`,
+        `${(p.clip.start_ms / 1000).toFixed(1)}s · ${(p.clip.duration_ms / 1000).toFixed(1)}s long · row ${p.clip.row + 1}`,
+        p.stale ? "⚠ source updated since this clip was edited" : null,
+        "Right-click for menu · S to split · Delete to remove",
+      ].filter(Boolean).join("\n")}
     >
       {fadeInPx > 4 ? <div className="tl3-fade tl3-fade-in" style={{ width: fadeInPx }} /> : null}
       {fadeOutPx > 4 ? <div className="tl3-fade tl3-fade-out" style={{ width: fadeOutPx }} /> : null}
