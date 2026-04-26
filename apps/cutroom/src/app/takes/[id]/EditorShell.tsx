@@ -1434,6 +1434,7 @@ export function EditorShell({
                   transitions={transitions}
                   framesByStepId={Object.fromEntries(tracks.map((t) => [t.id, t.frame_url]))}
                   speed={speed}
+                  totalDuration={totalDuration}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);

@@ -66,6 +66,10 @@ interface Props {
   /** Playback rate (1.0 = real time). Applied to the active video and the
    *  master audio so the user can scrub at half/double speed. */
   speed?: number;
+  /** Total timeline duration in seconds. Used to stop the rAF clock from
+   *  running off the end into the void when the master audio is shorter
+   *  than the timeline (e.g. typed/music outros past the narration). */
+  totalDuration?: number;
 }
 
 const TYPED_BG_PRESETS = new Set([
@@ -223,6 +227,65 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     if (p.isPlaying && el.paused) void el.play().catch(() => {});
     if (!p.isPlaying && !el.paused) el.pause();
   }, [masterAudioUrl, p.isPlaying]);
+
+  // rAF-driven clock — keeps the playhead advancing when the master audio
+  // is NOT the active time source. Two cases the audio can't cover:
+  //
+  //  1. The audio is paused / ended but the user wants playback to keep
+  //     going through post-narration overlay clips (typed outros, music
+  //     beds that extend past the narration).
+  //  2. There is no continuous narration on this walkthrough at all
+  //     (legacy per-step mode); the active video used to drive time but
+  //     stops at every boundary.
+  //
+  // We mirror p.currentTime in a ref so the rAF closure always sees the
+  // latest value without restarting the loop on every tick.
+  const currentTimeRef = useRef(p.currentTime);
+  useEffect(() => {
+    currentTimeRef.current = p.currentTime;
+  }, [p.currentTime]);
+
+  useEffect(() => {
+    if (!p.isPlaying) return;
+    let raf = 0;
+    let lastWallMs = performance.now();
+    const speed = p.speed ?? 1.0;
+
+    const tick = () => {
+      const now = performance.now();
+      const dt = (now - lastWallMs) / 1000;
+      lastWallMs = now;
+
+      // Audio is "driving" when it's playing within its own range. Otherwise
+      // we advance the playhead ourselves.
+      const aEl = masterAudioRef.current;
+      const audDur = aEl?.duration && Number.isFinite(aEl.duration) ? aEl.duration : 0;
+      const audioDriving =
+        !!masterAudioUrl &&
+        aEl !== null &&
+        !aEl.paused &&
+        !aEl.ended &&
+        audDur > 0 &&
+        currentTimeRef.current <= audDur;
+
+      if (!audioDriving) {
+        const next = currentTimeRef.current + dt * speed;
+        const cap = p.totalDuration ?? next;
+        const clamped = Math.min(next, cap);
+        currentTimeRef.current = clamped;
+        p.onTimeUpdate(clamped);
+        // Auto-stop when we've reached the end of the timeline.
+        if (clamped >= cap && cap > 0) {
+          p.onPlayStateChange(false);
+          return;
+        }
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [p.isPlaying, p.speed, p.totalDuration, masterAudioUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Propagate `speed` to every video/audio element so the timeline-level
   // speed dropdown actually changes playback rate. Defaults to 1.0 when
@@ -529,7 +592,17 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
               // fires we'll resume normal onTimeUpdate flow.
             }}
             onPlay={() => p.onPlayStateChange(true)}
-            onPause={() => p.onPlayStateChange(false)}
+            onPause={(e) => {
+              // The audio fires `pause` after `ended` when it reaches its
+              // own duration. Don't propagate that as a user-pause —
+              // the rAF clock above takes over and keeps advancing through
+              // any post-narration overlay clips. Only a real user-driven
+              // pause (or our isPlaying-effect calling el.pause()) should
+              // flip the parent's isPlaying flag.
+              const el = e.currentTarget as HTMLAudioElement;
+              if (el.ended) return;
+              p.onPlayStateChange(false);
+            }}
           />
         ) : (
           voices.map((vo) => (
