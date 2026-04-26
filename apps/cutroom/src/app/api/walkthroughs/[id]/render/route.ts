@@ -78,6 +78,21 @@ async function masterExists(id: string): Promise<boolean> {
   }
 }
 
+// True only when master.mp4 was written after `since`. Stops the running →
+// completed flip from firing on the previous render's master.mp4 the moment
+// a re-render starts.
+async function masterFreshSince(id: string, since: string): Promise<boolean> {
+  try {
+    const s = await stat(masterPath(id));
+    if (!s.isFile() || s.size === 0) return false;
+    const startedMs = new Date(since).getTime();
+    if (!Number.isFinite(startedMs)) return false;
+    return s.mtime.getTime() >= startedMs;
+  } catch {
+    return false;
+  }
+}
+
 async function loadStepIds(id: string): Promise<string[]> {
   try {
     const text = await readFile(
@@ -221,6 +236,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // Reconcile state: count artifacts on disk and check the spawned process.
   const completedClips = await countMp4Steps(params.id);
   const hasMaster = await masterExists(params.id);
+  // The master we care about is the one written by *this* render. Otherwise
+  // a re-render flips to "completed" on the very first poll because the
+  // previous run's master.mp4 is still on disk.
+  const hasFreshMaster = await masterFreshSince(params.id, status.started_at);
   const alive = status.pid ? await isOurRenderAlive(status.pid) : false;
 
   let next: RenderStatus = { ...status };
@@ -229,7 +248,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (status.status === "running") {
     next.current_phase = completedClips >= status.total_steps ? "master" : "ingest";
 
-    if (hasMaster) {
+    if (hasFreshMaster) {
       next.status = "completed";
       next.finished_at = new Date().toISOString();
       next.current_phase = "done";

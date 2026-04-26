@@ -98,6 +98,11 @@ export function EditableBrand({ walkthroughId, brand }: Props) {
       }
       setCloneStatus("ok");
       setCloneMessage(`Cloned as "${data.voice_name}"`);
+      // Auto-clear the success pill so it doesn't linger across page navigations.
+      setTimeout(() => {
+        setCloneStatus("idle");
+        setCloneMessage(null);
+      }, 4000);
       router.refresh();
     } catch (err) {
       setCloneStatus("error");

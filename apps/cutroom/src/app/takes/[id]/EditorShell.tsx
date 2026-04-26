@@ -496,7 +496,12 @@ export function EditorShell({
   async function decide(action: "approve" | "reject") {
     setBusyAction(action);
     try {
-      await fetch(`/api/takes/${takeId}/${action}`, { method: "POST" });
+      const r = await fetch(`/api/takes/${takeId}/${action}`, { method: "POST" });
+      if (!r.ok) {
+        const text = await r.text().catch(() => `HTTP ${r.status}`);
+        alert(`${action === "approve" ? "Approve" : "Send back"} failed: ${text}`);
+        return;
+      }
       router.refresh();
     } finally {
       setBusyAction(null);

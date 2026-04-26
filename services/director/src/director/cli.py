@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json as _json
 from pathlib import Path
 
 import typer
@@ -209,7 +210,6 @@ def ask_cmd(
     """RAG over a walkthrough's narration. Prints a JSON envelope on stdout
     so route handlers can parse: { answer: str, citations: [step_id…] }.
     """
-    import json as _json
     import sys as _sys
 
     wt = load_walkthrough(_walkthrough_dir(walkthrough_id))
@@ -459,8 +459,6 @@ def review_fixture(
     Useful for replicating the production loop locally — point the demo app
     at the post-PR state, then run this against the matching fixture.
     """
-    import json as _json
-
     fixtures_root = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
     fdir = fixtures_root / fixture
     if not fdir.exists():
@@ -545,8 +543,6 @@ def test_agent(
     walkthrough_id: str = typer.Argument("v1"),
 ) -> None:
     """Run the diff agent against a fixture (button_label_pr | new_screen_pr)."""
-    import json as _json
-
     # cli.py → director/ → src/ → <project>/  (services/director/)
     fixtures_root = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
     fdir = fixtures_root / fixture
@@ -596,7 +592,6 @@ def dry_review(
     step_diffs metadata, which the cutroom surfaces as 'a section to retake'.
     Used to show end-to-end flow without spending capture/render time.
     """
-    import json as _json
     import shutil
     from datetime import datetime, timezone
 

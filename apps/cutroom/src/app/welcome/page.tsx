@@ -33,25 +33,15 @@ export default function WelcomePage() {
         </p>
 
         <div className="welcome-cta-row">
-          <Link href="/download" className="welcome-cta welcome-cta-primary">
-            <AppleGlyph />
+          <Link href="/onboard" className="welcome-cta welcome-cta-primary">
+            <GithubGlyph />
             <span>
-              <span className="welcome-cta-pre">Download for</span>
-              <span className="welcome-cta-main">macOS</span>
+              <span className="welcome-cta-pre">Connect</span>
+              <span className="welcome-cta-main">a GitHub repo</span>
             </span>
           </Link>
-          <Link href="/onboard" className="welcome-cta welcome-cta-ghost">
-            <span className="welcome-cta-main">Get started — it's free</span>
-          </Link>
-        </div>
-
-        <div className="welcome-cta-foot">
-          <Link href="https://chrome.google.com/webstore" className="welcome-foot-link">
-            <ChromeGlyph /> Get the Chrome extension
-          </Link>
-          <span className="welcome-foot-sep">·</span>
-          <Link href="/onboard" className="welcome-foot-link">
-            <GithubGlyph /> Continue with GitHub
+          <Link href="/" className="welcome-cta welcome-cta-ghost">
+            <span className="welcome-cta-main">Open the studio</span>
           </Link>
         </div>
       </section>
@@ -169,26 +159,6 @@ function BrandMark({ size = 28 }: { size?: number }) {
       <circle cx="16" cy="25.5" r="1.7" fill="#fdf3d8" opacity="0.85" />
       <circle cx="6.5" cy="16" r="1.7" fill="#fdf3d8" opacity="0.85" />
       <circle cx="25.5" cy="16" r="1.7" fill="#fdf3d8" opacity="0.85" />
-    </svg>
-  );
-}
-
-function AppleGlyph() {
-  return (
-    <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true" fill="currentColor">
-      <path d="M11.6 10.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.9-.9-3.1-.8-1.6 0-3 .9-3.8 2.4-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7 1.4 0 1.8.7 3.1.7 1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7 0-.1-2.5-1-2.5-3.8zM9.4 4c.6-.8 1-1.9.9-3-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.8-.9 2.9 1 .1 2-.5 2.6-1.3z" />
-    </svg>
-  );
-}
-
-function ChromeGlyph() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="3.5" />
-      <path d="M21 12H12" />
-      <path d="M12 12L7.6 19.6" />
-      <path d="M12 12L7.6 4.4" />
     </svg>
   );
 }
