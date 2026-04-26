@@ -2,13 +2,13 @@
   "walkthrough_id": "foley",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "409d7ace054cdaabf3148488f8f74c4a91bd1bab1adc3ed50254d960b35d4034",
+  "master_sha256": "59f16464c08ef4a8d621e833d27241eda72cb6a0c4ee5ba19132da2210636376",
   "segments": [
     {
       "step_id": "intro",
       "fingerprint": "7d8d64952c51e264",
       "segment_path": "segments/intro.mp4",
-      "segment_sha256": "1513104d2ac894bb6ef13ff7b039e20457aa88c87b12438f33da7d9f83af5f71",
+      "segment_sha256": "0408fe182f738a3fb15db988d6c6070ed9da396b33ace9955297d25a82431d9d",
       "duration_ms": 5000,
       "source": "rebuilt"
     },
@@ -16,7 +16,7 @@
       "step_id": "browse_folders",
       "fingerprint": "0d132a365d19a00f",
       "segment_path": "segments/browse_folders.mp4",
-      "segment_sha256": "c3c3c1903445c8f54cbac398691e7f66e7007692655842fbb4d29fc20b90f14b",
+      "segment_sha256": "5e80f0fb5832974faf79c3408bb0fcc29d9039cb70fb79190a0d633d5a296129",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
@@ -24,7 +24,7 @@
       "step_id": "open_walkthrough",
       "fingerprint": "b981001054d2f415",
       "segment_path": "segments/open_walkthrough.mp4",
-      "segment_sha256": "3654b76410fcf4a1aebbc2bd61e90c96bfb4a550ff87a4df2a93a2a55dd539ab",
+      "segment_sha256": "6258bb847f05d2b6644f687fab59c09f13ab6f50212b3a4af01caec98dcb2aa0",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
@@ -32,7 +32,7 @@
       "step_id": "review_steps",
       "fingerprint": "4986226fcef0550e",
       "segment_path": "segments/review_steps.mp4",
-      "segment_sha256": "923530b0c11932c20196b03ca61e1be25d22d7bb29c215e6b5833f1ce2b2ebb0",
+      "segment_sha256": "eb1a260b236cfe54f443a94d9fcefbf23b8426bd66539bcceca6940e9bdcd747",
       "duration_ms": 6500,
       "source": "rebuilt"
     },
@@ -40,7 +40,7 @@
       "step_id": "approve_take",
       "fingerprint": "cef8f977980abafb",
       "segment_path": "segments/approve_take.mp4",
-      "segment_sha256": "b6cf5d4b3d70fd15ab6bd37ad1b38dcb40188bafe81e759b07463977b0bc3113",
+      "segment_sha256": "6093be4a6ee9a6f15a2d7e2712209dbf0da8a77031a83414f31375928af94d75",
       "duration_ms": 7000,
       "source": "rebuilt"
     }

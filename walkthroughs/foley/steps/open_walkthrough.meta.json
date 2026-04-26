@@ -1,7 +1,7 @@
 {
   "step_id": "open_walkthrough",
   "fingerprint": "b981001054d2f415",
-  "actual_duration_ms": 6266,
+  "actual_duration_ms": 4573,
   "declared_duration_ms": 6000,
   "viewport": {
     "width": 1440,

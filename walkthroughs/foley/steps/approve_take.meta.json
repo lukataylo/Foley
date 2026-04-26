@@ -1,7 +1,7 @@
 {
   "step_id": "approve_take",
   "fingerprint": "cef8f977980abafb",
-  "actual_duration_ms": 3057,
+  "actual_duration_ms": 3052,
   "declared_duration_ms": 7000,
   "viewport": {
     "width": 1440,
