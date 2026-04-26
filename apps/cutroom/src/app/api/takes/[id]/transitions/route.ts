@@ -3,27 +3,50 @@ import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { writeJsonAtomic } from "@/lib/atomic-io";
-import { isValidTakeId } from "@/lib/ids";
+import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
-function file(takeId: string): string {
-  return path.join(REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json");
+/** Resolve transitions.json for the given take. We accept the walkthrough id
+ *  via query/body so the file lands under the correct walkthrough. The
+ *  earlier hardcoded "v1" was a bug — every walkthrough's transitions wrote
+ *  into the same directory and the export route had to probe both
+ *  locations. Falling back to "v1" keeps existing data readable. */
+function file(walkthroughId: string, takeId: string): string {
+  return path.join(
+    REPO_ROOT, "walkthroughs", walkthroughId, "takes", takeId, "transitions.json",
+  );
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+function legacyFile(takeId: string): string {
+  return path.join(
+    REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json",
+  );
+}
+
+function resolveWid(req: NextRequest): string | null {
+  const wid = req.nextUrl.searchParams.get("walkthrough_id");
+  if (!wid) return null;
+  if (!isValidWalkthroughId(wid)) return null;
+  return wid;
+}
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   if (!isValidTakeId(params.id)) {
     return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
   }
-  try {
-    const raw = await fs.readFile(file(params.id), "utf8");
-    return NextResponse.json(JSON.parse(raw));
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
-      return NextResponse.json({ transitions: [] });
+  const wid = resolveWid(req);
+  const candidates = wid ? [file(wid, params.id), legacyFile(params.id)] : [legacyFile(params.id)];
+  for (const p of candidates) {
+    try {
+      const raw = await fs.readFile(p, "utf8");
+      return NextResponse.json(JSON.parse(raw));
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code === "ENOENT") continue;
+      throw err;
     }
-    throw err;
   }
+  return NextResponse.json({ transitions: [] });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -31,8 +54,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "invalid_take_id" }, { status: 400 });
   }
   const body = await req.json();
-  const out = file(params.id);
+  const bodyWid = typeof body?.walkthrough_id === "string" ? body.walkthrough_id : null;
+  const wid =
+    resolveWid(req) ??
+    (bodyWid && isValidWalkthroughId(bodyWid) ? bodyWid : null);
+  if (!wid) {
+    return NextResponse.json(
+      { error: "missing walkthrough_id (pass as ?walkthrough_id= or in body)" },
+      { status: 400 },
+    );
+  }
+  // Strip walkthrough_id before persisting so it doesn't pollute the spec file.
+  const { walkthrough_id: _wid, ...persistable } = body;
+  const out = file(wid, params.id);
   await fs.mkdir(path.dirname(out), { recursive: true });
-  await writeJsonAtomic(out, body);
+  await writeJsonAtomic(out, persistable);
   return NextResponse.json({ ok: true });
 }

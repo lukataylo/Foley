@@ -22,6 +22,7 @@ interface Props {
   onGenerateBanana: (id: string) => void;
   onGenerateMusic: (id: string) => void;
   musicError?: { message: string; suggestion: string | null } | null;
+  bananaError?: { message: string } | null;
   onApplyMusicSuggestion?: (id: string, suggestion: string) => void;
   /** Look up the linked transition spec for a transition clip. */
   transitions?: TransitionSpec[];
@@ -130,10 +131,20 @@ export function ClipInspector(p: Props) {
           transitions={p.transitions ?? []}
           onUpdateTransition={p.onUpdateTransition}
           onOpenInCanvas={p.onOpenTransitionInCanvas}
+          sourceById={p.sourceById}
         />
       )}
       {clip.kind === "caption" && <CaptionBody clip={clip} onPatch={p.onPatch} />}
-      {clip.kind === "banana" && <BananaBody clip={clip} onPatch={p.onPatch} onGenerate={p.onGenerateBanana} busy={p.busy} sourceById={p.sourceById} />}
+      {clip.kind === "banana" && (
+        <BananaBody
+          clip={clip}
+          onPatch={p.onPatch}
+          onGenerate={p.onGenerateBanana}
+          busy={p.busy}
+          sourceById={p.sourceById}
+          error={p.bananaError ?? null}
+        />
+      )}
       {clip.kind === "typed" && <TypedBody clip={clip} onPatch={p.onPatch} />}
     </div>
   );
@@ -445,19 +456,15 @@ function MusicBody({
           <strong>Couldn't generate.</strong>
           <span>{error.message}</span>
           {error.suggestion ? (
-            <>
-              <div className="ci-music-suggestion">
-                <span className="ci-music-suggestion-label">Try this prompt instead:</span>
-                <span className="ci-music-suggestion-text">"{error.suggestion}"</span>
-              </div>
-              <button
-                type="button"
-                className="ci-btn ci-btn-ghost"
-                onClick={() => onApplySuggestion?.(clip.id, error.suggestion ?? "")}
-              >
-                Use suggested prompt
-              </button>
-            </>
+            <button
+              type="button"
+              className="ci-music-suggestion ci-music-suggestion-clickable"
+              onClick={() => onApplySuggestion?.(clip.id, error.suggestion ?? "")}
+              title="Click to use this prompt and try again"
+            >
+              <span className="ci-music-suggestion-label">Try this prompt → click to apply</span>
+              <span className="ci-music-suggestion-text">"{error.suggestion}"</span>
+            </button>
           ) : null}
         </div>
       ) : null}
@@ -496,11 +503,13 @@ function TransitionBody({
   transitions,
   onUpdateTransition,
   onOpenInCanvas,
+  sourceById,
 }: {
   clip: Clip & { kind: "transition" };
   transitions: TransitionSpec[];
   onUpdateTransition?: (id: string, patch: Partial<TransitionSpec>) => void;
   onOpenInCanvas?: (id: string) => void;
+  sourceById: Record<string, TrackEntry>;
 }) {
   const spec = transitions.find((t) => t.id === clip.transition_id);
   if (!spec || !onUpdateTransition) {
@@ -509,6 +518,31 @@ function TransitionBody({
         <Row label="Refers to"><span className="ci-mono">{clip.transition_id || "(none)"}</span></Row>
       </Section>
     );
+  }
+  const stepIds = Object.keys(sourceById);
+
+  // Patch a nested kind-specific block (angled / feature) and return a fresh
+  // spec object for onUpdateTransition. Avoids each control having to spread
+  // by itself.
+  function patchAngled(patch: Partial<NonNullable<TransitionSpec["angled"]>>) {
+    if (!spec) return;
+    const base = spec.angled ?? {
+      step_id: stepIds[0] ?? "",
+      rotate_x: 18, rotate_y: -10, rotate_z: 0,
+      reveal_from: "bottom" as const,
+      scale: 1.0, width: 80, anchor_y: 50,
+    };
+    onUpdateTransition?.(spec.id, { angled: { ...base, ...patch } });
+  }
+  function patchFeature(patch: Partial<NonNullable<TransitionSpec["feature"]>>) {
+    if (!spec) return;
+    const base = spec.feature ?? {
+      step_id: stepIds[0] ?? "",
+      zoom_x: 50, zoom_y: 50, zoom_factor: 2.0,
+      cursor_x: 50, cursor_y: 50, cursor_label: "",
+      cursor_size: 80,
+    };
+    onUpdateTransition?.(spec.id, { feature: { ...base, ...patch } });
   }
   return (
     <>
@@ -574,6 +608,99 @@ function TransitionBody({
           </Row>
         ) : null}
       </Section>
+      {spec.kind === "angled-mockup" ? (
+        <Section title="Angled mockup">
+          <Row label="Step">
+            <select
+              value={spec.angled?.step_id ?? stepIds[0] ?? ""}
+              onChange={(e) => patchAngled({ step_id: e.target.value })}
+            >
+              {stepIds.map((id) => (
+                <option key={id} value={id}>{sourceById[id]?.title ?? id}</option>
+              ))}
+            </select>
+          </Row>
+          <Row label="Rotate X">
+            <Slider min={-60} max={60} step={1} value={spec.angled?.rotate_x ?? 18}
+              onChange={(v) => patchAngled({ rotate_x: v })} suffix="°" />
+          </Row>
+          <Row label="Rotate Y">
+            <Slider min={-60} max={60} step={1} value={spec.angled?.rotate_y ?? -10}
+              onChange={(v) => patchAngled({ rotate_y: v })} suffix="°" />
+          </Row>
+          <Row label="Rotate Z">
+            <Slider min={-45} max={45} step={1} value={spec.angled?.rotate_z ?? 0}
+              onChange={(v) => patchAngled({ rotate_z: v })} suffix="°" />
+          </Row>
+          <Row label="Reveal from">
+            <select
+              value={spec.angled?.reveal_from ?? "bottom"}
+              onChange={(e) => patchAngled({ reveal_from: e.target.value as "bottom" | "top" | "left" | "right" })}
+            >
+              <option value="bottom">Bottom</option>
+              <option value="top">Top</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </Row>
+          <Row label="Width">
+            <Slider min={40} max={130} step={1} value={spec.angled?.width ?? 80}
+              onChange={(v) => patchAngled({ width: v })} suffix="%" />
+          </Row>
+          <Row label="Scale">
+            <Slider min={0.5} max={1.4} step={0.05} value={spec.angled?.scale ?? 1.0}
+              onChange={(v) => patchAngled({ scale: v })} suffix="x" />
+          </Row>
+          <Row label="Anchor Y">
+            <Slider min={0} max={100} step={1} value={spec.angled?.anchor_y ?? 50}
+              onChange={(v) => patchAngled({ anchor_y: v })} suffix="%" />
+          </Row>
+        </Section>
+      ) : null}
+      {spec.kind === "feature-zoom" ? (
+        <Section title="Feature zoom">
+          <Row label="Step">
+            <select
+              value={spec.feature?.step_id ?? stepIds[0] ?? ""}
+              onChange={(e) => patchFeature({ step_id: e.target.value })}
+            >
+              {stepIds.map((id) => (
+                <option key={id} value={id}>{sourceById[id]?.title ?? id}</option>
+              ))}
+            </select>
+          </Row>
+          <Row label="Focal X">
+            <Slider min={0} max={100} step={1} value={spec.feature?.zoom_x ?? 50}
+              onChange={(v) => patchFeature({ zoom_x: v })} suffix="%" />
+          </Row>
+          <Row label="Focal Y">
+            <Slider min={0} max={100} step={1} value={spec.feature?.zoom_y ?? 50}
+              onChange={(v) => patchFeature({ zoom_y: v })} suffix="%" />
+          </Row>
+          <Row label="Zoom">
+            <Slider min={1.0} max={4.0} step={0.1} value={spec.feature?.zoom_factor ?? 2.0}
+              onChange={(v) => patchFeature({ zoom_factor: v })} suffix="x" />
+          </Row>
+          <Row label="Cursor X">
+            <Slider min={0} max={100} step={1} value={spec.feature?.cursor_x ?? 50}
+              onChange={(v) => patchFeature({ cursor_x: v })} suffix="%" />
+          </Row>
+          <Row label="Cursor Y">
+            <Slider min={0} max={100} step={1} value={spec.feature?.cursor_y ?? 50}
+              onChange={(v) => patchFeature({ cursor_y: v })} suffix="%" />
+          </Row>
+          <Row label="Cursor size">
+            <Slider min={40} max={220} step={2} value={spec.feature?.cursor_size ?? 80}
+              onChange={(v) => patchFeature({ cursor_size: v })} suffix="px" />
+          </Row>
+          <Row label="Label">
+            <TextInput
+              value={spec.feature?.cursor_label ?? ""}
+              onChange={(v) => patchFeature({ cursor_label: v })}
+            />
+          </Row>
+        </Section>
+      ) : null}
       {onOpenInCanvas ? (
         <div className="ci-actions">
           <button className="ci-btn ci-btn-ghost" onClick={() => onOpenInCanvas(spec.id)} type="button">
@@ -612,12 +739,14 @@ function BananaBody({
   onGenerate,
   busy,
   sourceById,
+  error,
 }: {
   clip: Clip & { kind: "banana" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
   onGenerate: (id: string) => void;
   busy?: boolean;
   sourceById: Record<string, TrackEntry>;
+  error?: { message: string } | null;
 }) {
   return (
     <>
@@ -650,15 +779,29 @@ function BananaBody({
           disabled={busy || !clip.prompt}
           onClick={() => onGenerate(clip.id)}
         >
-          🍌 {clip.asset_url ? "Re-generate" : "Generate"}
+          🍌 {busy ? "Generating…" : clip.asset_url ? "Re-generate" : "Generate"}
         </button>
       </div>
+      {error ? (
+        <div className="ci-music-error">
+          <strong>Couldn't generate.</strong>
+          <span>{error.message}</span>
+          <button
+            type="button"
+            className="ci-btn ci-btn-ghost"
+            disabled={busy}
+            onClick={() => onGenerate(clip.id)}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
       {clip.asset_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={clip.asset_url} alt="" className="ci-banana-preview" />
-      ) : (
+      ) : !error ? (
         <p className="ci-help">Powered by Gemini 2.5 Flash Image. Reference step composes the screenshot in.</p>
-      )}
+      ) : null}
     </>
   );
 }

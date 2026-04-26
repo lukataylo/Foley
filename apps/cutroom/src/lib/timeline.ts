@@ -272,6 +272,28 @@ export function removeClip(overlay: EditOverlay, clipId: string): EditOverlay {
  *  the timeline UI so the user can never produce a sub-snap fragment. */
 export const SPLIT_MIN_MS = 250;
 
+/** Duplicate `clip` and place the copy immediately after the original on
+ *  the same row. Returns the new overlay plus the new clip's id so the
+ *  caller can keep selection on the duplicate. No-op (returns null) if
+ *  the source clip doesn't exist. */
+export function duplicateClip(
+  overlay: EditOverlay,
+  clipId: string,
+): { overlay: EditOverlay; newId: string } | null {
+  const idx = overlay.clips.findIndex((c) => c.id === clipId);
+  if (idx < 0) return null;
+  const orig = overlay.clips[idx];
+  const newId = nextClipId(`${orig.kind}-dup`);
+  const copy: Clip = {
+    ...orig,
+    id: newId,
+    start_ms: orig.start_ms + orig.duration_ms,
+  };
+  const clips = overlay.clips.slice();
+  clips.splice(idx + 1, 0, copy);
+  return { overlay: { ...overlay, clips }, newId };
+}
+
 /** Split `clip` at `splitMs` (absolute, ms). Returns the new overlay plus
  *  the id of the right-hand clip so the caller can keep selection sensible.
  *  No-op (returns null) when:

@@ -16,14 +16,16 @@ interface Props {
 }
 
 type Mode = "menu" | "self" | "youtube";
+type ExportFormat = "mp4" | "webm" | "gif" | "mp3";
 
-interface ExportResult { url: string; bytes: number; music_tracks: number; cached?: boolean; }
+interface ExportResult { url: string; bytes: number; music_tracks: number; transitions?: number; cached?: boolean; format?: ExportFormat; }
 
 export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "master", className }: Props) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("menu");
   const [busy, setBusy] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("mp4");
 
   function close() {
     setOpen(false);
@@ -37,7 +39,7 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
       const res = await fetch(`/api/walkthroughs/${walkthroughId}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ take_id: takeId }),
+        body: JSON.stringify({ take_id: takeId, format: exportFormat }),
       });
       const json = await res.json() as ExportResult & { error?: string; ok?: boolean };
       if (!res.ok || !json.ok) {
@@ -48,10 +50,34 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
       // Trigger download immediately.
       const a = document.createElement("a");
       a.href = json.url;
-      a.download = `${walkthroughId}-${takeId}.mp4`;
+      a.download = `${walkthroughId}-${takeId}.${exportFormat}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportProject() {
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/walkthroughs/${walkthroughId}/project?take_id=${encodeURIComponent(takeId)}`,
+      );
+      if (!res.ok) {
+        alert("Project bundle export failed");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${walkthroughId}-${takeId}.foley.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } finally {
       setBusy(false);
     }
@@ -114,15 +140,25 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
                 <button className="publish-option" onClick={() => setMode("youtube")}>
                   <div className="publish-option-icon"><YouTubeIcon /></div>
                   <div>
-                    <div className="publish-option-title">YouTube
-                      <span className="publish-option-badge">soon</span>
-                    </div>
+                    <div className="publish-option-title">Download video</div>
                     <div className="publish-option-desc">
-                      Authenticate once with your channel; Foley will upload
-                      and re-upload on every approved master.
+                      Render to MP4, WebM, GIF, or audio-only MP3.
+                      The MP4 is YouTube-ingest-ready (H.264 + AAC + faststart).
                     </div>
                   </div>
                   <div className="publish-option-cta">→</div>
+                </button>
+
+                <button className="publish-option" onClick={exportProject} disabled={busy}>
+                  <div className="publish-option-icon"><BundleIcon /></div>
+                  <div>
+                    <div className="publish-option-title">{busy ? "Exporting…" : "Project bundle"}</div>
+                    <div className="publish-option-desc">
+                      Download walkthrough.yaml + timeline + transitions as one
+                      .foley.json file. Re-import later to restore the full edit.
+                    </div>
+                  </div>
+                  <div className="publish-option-cta">↓</div>
                 </button>
               </div>
             )}
@@ -155,16 +191,40 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
             {mode === "youtube" && (
               <div className="publish-pane">
                 <button className="publish-back" onClick={() => setMode("menu")}>← back</button>
-                <h4>Download mp4 for YouTube</h4>
+                <h4>Download video</h4>
                 <p className="publish-sub">
-                  We bake the master video with any music tracks you've added in
-                  the editor mixed in. Drop the resulting mp4 into YouTube
-                  Studio's upload flow.
+                  We bake the master video with any music tracks and title
+                  cards you've added in the editor mixed in.
                 </p>
+                <div className="publish-format-row">
+                  {(["mp4", "webm", "gif", "mp3"] as const).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      className={`publish-format-pill ${exportFormat === f ? "active" : ""}`}
+                      onClick={() => setExportFormat(f)}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
                 <ul className="publish-bullets">
-                  <li>H.264 video, AAC audio, +faststart for streaming</li>
-                  <li>Music clips on the timeline are mixed at their start times</li>
-                  <li>YouTube re-encodes anyway — this output is ingest-ready</li>
+                  {exportFormat === "mp4" ? <>
+                    <li>H.264 video, AAC audio, +faststart for streaming</li>
+                    <li>YouTube re-encodes anyway — this output is ingest-ready</li>
+                  </> : null}
+                  {exportFormat === "webm" ? <>
+                    <li>VP9 video, Opus audio, well-supported on the open web</li>
+                    <li>Smaller than MP4 at the same quality</li>
+                  </> : null}
+                  {exportFormat === "gif" ? <>
+                    <li>Looping animated GIF, 12fps, 720p — good for social</li>
+                    <li>No audio (GIF doesn't support it)</li>
+                  </> : null}
+                  {exportFormat === "mp3" ? <>
+                    <li>Audio-only — narration mixed with any music tracks</li>
+                    <li>Useful for podcast / accessibility re-cuts</li>
+                  </> : null}
                 </ul>
                 <div className="publish-yt-mock">
                   <div className="publish-yt-thumb" style={{ backgroundImage: `url(${videoUrl.replace(/\.mp4$/, "")}.png)` }} />
@@ -179,7 +239,11 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
                     onClick={exportMp4}
                     disabled={busy}
                   >
-                    {busy ? "Rendering…" : exportResult ? "Re-export & download" : "Export & download mp4"}
+                    {busy
+                      ? "Rendering…"
+                      : exportResult
+                        ? `Re-export & download ${exportFormat.toUpperCase()}`
+                        : `Export & download ${exportFormat.toUpperCase()}`}
                   </button>
                 </div>
                 {exportResult ? (
@@ -187,6 +251,9 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
                     {exportResult.cached ? "Served from cache — " : "Rendered fresh — "}
                     {(exportResult.bytes / (1024 * 1024)).toFixed(1)} MB ·
                     {" "}{exportResult.music_tracks} music track{exportResult.music_tracks === 1 ? "" : "s"} mixed
+                    {typeof exportResult.transitions === "number" && exportResult.transitions > 0
+                      ? ` · ${exportResult.transitions} transition${exportResult.transitions === 1 ? "" : "s"} composited`
+                      : ""}
                   </p>
                 ) : null}
               </div>
@@ -211,6 +278,15 @@ function GlobeIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" />
+    </svg>
+  );
+}
+function BundleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
     </svg>
   );
 }

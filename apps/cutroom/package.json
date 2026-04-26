@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
+    "@remotion/bundler": "4.0.245",
     "@remotion/cli": "4.0.245",
     "@remotion/player": "4.0.245",
     "@remotion/renderer": "4.0.245",
