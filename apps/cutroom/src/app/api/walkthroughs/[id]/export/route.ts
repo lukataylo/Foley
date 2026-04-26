@@ -10,13 +10,14 @@ import {
   type EditOverlay,
   type MusicClip,
   type TransitionClip,
+  type TypedClip,
 } from "@/lib/timeline";
 import { publicPath } from "@/lib/fs";
 import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
 import { publicAssetPath } from "@/lib/path-security";
 import type { TransitionSpec } from "@/lib/transitions";
 import { migrateTransition } from "@/lib/transitions";
-import { renderTransition } from "@/lib/remotion-render";
+import { renderTransition, renderTyped } from "@/lib/remotion-render";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 600; // ffmpeg + Remotion can take a while
@@ -48,6 +49,36 @@ interface PreparedTransition {
   clip: TransitionClip;
   spec: TransitionSpec;
   videoPath: string;
+}
+
+interface PreparedTyped {
+  clip: TypedClip;
+  videoPath: string;
+}
+
+/** Render every typed clip on the timeline to its own MP4. Cached by clip
+ *  content hash, so re-exports of the same timeline reuse bytes. */
+async function prepareTypeds(opts: {
+  overlay: EditOverlay;
+  cacheDir: string;
+  repoRoot: string;
+}): Promise<PreparedTyped[]> {
+  const typedClips = opts.overlay.clips.filter(
+    (c): c is TypedClip => c.kind === "typed",
+  );
+  if (typedClips.length === 0) return [];
+
+  const out: PreparedTyped[] = [];
+  for (const clip of typedClips) {
+    const { outPath } = await renderTyped({
+      clip,
+      durationMs: clip.duration_ms,
+      repoRoot: opts.repoRoot,
+      cacheDir: opts.cacheDir,
+    });
+    out.push({ clip, videoPath: outPath });
+  }
+  return out;
 }
 
 /** Render every transition clip on the timeline to its own MP4. Skips clips
@@ -154,11 +185,12 @@ export async function POST(
   await mkdir(exportsDir, { recursive: true });
   const transitionCacheDir = path.join(exportsDir, "transition-cache");
 
-  // Render every transition clip up front. We do this before computing the
-  // hash so that the hash includes the resolved transition video bytes — a
-  // spec edit that changes the rendered MP4 should bust the cache too.
+  // Render every transition clip + typed clip up front. We do this before
+  // computing the hash so that the hash includes the resolved video bytes —
+  // a spec edit that changes the rendered MP4 should bust the cache too.
   // Audio-only exports skip the Remotion render entirely.
   let prepared: PreparedTransition[] = [];
+  let preparedTypeds: PreparedTyped[] = [];
   if (overlay && format !== "mp3") {
     try {
       prepared = await prepareTransitions({
@@ -170,6 +202,18 @@ export async function POST(
     } catch (e) {
       return NextResponse.json(
         { error: `transition render failed: ${e instanceof Error ? e.message : String(e)}` },
+        { status: 500 },
+      );
+    }
+    try {
+      preparedTypeds = await prepareTypeds({
+        overlay,
+        cacheDir: transitionCacheDir,
+        repoRoot: REPO_ROOT,
+      });
+    } catch (e) {
+      return NextResponse.json(
+        { error: `typed-overlay render failed: ${e instanceof Error ? e.message : String(e)}` },
         { status: 500 },
       );
     }
@@ -188,6 +232,9 @@ export async function POST(
     transitions: prepared.map((t) => ({
       file: path.basename(t.videoPath), start: t.clip.start_ms, dur: t.clip.duration_ms,
     })),
+    typeds: preparedTypeds.map((t) => ({
+      file: path.basename(t.videoPath), start: t.clip.start_ms, dur: t.clip.duration_ms,
+    })),
   });
   const hash = crypto.createHash("sha256").update(hashInput).digest("hex").slice(0, 12);
   const outPath = path.join(exportsDir, `${takeId}-${hash}.${format}`);
@@ -199,16 +246,17 @@ export async function POST(
       ok: true, url: publicUrl, bytes: s.size, cached: true, format,
       music_tracks: musicClips.length,
       transitions: prepared.length,
+      typeds: preparedTypeds.length,
     });
   } catch { /* not cached, render */ }
 
-  // Fast path: no music, no transitions, mp4 → copy master byte-for-byte.
-  // For other formats we still have to transcode below.
-  if (format === "mp4" && musicClips.length === 0 && prepared.length === 0) {
+  // Fast path: no music, no transitions, no typed overlays, mp4 → copy
+  // master byte-for-byte. For other formats we still have to transcode below.
+  if (format === "mp4" && musicClips.length === 0 && prepared.length === 0 && preparedTypeds.length === 0) {
     const buf = await readFile(masterPath);
     await writeFile(outPath, buf);
     return NextResponse.json({
-      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0, transitions: 0, format,
+      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0, transitions: 0, typeds: 0, format,
     });
   }
 
@@ -226,19 +274,24 @@ export async function POST(
   for (const t of prepared) {
     inputs.push("-i", t.videoPath);
   }
+  const typedInputStart = transitionInputStart + prepared.length;
+  for (const t of preparedTypeds) {
+    inputs.push("-i", t.videoPath);
+  }
 
   const filterParts: string[] = [];
 
   // ── Video chain ────────────────────────────────────────────────────────
-  // If there are transitions, scale each to master dims and overlay onto
-  // the master video for the clip's time range. Otherwise pass video
-  // through unchanged (and we re-encode it as h264 at the end either way
-  // when the video filter is present).
+  // Transitions and typed clips are layered onto the master video. Each
+  // input is scaled to master dimensions, then overlaid for its clip's
+  // time range. Transitions cover the full frame; typed clips also fill
+  // the frame today (the bg color travels in the rendered MP4) — alpha
+  // would let us key out a "transparent" bg, but h264 doesn't carry it.
   let videoOutLabel = "0:v";
-  if (prepared.length > 0) {
-    // Scale each transition input to master dimensions so an off-spec
-    // resolution doesn't produce letterboxing.
-    prepared.forEach((t, i) => {
+  const hasOverlay = prepared.length > 0 || preparedTypeds.length > 0;
+  if (hasOverlay) {
+    // Scale + sanitize each overlay input.
+    prepared.forEach((_t, i) => {
       const inputIdx = transitionInputStart + i;
       filterParts.push(
         `[${inputIdx}:v]scale=1920:1080:force_original_aspect_ratio=decrease,` +
@@ -246,13 +299,41 @@ export async function POST(
           `[t${i}]`,
       );
     });
-    let runningLabel = "0:v";
-    prepared.forEach((t, i) => {
-      const startS = (t.clip.start_ms / 1000).toFixed(3);
-      const endS = ((t.clip.start_ms + t.clip.duration_ms) / 1000).toFixed(3);
-      const nextLabel = i === prepared.length - 1 ? "vout" : `vmix${i}`;
+    preparedTypeds.forEach((_t, i) => {
+      const inputIdx = typedInputStart + i;
       filterParts.push(
-        `[${runningLabel}][t${i}]overlay=enable='between(t,${startS},${endS})':` +
+        `[${inputIdx}:v]scale=1920:1080:force_original_aspect_ratio=decrease,` +
+          `pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=PTS-STARTPTS` +
+          `[ty${i}]`,
+      );
+    });
+
+    // Compose overlays onto the master in timeline order. We layer
+    // transitions first (full-screen takeovers usually live alone on
+    // their own row) and typed clips on top of them, since the
+    // editor's row 0 = front rule means typed clips above row 0
+    // transitions render on top.
+    const overlayOps: Array<{ label: string; startS: string; endS: string }> = [];
+    prepared.forEach((t, i) => {
+      overlayOps.push({
+        label: `t${i}`,
+        startS: (t.clip.start_ms / 1000).toFixed(3),
+        endS: ((t.clip.start_ms + t.clip.duration_ms) / 1000).toFixed(3),
+      });
+    });
+    preparedTypeds.forEach((t, i) => {
+      overlayOps.push({
+        label: `ty${i}`,
+        startS: (t.clip.start_ms / 1000).toFixed(3),
+        endS: ((t.clip.start_ms + t.clip.duration_ms) / 1000).toFixed(3),
+      });
+    });
+
+    let runningLabel = "0:v";
+    overlayOps.forEach((op, i) => {
+      const nextLabel = i === overlayOps.length - 1 ? "vout" : `vmix${i}`;
+      filterParts.push(
+        `[${runningLabel}][${op.label}]overlay=enable='between(t,${op.startS},${op.endS})':` +
           `shortest=0:eof_action=pass[${nextLabel}]`,
       );
       runningLabel = nextLabel;
@@ -329,7 +410,7 @@ export async function POST(
     ];
   } else {
     // mp4 (default)
-    const videoCodecArgs = prepared.length > 0
+    const videoCodecArgs = hasOverlay
       ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"]
       : ["-c:v", "copy"];
     formatArgs = [
@@ -366,5 +447,6 @@ export async function POST(
     format,
     music_tracks: musicClips.length,
     transitions: prepared.length,
+    typeds: preparedTypeds.length,
   });
 }
