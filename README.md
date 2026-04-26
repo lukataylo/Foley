@@ -19,11 +19,30 @@ pipeline a user's would.
 - **Auto-onboarding.** The /onboard wizard takes a GitHub repo + a dev URL, and a Claude Sonnet 4.6 proposer drafts 3–8 grounded Playwright steps with text-locator selectors. New project → first take in under a minute.
 - **Resilient capture.** A bad selector no longer kills the whole ingest — the step records what it can, the editor flags it with a red dot, and a per-step **Retake** button heals it.
 - **Editor completeness.** Add steps with **+ Add step**, drag to reorder, retake any step inline, all without leaving the page.
+- **AI-readable docs.** `/llms.txt`, `/skill.md`, `/api/mcp`, and per-page `/docs/<id>.md` exports give Claude / ChatGPT / Cursor a clean ingestion path. **Open in …** dropdown on every doc hands the URL to your LLM in one click.
+- **Ask this walkthrough.** Inline RAG widget on `/docs/<id>` — Claude with the transcript as context, citations are click-to-jump.
 - **Subtitles + transcript with click-to-jump.** Generated for free from ElevenLabs' character-level alignment data.
 - **PR comment bot.** When a PR lands, Foley posts the new take's compare URL + a per-step diff table + an embedded preview.gif right back to the PR.
 - **Voice cloning upload.** Drop a 30 s audio sample into the Brand panel — ElevenLabs Instant Voice Cloning, brand.yaml updated, the next render is in your voice.
-- **Shareable docs.** Paste a `/docs/<id>` URL into Slack/Notion/Discord and it unfurls with a player thumbnail (OpenGraph + Twitter player card + oEmbed).
+- **Hidden pages, per-page noindex, canonical URLs, sitemap, robots, RSS changelog, custom CSS, branded 404, GFM callouts + mermaid in narration.** The Mintlify-parity table is in [the wiki](https://github.com/lukataylo/Foley/wiki/Competitor-parity).
 - **Pre-flight checks + friendly errors.** Missing ffmpeg, ElevenLabs key, or malformed walkthrough.yaml are surfaced with actionable messages instead of stack traces.
+- **`director check`.** One CLI command runs schema validation + URL link checking + a11y triage + artifact audit, with a coloured rich.Table report and a useful exit code.
+
+## Wiki
+
+Detailed reference lives in the [GitHub Wiki](https://github.com/lukataylo/Foley/wiki) (mirrored under `/wiki` in this repo for offline reading):
+
+- [Quickstart for judges](https://github.com/lukataylo/Foley/wiki/Quickstart-for-judges)
+- [Quickstart for developers](https://github.com/lukataylo/Foley/wiki/Quickstart-for-developers)
+- [Architecture](https://github.com/lukataylo/Foley/wiki/Architecture)
+- [walkthrough.yaml schema](https://github.com/lukataylo/Foley/wiki/walkthrough.yaml-schema)
+- [brand.yaml schema](https://github.com/lukataylo/Foley/wiki/brand.yaml-schema)
+- [API reference](https://github.com/lukataylo/Foley/wiki/API-reference)
+- [Director CLI reference](https://github.com/lukataylo/Foley/wiki/Director-CLI-reference)
+- [AI features](https://github.com/lukataylo/Foley/wiki/AI-features)
+- [Competitor parity](https://github.com/lukataylo/Foley/wiki/Competitor-parity)
+- [Testing](https://github.com/lukataylo/Foley/wiki/Testing)
+- [Operations & runbook](https://github.com/lukataylo/Foley/wiki/Operations-and-runbook)
 
 ## Quickstart for judges
 
