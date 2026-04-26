@@ -22,10 +22,6 @@ import type { TransitionSpec } from "@/lib/transitions";
 import { TypedText } from "@/components/TypedText";
 import { TransitionSlide } from "@/components/TransitionSlide";
 
-// How early to start decoding the next video clip before the boundary.
-// Eliminates the visible freeze when swapping live-video-active.
-const WARMUP_MS = 250;
-
 export interface LivePreviewHandle {
   syncPlay: () => void;
   syncPause: () => void;
@@ -132,24 +128,6 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     candidates.sort((a, b) => a.row - b.row || a.start_ms - b.start_ms);
     return candidates[0];
   }, [videos, tMs]);
-
-  // Next video clip we'll cut to. We pre-roll it (muted, hidden) when the
-  // playhead is within WARMUP_MS of the boundary so the decoder is warm and
-  // the cut is instant — kills the visible freeze at section boundaries.
-  const nextVideo = useMemo<VideoClip | null>(() => {
-    if (!activeVideo) return null;
-    const boundary = activeVideo.start_ms + activeVideo.duration_ms;
-    const after = videos
-      .filter((c) => c.id !== activeVideo.id && c.start_ms >= boundary - 1)
-      .sort((a, b) => a.start_ms - b.start_ms || a.row - b.row);
-    return after[0] ?? null;
-  }, [videos, activeVideo]);
-
-  const shouldWarmNext =
-    !!nextVideo &&
-    !!activeVideo &&
-    p.isPlaying &&
-    nextVideo.start_ms - tMs <= WARMUP_MS;
 
   // Active overlays. A typed clip with a higher row index than the active
   // video is "behind" it (row 0 = front in z-order) so we hide it; this
@@ -400,7 +378,12 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             ref={(el) => { videoRefs.current[v.id] = el; }}
             src={`/walkthroughs/${p.walkthroughId}/steps/${v.step_id}.mp4`}
             poster={v.poster_url ?? undefined}
-            preload="metadata"
+            // `auto` so every clip is fully buffered before the playhead
+            // reaches it. Otherwise the decoder warm-up at section
+            // boundaries shows up as a visible 200–400ms freeze when the
+            // new clip becomes active. Each clip is ~5–10s of H.264 — a
+            // handful of MB total, fine to download up-front.
+            preload="auto"
             playsInline
             muted={activeVideo?.id !== v.id}
             onError={() => setMissingSrc((m) => (m[v.id] ? m : { ...m, [v.id]: true }))}
@@ -415,8 +398,14 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
               const offset = (v.source_offset_ms ?? 0) / 1000;
               p.onTimeUpdate(v.start_ms / 1000 + (local - offset));
             }}
-            onPlay={() => { if (activeVideo?.id === v.id) p.onPlayStateChange(true); }}
-            onPause={() => { if (activeVideo?.id === v.id) p.onPlayStateChange(false); }}
+            // Read activeVideoIdRef instead of the closure-captured
+            // activeVideo: when we swap clips at a boundary the OLD video's
+            // pause event fires asynchronously, often after activeVideo has
+            // already flipped to the new clip. Using the closure's stale
+            // value used to flicker isPlaying off → on, surfacing as a
+            // visible pause at the section seam.
+            onPlay={() => { if (activeVideoIdRef.current === v.id) p.onPlayStateChange(true); }}
+            onPause={() => { if (activeVideoIdRef.current === v.id) p.onPlayStateChange(false); }}
             className={`live-video ${activeVideo?.id === v.id ? "live-video-active" : ""}`}
           />
         ))}
