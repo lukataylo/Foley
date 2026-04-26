@@ -53,15 +53,8 @@ export function SuggestionsPanel(p: Props) {
   return (
     <div className="sgx-panel">
       <header className="sgx-header">
-        <div className="sgx-header-row">
-          <h2>Suggestions</h2>
-          {p.onAddStep ? (
-            <button className="sgx-add-step" type="button" onClick={p.onAddStep}>
-              + Add step
-            </button>
-          ) : null}
-        </div>
-        <p>From recent PRs. Click to preview, insert to drop into the timeline.</p>
+        <h2>Suggestions</h2>
+        <p>From recent PRs. Click a card to preview; insert to drop it into the timeline.</p>
       </header>
 
       {loading ? (
@@ -117,6 +110,16 @@ export function SuggestionsPanel(p: Props) {
       <footer className="sgx-foot">
         <span>Selected:</span>
         <code>{p.selectedClipId ?? "—"}</code>
+        {p.onAddStep ? (
+          <button
+            className="sgx-foot-action"
+            type="button"
+            onClick={p.onAddStep}
+            title="Append a fresh step to walkthrough.yaml"
+          >
+            + Add step
+          </button>
+        ) : null}
       </footer>
     </div>
   );
