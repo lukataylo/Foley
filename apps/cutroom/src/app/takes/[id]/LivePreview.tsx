@@ -416,14 +416,12 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
               const offset = (v.source_offset_ms ?? 0) / 1000;
               p.onTimeUpdate(v.start_ms / 1000 + (local - offset));
             }}
-            // Read activeVideoIdRef instead of the closure-captured
-            // activeVideo: when we swap clips at a boundary the OLD video's
-            // pause event fires asynchronously, often after activeVideo has
-            // already flipped to the new clip. Using the closure's stale
-            // value used to flicker isPlaying off → on, surfacing as a
-            // visible pause at the section seam.
-            onPlay={() => { if (activeVideoIdRef.current === v.id) p.onPlayStateChange(true); }}
-            onPause={() => { if (activeVideoIdRef.current === v.id) p.onPlayStateChange(false); }}
+            // No onPlay/onPause feedback into the parent. Videos are SLAVES
+            // of the master audio's play state — listening to a video's
+            // own pause event is a footgun because the browser fires `pause`
+            // when the video's currentTime reaches its source duration
+            // (i.e. at every section boundary), which used to cascade into
+            // pausing the master audio and stalling playback at every seam.
             className={`live-video ${activeVideo?.id === v.id ? "live-video-active" : ""}`}
           />
         ))}
