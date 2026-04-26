@@ -8,7 +8,7 @@ interface Props {
   videoUrl: string;
 }
 
-type Mode = "menu" | "self" | "youtube" | "embed";
+type Mode = "menu" | "self" | "youtube";
 
 interface ExportResult { url: string; bytes: number; music_tracks: number; cached?: boolean; }
 
@@ -84,7 +84,7 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
               <div>
                 <h3>Publish {displayName}</h3>
                 <p className="publish-sub">
-                  Ship this walkthrough as a self-hosted page, embed, or video.
+                  Ship this walkthrough as a self-hosted page or a video file.
                 </p>
               </div>
               <button className="publish-close" onClick={close} aria-label="Close">×</button>
@@ -99,18 +99,6 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
                     <div className="publish-option-desc">
                       Download a single HTML file with the video, captions, and steps inline.
                       Drop it on any web host.
-                    </div>
-                  </div>
-                  <div className="publish-option-cta">→</div>
-                </button>
-
-                <button className="publish-option" onClick={() => setMode("embed")}>
-                  <div className="publish-option-icon"><CodeIcon /></div>
-                  <div>
-                    <div className="publish-option-title">Embed</div>
-                    <div className="publish-option-desc">
-                      Drop into Notion, Webflow, or any docs site with one
-                      iframe snippet.
                     </div>
                   </div>
                   <div className="publish-option-cta">→</div>
@@ -152,33 +140,6 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
                     disabled={busy}
                   >
                     {busy ? "Exporting…" : "Export & download HTML"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mode === "embed" && (
-              <div className="publish-pane">
-                <button className="publish-back" onClick={() => setMode("menu")}>← back</button>
-                <h4>Embed snippet</h4>
-                <p className="publish-sub">Paste this into any HTML or markdown-iframe block.</p>
-                <pre className="publish-code">{`<iframe
-  src="https://foley.app/embed/${walkthroughId}"
-  width="800"
-  height="450"
-  frameborder="0"
-  allow="autoplay; fullscreen"
-></iframe>`}</pre>
-                <div className="publish-actions">
-                  <button
-                    className="onboard-btn onboard-btn-primary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        `<iframe src="https://foley.app/embed/${walkthroughId}" width="800" height="450" frameborder="0" allow="autoplay; fullscreen"></iframe>`,
-                      );
-                    }}
-                  >
-                    Copy snippet
                   </button>
                 </div>
               </div>
@@ -243,13 +204,6 @@ function GlobeIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" />
-    </svg>
-  );
-}
-function CodeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
     </svg>
   );
 }
