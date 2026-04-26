@@ -127,11 +127,12 @@ export default async function EditWalkthroughPage({
     <main className="editor-page">
       <div className="editor-inner">
         <header className="editor-header">
-          <div>
+          <div className="editor-header-left">
             <Link href="/" className="detail-back">← Walkthroughs</Link>
-            <p className="detail-eyebrow" style={{ marginTop: 12 }}>
+            <span className="editor-header-sep" aria-hidden>·</span>
+            <span className="editor-header-eyebrow">
               Edit · {steps.length} step{steps.length === 1 ? "" : "s"}
-            </p>
+            </span>
           </div>
           <div className="actions">
             <ThemeToggle />

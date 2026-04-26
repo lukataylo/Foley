@@ -529,7 +529,14 @@ function StepCard({
         onDragEnd={onDragEnd}
         aria-label={`Reorder step ${index + 1}`}
       >
-        ⋮⋮
+        <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
+          <circle cx="3" cy="3" r="1.4" fill="currentColor" />
+          <circle cx="7" cy="3" r="1.4" fill="currentColor" />
+          <circle cx="3" cy="8" r="1.4" fill="currentColor" />
+          <circle cx="7" cy="8" r="1.4" fill="currentColor" />
+          <circle cx="3" cy="13" r="1.4" fill="currentColor" />
+          <circle cx="7" cy="13" r="1.4" fill="currentColor" />
+        </svg>
       </button>
       <aside className="step-thumb">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -584,16 +591,17 @@ function StepCard({
 
         <ActionBreakdown step={step} />
 
-        <details className="step-narration">
-          <summary>Narration</summary>
+        <div className="step-narration-block">
+          <span className="step-narration-label">Narration</span>
           <textarea
+            className="step-narration-textarea"
             value={step.narration}
             onChange={(e) => onChange({ narration: e.target.value })}
             onBlur={(e) => onCommit({ narration: e.target.value.trim() })}
             rows={3}
             placeholder="What this step says (used by the narrator)"
           />
-        </details>
+        </div>
 
         <div className="step-controls">
           <label className="step-duration">
@@ -611,6 +619,7 @@ function StepCard({
             />
             <span className="suffix">ms</span>
           </label>
+          <div className="step-controls-spacer" />
           <button
             type="button"
             className="step-retake"
@@ -618,15 +627,19 @@ function StepCard({
             disabled={busy}
             title="Re-run this step's Playwright capture and narration"
           >
-            {busy ? "Retaking…" : "Retake"}
+            {busy ? "Retaking…" : "↻ Retake"}
           </button>
           <button
             type="button"
             className="step-delete"
             onClick={onDelete}
             disabled={busy}
+            title="Delete this step"
+            aria-label="Delete step"
           >
-            Delete step
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+              <path d="M5.75 2a1 1 0 0 0-.95.68L4.5 3.5H2a.75.75 0 0 0 0 1.5h12a.75.75 0 0 0 0-1.5h-2.5l-.3-.82A1 1 0 0 0 10.25 2h-4.5ZM4 6.5h8l-.6 7a1.5 1.5 0 0 1-1.5 1.4H6.1a1.5 1.5 0 0 1-1.5-1.4L4 6.5Zm2.5 1.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 1 0v-4a.5.5 0 0 0-.5-.5Zm3 0a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 1 0v-4a.5.5 0 0 0-.5-.5Z" />
+            </svg>
           </button>
         </div>
       </div>
