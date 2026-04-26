@@ -6,13 +6,20 @@ interface Props {
   walkthroughId: string;
   displayName: string;
   videoUrl: string;
+  /** Take id to render — defaults to "master". The editor passes the take it's
+   *  open on so users can publish their in-progress cut, not just the canonical
+   *  master. Self-host export still bundles the master mp4 since that's the
+   *  walkthrough's published page. */
+  takeId?: string;
+  /** Optional className override so the editor can use its own toolbar style. */
+  className?: string;
 }
 
 type Mode = "menu" | "self" | "youtube";
 
 interface ExportResult { url: string; bytes: number; music_tracks: number; cached?: boolean; }
 
-export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
+export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "master", className }: Props) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("menu");
   const [busy, setBusy] = useState(false);
@@ -30,7 +37,7 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
       const res = await fetch(`/api/walkthroughs/${walkthroughId}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ take_id: "master" }),
+        body: JSON.stringify({ take_id: takeId }),
       });
       const json = await res.json() as ExportResult & { error?: string; ok?: boolean };
       if (!res.ok || !json.ok) {
@@ -41,7 +48,7 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
       // Trigger download immediately.
       const a = document.createElement("a");
       a.href = json.url;
-      a.download = `${walkthroughId}-master.mp4`;
+      a.download = `${walkthroughId}-${takeId}.mp4`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -74,7 +81,7 @@ export function PublishButton({ walkthroughId, displayName, videoUrl }: Props) {
 
   return (
     <>
-      <button className="btn-primary publish-btn" type="button" onClick={() => setOpen(true)}>
+      <button className={className ?? "btn-primary publish-btn"} type="button" onClick={() => setOpen(true)}>
         <PaperPlane /> Publish
       </button>
       {open ? (
