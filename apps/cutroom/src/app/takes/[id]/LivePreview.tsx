@@ -133,40 +133,33 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
   const activeCaption = useMemo(() => captions.find((c) => inRange(c, tMs)) ?? null, [captions, tMs]);
   const activeBanana = useMemo(() => bananas.find((c) => inRange(c, tMs)) ?? null, [bananas, tMs]);
 
-  // Boundary-driven video play/pause. Runs only when the active or next clip
-  // changes (or play-state flips), NOT on every tMs tick — so we don't churn
-  // play()/pause() at 60Hz.
+  // Boundary-driven video play/pause. Active clip plays unmuted, others are
+  // paused. Re-runs only when activeVideo identity flips or play-state
+  // toggles — not every tMs tick — so we don't churn play()/pause() at
+  // 60Hz. Master audio is the continuity source; a brief one-frame video
+  // decoder warm-up at boundaries is acceptable.
   //
-  // Pre-roll trick: the next clip starts buffering (paused, seeked to 0)
-  // a moment before the boundary so the decoder is warm. We *don't* let it
-  // play during pre-roll — playing-while-muted advances currentTime past 0
-  // and produces a perceptible "skip" of WARMUP_MS at every boundary when
-  // it gets promoted to active.
+  // Pre-roll was tried (warm next clip muted) but it traded a boundary
+  // stall for a 250ms skip — both worse than the current cold-start. See
+  // commit history for the full justification.
   useEffect(() => {
     for (const v of videos) {
       const el = videoRefs.current[v.id];
       if (!el) continue;
       const isActive = activeVideo?.id === v.id;
-      const isNext = !isActive && nextVideo?.id === v.id && shouldWarmNext;
       if (isActive) {
         if (p.isPlaying && el.paused) void el.play().catch(() => {});
         if (!p.isPlaying && !el.paused) el.pause();
-      } else if (isNext) {
-        // Pre-roll: seek to 0 if needed but keep paused so currentTime
-        // doesn't drift forward before the swap.
-        if (el.currentTime > 0.05) el.currentTime = 0;
-        if (!el.paused) el.pause();
       } else if (!el.paused) {
         el.pause();
       }
     }
-  }, [videos, activeVideo, nextVideo, shouldWarmNext, p.isPlaying]);
+  }, [videos, activeVideo, p.isPlaying]);
 
-  // Hard re-sync the active video the moment its identity changes (boundary
-  // crossing). Drift-correction's 0.3s threshold is fine for steady-state
-  // but lets the new active clip start anywhere from 0 to ~0.3s, which the
-  // user perceives as a skip. Force-seek to the correct local position
-  // exactly once per swap.
+  // When activeVideo identity flips, reset the new clip's currentTime to
+  // 0 (start of clip) before play() so it doesn't pick up wherever it was
+  // last paused. Only seeks when the gap is meaningful, to avoid a
+  // redundant `seek` event right before play().
   const activeVideoIdRef = useRef<string | null>(null);
   useEffect(() => {
     const newId = activeVideo?.id ?? null;
@@ -176,7 +169,9 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
     const el = videoRefs.current[activeVideo.id];
     if (!el) return;
     const localPos = Math.max(0, (tMs - activeVideo.start_ms) / 1000);
-    el.currentTime = localPos;
+    if (Math.abs(el.currentTime - localPos) > 0.05) {
+      el.currentTime = localPos;
+    }
   }, [activeVideo, tMs]);
 
   // Drift-correction for the active video — runs on every tMs tick but only
@@ -411,7 +406,16 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
             src={`${masterAudioUrl}${p.assetVersion ? `?v=${p.assetVersion}` : ""}`}
             preload="auto"
             onTimeUpdate={(e) => {
-              p.onTimeUpdate((e.currentTarget as HTMLAudioElement).currentTime);
+              const el = e.currentTarget as HTMLAudioElement;
+              // Skip while seeking — onTimeUpdate fires with stale values
+              // mid-seek and would yank the playhead back, producing the
+              // "cursor jumps around" symptom while scrubbing.
+              if (el.seeking) return;
+              p.onTimeUpdate(el.currentTime);
+            }}
+            onSeeking={() => {
+              // Block drift correction while we're mid-seek; once `seeked`
+              // fires we'll resume normal onTimeUpdate flow.
             }}
             onPlay={() => p.onPlayStateChange(true)}
             onPause={() => p.onPlayStateChange(false)}
@@ -449,18 +453,29 @@ function TypedClipView({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(clip.strings.join("\n"));
-  const isPreset = TYPED_BG_PRESETS.has(clip.bg_color);
+  // Defensive: `bg_color` should never be missing on a TypedClip but older
+  // imported walkthroughs sometimes do, and the empty string would then
+  // resolve to "no background" while the inspector shows "Solid color".
+  const bgColor = clip.bg_color || "transparent";
+  const isPreset = TYPED_BG_PRESETS.has(bgColor);
+  const isSolid = !isPreset && bgColor !== "transparent";
 
-  const presetClass = isPreset ? `has-bg-preset bg-${clip.bg_color}` : "";
+  const presetClass = isPreset ? `has-bg-preset bg-${bgColor}` : "";
+  const solidClass = isSolid ? "has-bg-solid" : "";
   const editableClass = isSelected && onPatch ? "is-editable" : "";
 
   const inlineStyle: React.CSSProperties = {
     fontFamily: clip.font_family,
     fontSize: clip.font_size_px,
     color: clip.color,
+    // `backgroundColor` (long-hand) not the `background` shorthand — the
+    // shorthand clears background-image which the preset CSS sets via
+    // ::before, breaking aurora gradients on hot-update.
     ...(isPreset
       ? {}
-      : { background: clip.bg_color === "transparent" ? "transparent" : clip.bg_color }),
+      : isSolid
+        ? { backgroundColor: bgColor }
+        : { backgroundColor: "transparent" }),
   };
 
   function commit() {
@@ -472,7 +487,7 @@ function TypedClipView({
 
   return (
     <div
-      className={`live-typed align-${clip.align} ${presetClass} ${editableClass}`}
+      className={`live-typed align-${clip.align} ${presetClass} ${solidClass} ${editableClass}`}
       style={inlineStyle}
     >
       {isSelected && onPatch && !editing ? (

@@ -5121,6 +5121,17 @@ a.back:hover { color: var(--fg); }
 .live-typed.align-center { top: 50%; transform: translateY(-50%); }
 .live-typed.align-bottom { bottom: 8%; }
 
+/* When a non-preset solid bg is in play, give the clip enough padding +
+ * a faint outline so the rectangle is always visibly distinct from the
+ * underlying captured frame — even when the bg colour matches it. */
+.live-typed.has-bg-solid {
+  padding: 28px 36px;
+  border-radius: 14px;
+  outline: 1px solid rgba(255,255,255,0.10);
+  outline-offset: -1px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+}
+
 /* Preset gradient backgrounds — when bg_color is "aurora-amber" /
    "aurora-pink" / etc. the typed clip becomes a full-bleed slide with
    a layered gradient. The text stays vertically aligned via align-*. */
