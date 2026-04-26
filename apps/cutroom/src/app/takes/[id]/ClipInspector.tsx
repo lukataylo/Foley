@@ -23,6 +23,9 @@ interface Props {
   onGenerateMusic: (id: string) => void;
   musicError?: { message: string; suggestion: string | null } | null;
   bananaError?: { message: string } | null;
+  /** True for ~2.5s after a successful banana/music generation — drives a
+   *  "Just generated!" pill so the user sees the action took effect. */
+  recentlyGenerated?: boolean;
   onApplyMusicSuggestion?: (id: string, suggestion: string) => void;
   /** Look up the linked transition spec for a transition clip. */
   transitions?: TransitionSpec[];
@@ -123,6 +126,7 @@ export function ClipInspector(p: Props) {
           busy={p.busy}
           error={p.musicError ?? null}
           onApplySuggestion={p.onApplyMusicSuggestion}
+          flashGenerated={p.recentlyGenerated ?? false}
         />
       )}
       {clip.kind === "transition" && (
@@ -143,6 +147,7 @@ export function ClipInspector(p: Props) {
           busy={p.busy}
           sourceById={p.sourceById}
           error={p.bananaError ?? null}
+          flashGenerated={p.recentlyGenerated ?? false}
         />
       )}
       {clip.kind === "typed" && <TypedBody clip={clip} onPatch={p.onPatch} />}
@@ -423,6 +428,7 @@ function MusicBody({
   busy,
   error,
   onApplySuggestion,
+  flashGenerated,
 }: {
   clip: Clip & { kind: "music" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
@@ -430,6 +436,7 @@ function MusicBody({
   busy?: boolean;
   error?: { message: string; suggestion: string | null } | null;
   onApplySuggestion?: (id: string, suggestion: string) => void;
+  flashGenerated?: boolean;
 }) {
   return (
     <>
@@ -450,21 +457,17 @@ function MusicBody({
         >
           🎵 {busy ? "Generating…" : clip.asset_url ? "Re-generate" : "Generate"}
         </button>
+        {flashGenerated ? <span className="ci-flash-ok">✓ Generated</span> : null}
       </div>
       {error ? (
         <div className="ci-music-error">
           <strong>Couldn't generate.</strong>
           <span>{error.message}</span>
           {error.suggestion ? (
-            <button
-              type="button"
-              className="ci-music-suggestion ci-music-suggestion-clickable"
-              onClick={() => onApplySuggestion?.(clip.id, error.suggestion ?? "")}
-              title="Click to use this prompt and try again"
-            >
-              <span className="ci-music-suggestion-label">Try this prompt → click to apply</span>
-              <span className="ci-music-suggestion-text">"{error.suggestion}"</span>
-            </button>
+            <MusicSuggestionButton
+              suggestion={error.suggestion}
+              onApply={() => onApplySuggestion?.(clip.id, error.suggestion ?? "")}
+            />
           ) : null}
         </div>
       ) : null}
@@ -740,6 +743,7 @@ function BananaBody({
   busy,
   sourceById,
   error,
+  flashGenerated,
 }: {
   clip: Clip & { kind: "banana" };
   onPatch: (id: string, patch: Partial<Clip>) => void;
@@ -747,6 +751,7 @@ function BananaBody({
   busy?: boolean;
   sourceById: Record<string, TrackEntry>;
   error?: { message: string } | null;
+  flashGenerated?: boolean;
 }) {
   return (
     <>
@@ -781,6 +786,7 @@ function BananaBody({
         >
           🍌 {busy ? "Generating…" : clip.asset_url ? "Re-generate" : "Generate"}
         </button>
+        {flashGenerated ? <span className="ci-flash-ok">✓ Generated</span> : null}
       </div>
       {error ? (
         <div className="ci-music-error">
@@ -970,6 +976,31 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       aria-pressed={checked}
     >
       <span className="ci-toggle-knob" />
+    </button>
+  );
+}
+
+function MusicSuggestionButton({ suggestion, onApply }: { suggestion: string; onApply: () => void }) {
+  // Local "applying" flash so the user gets immediate confirmation that
+  // their click registered, even before the prompt textarea re-renders
+  // with the new value.
+  const [applying, setApplying] = useState(false);
+  return (
+    <button
+      type="button"
+      className={`ci-music-suggestion ci-music-suggestion-clickable ${applying ? "is-applying" : ""}`}
+      disabled={applying}
+      onClick={() => {
+        setApplying(true);
+        onApply();
+        window.setTimeout(() => setApplying(false), 700);
+      }}
+      title="Click to use this prompt and try again"
+    >
+      <span className="ci-music-suggestion-label">
+        {applying ? "Applying…" : "Try this prompt → click to apply"}
+      </span>
+      <span className="ci-music-suggestion-text">"{suggestion}"</span>
     </button>
   );
 }

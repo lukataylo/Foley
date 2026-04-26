@@ -264,35 +264,35 @@ export async function POST(
   // [0:a] master narration → label "narr"
   // [k:a] music tracks (k = 1..N_music) → adelay/volume → labels "m1"…
   // amix all → "aout"
-  filterParts.push(`[0:a]volume=1.0[narr]`);
-  const mixLabels = ["narr"];
-  musicClips.forEach((c, i) => {
-    const idx = i + 1;
-    const delayMs = Math.max(0, c.start_ms);
-    const fadeIn = c.fade_in_ms / 1000;
-    const fadeOut = c.fade_out_ms / 1000;
-    const dur = c.duration_ms / 1000;
-    const fadeOutStart = Math.max(0, dur - fadeOut);
-    let chain = `[${idx}:a]atrim=0:${dur.toFixed(3)},asetpts=PTS-STARTPTS`;
-    if (fadeIn > 0.01) chain += `,afade=t=in:st=0:d=${fadeIn.toFixed(3)}`;
-    if (fadeOut > 0.01) chain += `,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=${fadeOut.toFixed(3)}`;
-    chain += `,volume=${c.volume.toFixed(3)}`;
-    if (delayMs > 0) chain += `,adelay=${delayMs}|${delayMs}`;
-    chain += `[m${idx}]`;
-    filterParts.push(chain);
-    mixLabels.push(`m${idx}`);
-  });
-  let audioOutLabel: string;
-  if (mixLabels.length === 1) {
-    // Just narration — no mix required, pass through.
-    audioOutLabel = "narr";
-  } else {
-    const inputsForMix = mixLabels.map((l) => `[${l}]`).join("");
-    filterParts.push(
-      `${inputsForMix}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,` +
-        `volume=1.5[aout]`,
-    );
-    audioOutLabel = "aout";
+  // Skipped entirely for GIF (no audio container) — saves the music-mix work.
+  let audioOutLabel = "narr";
+  if (format !== "gif") {
+    filterParts.push(`[0:a]volume=1.0[narr]`);
+    const mixLabels = ["narr"];
+    musicClips.forEach((c, i) => {
+      const idx = i + 1;
+      const delayMs = Math.max(0, c.start_ms);
+      const fadeIn = c.fade_in_ms / 1000;
+      const fadeOut = c.fade_out_ms / 1000;
+      const dur = c.duration_ms / 1000;
+      const fadeOutStart = Math.max(0, dur - fadeOut);
+      let chain = `[${idx}:a]atrim=0:${dur.toFixed(3)},asetpts=PTS-STARTPTS`;
+      if (fadeIn > 0.01) chain += `,afade=t=in:st=0:d=${fadeIn.toFixed(3)}`;
+      if (fadeOut > 0.01) chain += `,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=${fadeOut.toFixed(3)}`;
+      chain += `,volume=${c.volume.toFixed(3)}`;
+      if (delayMs > 0) chain += `,adelay=${delayMs}|${delayMs}`;
+      chain += `[m${idx}]`;
+      filterParts.push(chain);
+      mixLabels.push(`m${idx}`);
+    });
+    if (mixLabels.length > 1) {
+      const inputsForMix = mixLabels.map((l) => `[${l}]`).join("");
+      filterParts.push(
+        `${inputsForMix}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,` +
+          `volume=1.5[aout]`,
+      );
+      audioOutLabel = "aout";
+    }
   }
 
   // ── Format-specific encoder + map args ────────────────────────────────

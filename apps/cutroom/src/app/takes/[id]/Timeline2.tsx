@@ -171,7 +171,11 @@ export function Timeline2(p: Props) {
   function startDrag(clip: Clip, mode: DragMode, e: React.PointerEvent) {
     e.preventDefault();
     e.stopPropagation();
-    p.onSelectClip(clip.id);
+    // Forward the shift modifier so the parent's selection logic can choose
+    // between toggling the multi-select set (shift) and replacing the
+    // primary selection (no shift). Without this, every shift-click would
+    // pointerdown-clear the extras before the click handler could add them.
+    p.onSelectClip(clip.id, { shift: e.shiftKey });
     p.onInteractionStart?.();
     setDrag({
       clipId: clip.id,
@@ -773,7 +777,13 @@ function ClipBlock(p: ClipProps) {
         if ((e.target as HTMLElement).closest(".tl3-handle")) return;
         p.onPointerDown(p.clip, "move", e);
       }}
-      onClick={(e) => { e.stopPropagation(); p.onSelect(p.clip.id, { shift: e.shiftKey }); }}
+      onClick={(e) => {
+        // Selection is handled in startDrag (pointerdown) so it survives
+        // dragging without a click event. Click here just blocks scrub
+        // bubbling — selecting again here would re-toggle the extras set
+        // on shift-click and cancel out the pointerdown's add.
+        e.stopPropagation();
+      }}
       onContextMenu={(e) => p.onContextMenu?.(p.clip, e)}
       title={[
         `${KIND_LABEL[p.clip.kind]} — ${label}`,
