@@ -2,6 +2,23 @@
 
 **Product walkthrough videos that maintain themselves from PRs.**
 
+[![License Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue?style=for-the-badge)](LICENSE)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white)](apps/cutroom)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](services/director)
+[![TypeScript 5.6](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](apps/cutroom/tsconfig.json)
+[![pnpm 10](https://img.shields.io/badge/pnpm-10-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](pnpm-workspace.yaml)
+
+[![Claude Sonnet 4.6](https://img.shields.io/badge/Claude-Sonnet_4.6-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](services/director/src/director/proposer.py)
+[![ElevenLabs](https://img.shields.io/badge/Voice-ElevenLabs-000000?style=for-the-badge)](services/director/src/director/narrator.py)
+[![Gemini 2.5 Flash Image](https://img.shields.io/badge/Image-Gemini_2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](apps/cutroom/src/app/api/genai)
+[![Playwright](https://img.shields.io/badge/Capture-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](services/director/src/director/playwright_runner.py)
+[![ffmpeg](https://img.shields.io/badge/Render-ffmpeg-007808?style=for-the-badge&logo=ffmpeg&logoColor=white)](services/director/src/director/concat.py)
+
+[![MCP ready](https://img.shields.io/badge/MCP-ready-635BFF?style=for-the-badge)](apps/foley-mcp)
+[![Claude Code skill](https://img.shields.io/badge/Claude_Code-skill-D97757?style=for-the-badge)](skills/foley)
+[![llms.txt](https://img.shields.io/badge/llms.txt-served-0F766E?style=for-the-badge)](apps/cutroom/src/app/llms.txt)
+[![oEmbed](https://img.shields.io/badge/oEmbed-1.0-1F2937?style=for-the-badge)](apps/cutroom/src/app/api/oembed)
+
 ![Foley demo preview](walkthroughs/foley/preview.gif)
 
 The clip above is a Foley walkthrough _of Foley_, captured by the same pipeline a user runs. ▶️ **[Watch the full tour](walkthroughs/foley/takes/master/master.mp4)** · 26 s · 1440 × 900 · voiced · [captions](walkthroughs/foley/captions.vtt).
