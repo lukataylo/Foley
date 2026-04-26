@@ -124,6 +124,13 @@ export function EditorShell({
   // set. The inspector still operates on the primary so per-clip edits
   // remain unambiguous.
   const [extraSelectedClipIds, setExtraSelectedClipIds] = useState<string[]>([]);
+  // Mirror state into a ref so the global keyboard handler — which captures
+  // by closure and can't list every state in its deps without re-binding on
+  // every keystroke — can read the latest set when Delete fires.
+  const extraSelectedClipIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    extraSelectedClipIdsRef.current = extraSelectedClipIds;
+  }, [extraSelectedClipIds]);
   const [overlay, setOverlay] = useState<EditOverlay | null>(null);
 
   // ── Continuous narration view ───────────────────────────────────────────
@@ -689,6 +696,7 @@ export function EditorShell({
     commitOverlay(fresh, overlay);
     setOverlay(fresh);
     setSelectedClipId(null);
+    setExtraSelectedClipIds([]);
   }
 
   function patchClipState(id: string, patch: Partial<Clip>) {
@@ -839,6 +847,25 @@ export function EditorShell({
   const [bananaErrorByClip, setBananaErrorByClip] = useState<
     Record<string, { message: string } | null>
   >({});
+  // Brief "just generated!" markers so successful banana/music regenerations
+  // give the user explicit feedback (the asset URL changing is otherwise a
+  // silent swap). Each entry auto-clears after ~2.5s.
+  const [recentlyGeneratedIds, setRecentlyGeneratedIds] = useState<Set<string>>(() => new Set());
+  function flashGenerated(clipId: string) {
+    setRecentlyGeneratedIds((curr) => {
+      const next = new Set(curr);
+      next.add(clipId);
+      return next;
+    });
+    window.setTimeout(() => {
+      setRecentlyGeneratedIds((curr) => {
+        if (!curr.has(clipId)) return curr;
+        const next = new Set(curr);
+        next.delete(clipId);
+        return next;
+      });
+    }, 2500);
+  }
 
   async function generateMusicClip(clipId: string) {
     if (!overlay) return;
@@ -866,6 +893,7 @@ export function EditorShell({
           generated_duration_ms: json.duration_ms ?? f.duration_ms,
           source_sha256_at_edit: narrationHashNow,
         });
+        flashGenerated(clipId);
       } else {
         setMusicErrorByClip((m) => ({
           ...m,
@@ -888,6 +916,17 @@ export function EditorShell({
   // Debounced authoring writes — typing in the step title/narration shouldn't
   // hammer the YAML file on every keystroke.
   const authoringTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Cancel every pending debounce on unmount so a navigation-away mid-typing
+  // doesn't fire setState / fetch on an unmounted component.
+  useEffect(() => {
+    const authoringMap = authoringTimers.current;
+    return () => {
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+      if (overlayPersistTimer.current) clearTimeout(overlayPersistTimer.current);
+      for (const t of Object.values(authoringMap)) clearTimeout(t);
+    };
+  }, []);
   function editStepInYaml(stepId: string, patch: StepEditPatch) {
     if (authoringTimers.current[stepId]) clearTimeout(authoringTimers.current[stepId]);
     // A narration edit invalidates the continuous take — flip the stale pill
@@ -1038,6 +1077,7 @@ export function EditorShell({
       const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
       if (json.ok && json.url) {
         patchClipState(clipId, { asset_url: `${json.url}?t=${Date.now()}` });
+        flashGenerated(clipId);
       } else {
         setBananaErrorByClip((m) => ({
           ...m,
@@ -1068,10 +1108,10 @@ export function EditorShell({
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedClipId) {
         e.preventDefault();
-        // Multi-delete the primary plus every extra-selected clip. Order
-        // matters because removeClipState mutates by id and can clear the
-        // primary; we capture the full set first.
-        const ids = [selectedClipId, ...extraSelectedClipIds];
+        // Multi-delete the primary plus every extra-selected clip. Read
+        // extras through the ref so we see the latest set without having
+        // to re-bind the listener on every shift-click.
+        const ids = [selectedClipId, ...extraSelectedClipIdsRef.current];
         for (const id of ids) removeClipState(id);
         setExtraSelectedClipIds([]);
       }
@@ -1425,6 +1465,7 @@ export function EditorShell({
             onGenerateMusic={generateMusicClip}
             musicError={selectedClipId ? musicErrorByClip[selectedClipId] ?? null : null}
             bananaError={selectedClipId ? bananaErrorByClip[selectedClipId] ?? null : null}
+            recentlyGenerated={selectedClipId ? recentlyGeneratedIds.has(selectedClipId) : false}
             onApplyMusicSuggestion={applyMusicSuggestion}
             transitions={transitions}
             onUpdateTransition={updateTransition}
