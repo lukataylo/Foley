@@ -21,7 +21,9 @@
 
 ![Foley demo preview](walkthroughs/foley/preview.gif)
 
-The clip above is a Foley walkthrough _of Foley_, captured by the same pipeline a user runs. ▶️ **[Watch the full tour](walkthroughs/foley/takes/master/master.mp4)** · 26 s · 1440 × 900 · voiced · [captions](walkthroughs/foley/captions.vtt).
+The clip above is a Foley walkthrough _of Foley_, captured by the same pipeline a user runs. ▶️ **[Watch the full tour](walkthroughs/foley/takes/master/master.mp4)** · 20 s · 1440 × 900 · voiced · [captions](walkthroughs/foley/captions.vtt).
+
+> Auto-onboard a GitHub repo + a dev URL. Claude drafts 4–7 grounded Playwright steps. Playwright captures, ElevenLabs narrates, ffmpeg renders. Every PR re-runs only the steps it touched — unchanged segments stay **byte-identical**. One YAML drives the video, the docs page, and the Markdown export. MCP server + Claude Code skill ship in the box.
 
 ---
 
@@ -42,34 +44,84 @@ The maintenance loop costs:
 
 That's a half-day round-trip per change, every time the product moves. So teams stop maintaining the videos. The videos rot. Adoption suffers because the most concrete artefact of how the product works — the walkthrough — is visibly out of date.
 
-Today's tools don't close the loop:
+---
 
-| | What it does | What it doesn't do |
-|---|---|---|
-| **Mintlify** | Generates docs *text* from PRs | No video |
-| **Guidde** | Polishes a human-recorded walkthrough | Each maintenance cycle is a fresh recording |
-| **Loom / Tella** | Records and publishes screen captures | No diff-aware updates; every change is a re-record |
-| **Arcade** | Interactive product tours | Tours, not video; still hand-edited per change |
+## Why nobody has solved it
 
-Nobody maintains an autonomous, on-brand walkthrough _video_ end-to-end. That's the gap Foley closes.
+Three categories of tool _adjacent_ to this problem, none of which closes it:
+
+| Category | Example | What it does | Why it doesn't maintain video |
+|---|---|---|---|
+| **Auto-docs** | Mintlify, Docusaurus + LLM agents | Generate doc *text* from PRs, source code, schemas | No video pipeline — Markdown only |
+| **Polished demos** | Guidde, Tella, Loom AI | One-shot polish on a human-recorded walkthrough | Each maintenance cycle is a fresh recording — no diff awareness |
+| **Interactive tours** | Arcade, Storylane, Navattic | Click-through product tours with hotspots | Tours, not video; still hand-edited per change |
+
+**Foley sits in the gap.** It's the only tool that treats a product walkthrough video as a living artefact: structured, diffable, and maintained by the same agent loop your code already runs through.
+
+---
+
+## How Foley closes the loop
+
+```
+┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│  GitHub PR opens │───▶│  Director (LLM)  │───▶│  Per-step diff   │
+└──────────────────┘    │  reads diff +    │    │  unchanged       │
+                        │  current YAML    │    │  changed         │
+                        └──────────────────┘    │  added           │
+                                                │  removed         │
+                                                └────────┬─────────┘
+                                                         │
+                                            ┌────────────┴────────────┐
+                                            ▼                         ▼
+                                  ┌──────────────────┐      ┌──────────────────┐
+                                  │ Retake CHANGED   │      │ Reuse UNCHANGED  │
+                                  │ Playwright +     │      │ segments byte-   │
+                                  │ ElevenLabs       │      │ identical        │
+                                  └────────┬─────────┘      └────────┬─────────┘
+                                           └─────────┬───────────────┘
+                                                     ▼
+                                           ┌──────────────────┐
+                                           │ ffmpeg concat    │
+                                           │ → new master.mp4 │
+                                           │ + PR comment     │
+                                           └──────────────────┘
+```
+
+A button label change retouches one segment, leaves the other five frozen. The data plane is provable: `director diff-takes master take-007` prints the per-segment SHA-256 table.
 
 ---
 
 ## Capabilities
 
-What Foley does today:
+Five surfaces, each one a load-bearing part of the loop:
 
-- **Auto-onboarding from a GitHub repo + a dev URL.** The wizard fetches your landing page's HTML, asks Claude Sonnet 4.6 to draft 3–8 grounded Playwright steps with text-locator selectors, and writes them to `walkthroughs/<slug>/walkthrough.yaml`. Empty repo → first take in under a minute.
-- **PR-driven retakes.** Every pull request triggers the director agent. It diffs the change against the current walkthrough, classifies every step as unchanged / changed / added / removed, and re-runs Playwright + ElevenLabs only on the affected ones. Unchanged segments stay byte-identical across takes (provable via `director diff-takes`).
-- **Resilient capture.** A bad selector flags the step amber and keeps going — the rest of the ingest still completes. Per-step **Retake** button heals it without leaving the editor.
-- **One YAML, three outputs.** The same Walkthrough drives the master video, a scrollable docs page at `/docs/<id>`, and a plain-Markdown export at `/docs/<id>.md` for AI ingestion.
-- **AI-readable surfaces.** `/llms.txt`, `/skill.md`, `/api/mcp`, and the Markdown export give Claude / ChatGPT / Cursor a clean ingestion path. Inline **Ask this walkthrough** widget on every doc page does Claude RAG over the transcript with click-to-jump citations. **Open in …** dropdown hands the URL to your favourite LLM in one click.
-- **Continuous narration.** ElevenLabs `convert_with_timestamps` produces one continuous mp3 spanning every step + per-character alignment data. Editor playback is smooth across step boundaries; captions and the click-to-jump transcript fall out of the same timing JSON.
-- **PR comment bot.** When the webhook fires and a new take is built, Foley posts back to the PR: a per-step diff table, a compare URL, and an embedded `preview.gif` of the new take.
-- **Voice cloning.** Drop a 30 s – 2 min audio sample into the Brand panel; ElevenLabs Instant Voice Cloning produces a `voice_id` and the next render is in your voice.
+### Capture
+- **Auto-onboard from a GitHub repo + dev URL.** The wizard fetches the landing page, asks Claude Sonnet 4.6 to draft 4–7 grounded steps with text-locator selectors, writes them to `walkthrough.yaml`. Empty repo → first take in 60 s.
+- **Playwright at the source.** Each step is a Playwright recipe (goto / click / fill / hover / wait / scroll / press) with stable ids; bad selectors flag the step amber and the rest of the run still completes.
+- **Editor controls.** + Add step / drag to reorder / inline Retake / right-click delete a walkthrough from the home grid.
+- **Voice cloning.** Drop a 30 s – 2 min audio sample; ElevenLabs Instant Voice Cloning produces a `voice_id` and the next render is in your voice.
+
+### Narrate
+- **Continuous narration.** ElevenLabs `convert_with_timestamps` produces one mp3 spanning every step + per-character alignment. Editor playback is smooth across step boundaries — no per-clip seam.
+- **Captions + transcript for free.** WebVTT captions and the click-to-jump docs transcript both fall out of the same `narration.timing.json`.
+- **Director's note.** Each take ships a one-sentence agent verdict explaining what changed and why.
+
+### Publish
+- **One YAML, three outputs.** The same Walkthrough drives `master.mp4`, the scrollable docs page at `/docs/<id>`, and a plain-Markdown export at `/docs/<id>.md` for AI ingestion.
 - **SEO + sharing.** Auto sitemap.xml, robots.txt, OpenGraph, Twitter player card, oEmbed, RSS changelog feed per walkthrough. Hidden walkthroughs ship `noindex` and drop out of `/llms.txt`.
-- **Pre-flight checks + friendly errors.** Missing ffmpeg, a malformed YAML, an unset API key — all surfaced as actionable banners, not stack traces.
-- **`director check`.** One CLI command runs schema validation + URL link checking + a11y triage + artefact audit, with a coloured rich.Table report and a Unix exit code.
+- **Static export.** A self-host HTML bundle and a YouTube-ready mp4 from the publish modal.
+
+### Maintain
+- **Director reads every PR.** Webhook fires → Claude Sonnet 4.6 (adaptive thinking) reads the unified diff and the current walkthrough → returns a structured `StepDiff[]`. Nothing free-text.
+- **Only changed steps re-run.** Encode parameters are pinned so unchanged segments are bit-for-bit identical across takes.
+- **PR comment bot.** New take → comment back on the PR with the per-step diff table, a compare URL, and an embedded `preview.gif`.
+- **Resilience.** Atomic writes everywhere; pre-flight banners for missing ffmpeg / API keys / dev-server unreachable; `director check` is one CLI for schema + link + a11y validation.
+
+### Plug-in
+- **MCP stdio server.** `apps/foley-mcp/` exposes `list_walkthroughs`, `ask_walkthrough`, `get_transcript`. One `claude mcp add` wires Claude Code, Cursor, Windsurf, or Continue.
+- **Claude Code skill.** `skills/foley/` ships a SKILL.md with frontmatter + endpoint reference. Symlink it into `~/.claude/skills/`.
+- **AI-readable surfaces.** `/llms.txt`, `/skill.md`, `/api/mcp`, `/docs/<id>.md`, JSON transcript with timing — clean ingestion for any LLM.
+- **Inline Ask widget.** Every public docs page has Claude RAG over the transcript with click-to-jump citations.
 
 ---
 
@@ -119,13 +171,14 @@ Repo layout:
 
 ```
 apps/cutroom/                       Next.js 14 — dashboard, onboard, step editor, all APIs
+apps/foley-mcp/                     Stdio MCP server for Claude Code / Cursor / Windsurf
 services/director/                  Python — agent, proposer, ask, capture, narrate, concat, check
 walkthroughs/v1/                    Canonical "Loop" demo
 walkthroughs/foley/                 Foley demoing Foley (rendered by the same pipeline)
+skills/foley/                       Claude Code skill — install via symlink
 scripts/bootstrap.sh                One-shot setup
-scripts/test/                       7-layer smoke-test suite
+scripts/test/                       8-layer smoke-test suite
 extensions/recorder/                Chrome extension — alternate import path
-.claude/skills/foley/               Claude Code skill that wraps `director review`
 wiki/                               Detailed reference, mirrored to https://github.com/lukataylo/Foley/wiki
 ```
 
@@ -134,10 +187,6 @@ The cutroom is a thin reader; the director is the only writer (every state file 
 ---
 
 ## How it works
-
-### 0 · A new project becomes a walkthrough in 30 seconds
-
-The first cut is _not_ hand-authored. The onboarding wizard fetches the dev URL's landing-page HTML, hands it to Claude Sonnet 4.6 with adaptive thinking, and gets back a `ProposedSteps` object — 4–7 steps with grounded Playwright actions. The proposer writes those into `walkthrough.yaml`, the user lands in the step editor, clicks **Render**, and the rest of the pipeline kicks in.
 
 ### 1 · The walkthrough is a list of step atoms
 
@@ -241,18 +290,27 @@ Most commands default `walkthrough_id` to `v1`. Override by passing it positiona
 
 ---
 
-## Status
+## Plug Foley into your AI editor
 
-Hackathon project — *To The Americas*, Unicorn Mafia, London, April 2026. The first cut shipped in a 22-hour window; the current build adds the auto-onboarder, the Ask widget, the AI-readable surfaces, the smoke test suite, and the recursive Foley-of-Foley demo at the top of this README.
+Two complementary surfaces — install both for the smoothest experience:
 
-Single-tenant, no auth, no DB, demo-only. Production-ready is _not_ in scope:
+```bash
+# Stdio MCP server: typed tools + resource subscriptions
+pnpm --filter foley-mcp build
+claude mcp add foley node "$(pwd)/apps/foley-mcp/dist/index.js"
 
-- No auth, no rate limits, no per-user isolation.
-- No CDN — every asset is served by Next.js itself.
-- No queue — every render is a detached child process.
-- No observability beyond Logfire spans.
+# Claude Code skill: vocabulary, endpoint table, when-to-use rules
+mkdir -p ~/.claude/skills && ln -s "$(pwd)/skills/foley" ~/.claude/skills/foley
+```
 
-If you adopt Foley for real, start there.
+After that, Claude Code (or Cursor / Windsurf / Continue) can:
+
+- `mcp__foley__list_walkthroughs` — discover what's available
+- `mcp__foley__ask_walkthrough(id, question)` — RAG-style answer with step-id citations
+- `mcp__foley__get_transcript(id)` — the full markdown transcript with per-step timestamps
+- subscribe to `foley://<id>/{transcript.md,captions.vtt,transcript.json}` resources
+
+Without an MCP-aware editor, the same data is reachable as plain HTTP — `/api/mcp`, `/skill.md`, `/llms.txt`, `/docs/<id>.md`. Drop any of those URLs into a chat and the agent picks them up.
 
 ---
 
@@ -267,21 +325,32 @@ pnpm dev              # http://localhost:3000
 
 Open `http://localhost:3000/welcome` and paste your **Anthropic** + **ElevenLabs** keys into the in-page form — Foley validates them against the live providers before writing them to `.env`. A **Google API key** is optional but unlocks the "Nano Banana" (Gemini 2.5 Flash Image) clip type for laptop-mockup + stylized-transition slides in the take editor.
 
-Click **+ New walkthrough** on the home page to onboard a project, or open the seeded **Loop** walkthrough to play a finished take. The full **Quickstart for judges** lives in the wiki.
+Click **+ New walkthrough** on the home page to onboard a project, or open the seeded **Loop** walkthrough to play a finished take. **Right-click any walkthrough on the home grid to delete it.**
 
-**Right-click any walkthrough on the home grid to delete it.**
+The smoke test suite is `bash scripts/test/all.sh` (`SKIP_AI=1` skips the layer that calls Claude). The full **Quickstart for judges** lives in the wiki.
 
-### Plug Foley into your AI editor
+---
 
-```bash
-pnpm --filter foley-mcp build
-claude mcp add foley node "$(pwd)/apps/foley-mcp/dist/index.js"
-mkdir -p ~/.claude/skills && ln -s "$(pwd)/skills/foley" ~/.claude/skills/foley
-```
+## Status
 
-After that, Claude Code (or any MCP-aware editor) can `list_walkthroughs`, `ask_walkthrough`, and `get_transcript` against your local cutroom — and the bundled skill teaches Claude the Foley vocabulary so it cites step ids correctly.
+**Hackathon project — *To The Americas*, Unicorn Mafia, London, April 2026.** The first cut shipped in a 22-hour window; the current build is the result of an overnight follow-up that added the auto-onboarder, the Ask widget, the AI-readable surfaces, the MCP stdio server, the Claude Code skill, the in-app key entry form, the smoke test suite, and the recursive Foley-of-Foley demo at the top of this README.
 
-The smoke test suite is `bash scripts/test/all.sh` (`SKIP_AI=1` skips the layer that calls Claude).
+Shipped end-to-end:
+
+- Onboarding wizard, step editor, render panel, take review, publish modal
+- Director CLI: `propose-steps · ingest · retake · master · synth-continuous · captions · bake-master · review · diff-takes · ask · check`
+- PR webhook → director → PR comment with diff table + preview.gif
+- MCP stdio server (`apps/foley-mcp`) + Claude Code skill (`skills/foley`)
+- Atomic writes everywhere; preflight banner for missing keys / ffmpeg / dev URL
+- `/docs/<id>` + `/docs/<id>.md` + `/api/walkthroughs/<id>/{ask,transcript,captions,poster,preview.gif,changelog.rss}`
+- 8-layer smoke-test suite
+
+Out of scope (start here if you adopt Foley for real):
+
+- No auth, no rate limits, no per-user isolation. Single-tenant by design.
+- No CDN — every asset is served by Next.js itself.
+- No queue — every render is a detached child process.
+- No observability beyond Logfire spans.
 
 ---
 
