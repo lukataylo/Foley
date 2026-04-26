@@ -497,6 +497,10 @@ function StepCard({
 }: StepCardProps) {
   const hasCaptureError = !!step.captureError;
   const hasCaptureWarnings = (step.captureWarnings?.length ?? 0) > 0;
+  // Whether the step's screenshot exists on disk. Newly-bootstrapped
+  // walkthroughs don't have screenshots until ingest runs, so we render
+  // a friendly placeholder instead of an empty rectangle.
+  const [thumbMissing, setThumbMissing] = useState(false);
   return (
     <article
       className={`editor-step ${busy ? "is-busy" : ""} ${
@@ -538,16 +542,25 @@ function StepCard({
           <circle cx="7" cy="13" r="1.4" fill="currentColor" />
         </svg>
       </button>
-      <aside className="step-thumb">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={step.screenshotUrl}
-          alt={`Screenshot for step ${index + 1}`}
-          loading="lazy"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
+      <aside className={`step-thumb ${thumbMissing ? "step-thumb-empty" : ""}`}>
+        {thumbMissing ? (
+          <div className="step-thumb-placeholder">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m8 12 2 2 6-6" />
+            </svg>
+            <span>Capture pending</span>
+            <span className="step-thumb-placeholder-hint">Click Render or Retake</span>
+          </div>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={step.screenshotUrl}
+            alt={`Screenshot for step ${index + 1}`}
+            loading="lazy"
+            onError={() => setThumbMissing(true)}
+          />
+        )}
         <div className="step-thumb-num">{String(index + 1).padStart(2, "0")}</div>
         {hasCaptureError ? <div className="step-thumb-dot is-error" title={step.captureError ?? ""} /> : null}
         {!hasCaptureError && hasCaptureWarnings ? (
