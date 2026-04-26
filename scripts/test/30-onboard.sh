@@ -77,4 +77,37 @@ else
   fail "bootstrap should 400 on empty body (got $got)"
 fi
 
+# 8. /api/github/resolve — paste-a-URL flow.
+# Bad URL → 400.
+got=$(curl -s -o /dev/null -w "%{http_code}" \
+  "${BASE}/api/github/resolve?url=not-a-url" --max-time 5 2>/dev/null || true)
+if [[ "$got" == "400" ]]; then
+  pass "/api/github/resolve rejects bogus URL"
+else
+  fail "/api/github/resolve should 400 on bogus URL (got $got)"
+fi
+
+# Live GitHub call — only attempted if network reachable. Uses the canonical
+# octocat/Hello-World repo (14 years old, the GitHub demo repo).
+if curl -s -o /dev/null --max-time 3 "https://api.github.com/zen" 2>/dev/null; then
+  body=$(curl -s "${BASE}/api/github/resolve?url=https%3A%2F%2Fgithub.com%2Foctocat%2FHello-World" \
+    --max-time 10 2>/dev/null || true)
+  if [[ "$body" == *'"full_name":"octocat/Hello-World"'* ]]; then
+    pass "/api/github/resolve resolves octocat/Hello-World"
+  else
+    fail "octocat/Hello-World did not resolve cleanly (body: $(printf '%s' "$body" | head -c 200))"
+  fi
+
+  # Non-existent repo → fallback path with bare metadata.
+  body=$(curl -s "${BASE}/api/github/resolve?url=https%3A%2F%2Fgithub.com%2Fnobody-12345%2Fnobody-repo-xyz-abc" \
+    --max-time 10 2>/dev/null || true)
+  if [[ "$body" == *'"fallback":true'* ]]; then
+    pass "/api/github/resolve falls back gracefully on 404"
+  else
+    fail "404 path did not return fallback:true (body: $(printf '%s' "$body" | head -c 200))"
+  fi
+else
+  skip "github.com unreachable — skipping live resolve checks"
+fi
+
 summary
