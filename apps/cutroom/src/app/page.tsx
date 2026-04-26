@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { Folder } from "@/components/Folder";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PreflightBanner } from "@/components/PreflightBanner";
+import { HomeFolderGrid, type HomeItem } from "@/components/HomeFolderGrid";
 import {
   listWalkthroughSummaries,
   loadWalkthrough,
@@ -9,20 +8,6 @@ import {
 } from "@/lib/fs";
 
 export const dynamic = "force-dynamic";
-
-interface FolderItem {
-  id: string;
-  name: string;
-  mark: string;
-  sub: string;
-  meta: string;
-  href: string | null;
-  variant: "default" | "muted";
-  tone: "blue" | "amber" | "graphite" | "mint" | "violet" | "rose";
-  thumbs: string[];
-  glyph?: string;
-  tag?: "sample" | "soon";
-}
 
 // No placeholder folders — the home grid only shows real walkthroughs
 // from disk plus the "+ New walkthrough" tile that links to /onboard.
@@ -45,7 +30,7 @@ export default async function HomePage() {
   const summaries = (await listWalkthroughSummaries()).filter((s) => !s.hidden);
 
   // For each real walkthrough, take the first 3 step frame paths as thumbs.
-  const real: FolderItem[] = await Promise.all(
+  const items: HomeItem[] = await Promise.all(
     summaries.map(async (s) => {
       let thumbs: string[] = [];
       try {
@@ -71,8 +56,6 @@ export default async function HomePage() {
     }),
   );
 
-  const items: FolderItem[] = real;
-
   return (
     <main className="home">
       <PreflightBanner />
@@ -83,43 +66,9 @@ export default async function HomePage() {
         </header>
 
         <h1 className="home-section-title">Walkthroughs</h1>
+        <p className="home-section-hint">Right-click any folder to delete it.</p>
 
-        <div className="folder-grid">
-          {items.map((item) => {
-            const card = (
-              <div className={`folder-card ${item.variant === "muted" ? "placeholder" : ""}`}>
-                <Folder
-                  thumbs={item.thumbs}
-                  mark={item.mark}
-                  glyph={item.glyph}
-                  tone={item.tone}
-                  variant={item.variant}
-                />
-                <div className="folder-meta">
-                  <div className="folder-title">{item.name}</div>
-                  <div className="folder-sub">{item.sub}</div>
-                  <div className="folder-sub">{item.meta}</div>
-                  {item.tag ? (
-                    <div className="folder-tag">{item.tag === "sample" ? "sample" : "coming soon"}</div>
-                  ) : null}
-                </div>
-              </div>
-            );
-            return item.href ? (
-              <Link href={item.href} key={item.id}>{card}</Link>
-            ) : (
-              <div key={item.id}>{card}</div>
-            );
-          })}
-
-          <Link href="/onboard" className="folder-card placeholder">
-            <Folder mark="" glyph="+" tone="violet" variant="muted" />
-            <div className="folder-meta">
-              <div className="folder-title">New walkthrough</div>
-              <div className="folder-sub">Bootstrap from a repo</div>
-            </div>
-          </Link>
-        </div>
+        <HomeFolderGrid items={items} />
       </div>
     </main>
   );
