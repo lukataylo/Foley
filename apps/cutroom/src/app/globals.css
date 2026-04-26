@@ -5319,6 +5319,16 @@ a.back:hover { color: var(--fg); }
 .live-banana.layout-lower-third { left: 4%; right: 4%; bottom: 6%; max-height: 28%; }
 .live-banana.layout-corner { top: 4%; right: 4%; max-width: 28%; }
 
+/* Full-screen takeover for transition clips during playback. Sits above the
+ * video stack and below the captions overlay so the chyron-style title still
+ * reads. The inner .transition-slide owns its own background/screenshots. */
+.live-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
 .tl3-ctxmenu {
   position: fixed;
   z-index: 200;

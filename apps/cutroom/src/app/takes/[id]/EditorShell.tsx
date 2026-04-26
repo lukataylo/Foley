@@ -1249,6 +1249,8 @@ export function EditorShell({
                   selectedClipId={selectedClipId}
                   onPatchClip={patchClipState}
                   narration={continuousNarration}
+                  transitions={transitions}
+                  framesByStepId={Object.fromEntries(tracks.map((t) => [t.id, t.frame_url]))}
                   onTimeUpdate={(t) => setCurrentTime(t)}
                   onPlayStateChange={(playing) => {
                     setIsPlaying(playing);

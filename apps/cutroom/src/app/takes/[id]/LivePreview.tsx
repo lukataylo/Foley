@@ -12,12 +12,15 @@ import type {
   CaptionClip,
   Clip,
   EditOverlay,
+  TransitionClip,
   TypedClip,
   VideoClip,
   VoiceClip,
 } from "@/lib/timeline";
 import type { ContinuousNarration } from "@/lib/narration";
+import type { TransitionSpec } from "@/lib/transitions";
 import { TypedText } from "@/components/TypedText";
+import { TransitionSlide } from "@/components/TransitionSlide";
 
 // How early to start decoding the next video clip before the boundary.
 // Eliminates the visible freeze when swapping live-video-active.
@@ -52,6 +55,18 @@ interface Props {
    * audio elements at every boundary — that swap was the audible pause.
    */
   narration?: ContinuousNarration | null;
+  /**
+   * Transition specs (title cards, angled mockups, feature zooms). When a
+   * transition clip on the overlay is in range we look up its spec by id and
+   * mount a TransitionSlide on top of the video stack. Without this map the
+   * overlay clips are inert during playback.
+   */
+  transitions?: TransitionSpec[];
+  /**
+   * step_id → public PNG url so transition screenshot placements resolve. The
+   * editor builds this from the same `tracks` array it uses elsewhere.
+   */
+  framesByStepId?: Record<string, string>;
 }
 
 const TYPED_BG_PRESETS = new Set([
@@ -79,17 +94,19 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
   const masterAudioUrl = p.narration?.audio_url ?? null;
 
   // Partition clips by kind once per overlay.
-  const { videos, voices, typeds, captions, bananas } = useMemo(() => {
+  const { videos, voices, typeds, captions, bananas, transitions } = useMemo(() => {
     const v: VideoClip[] = []; const vo: VoiceClip[] = [];
     const ty: TypedClip[] = []; const ca: CaptionClip[] = []; const ba: BananaClip[] = [];
+    const tr: TransitionClip[] = [];
     for (const c of p.overlay.clips) {
       if (c.kind === "video") v.push(c);
       else if (c.kind === "voice") vo.push(c);
       else if (c.kind === "typed") ty.push(c);
       else if (c.kind === "caption") ca.push(c);
       else if (c.kind === "banana") ba.push(c);
+      else if (c.kind === "transition") tr.push(c);
     }
-    return { videos: v, voices: vo, typeds: ty, captions: ca, bananas: ba };
+    return { videos: v, voices: vo, typeds: ty, captions: ca, bananas: ba, transitions: tr };
   }, [p.overlay]);
 
   // Active video at the playhead — lowest row index wins (front in z-order
@@ -132,6 +149,21 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
   );
   const activeCaption = useMemo(() => captions.find((c) => inRange(c, tMs)) ?? null, [captions, tMs]);
   const activeBanana = useMemo(() => bananas.find((c) => inRange(c, tMs)) ?? null, [bananas, tMs]);
+  // Transitions are full-screen takeovers — when one is in range we render
+  // its TransitionSlide on top of the video stack. The slide's resetKey is
+  // bound to the clip's start_ms so the typed-text animation restarts every
+  // time the clip enters range (instead of carrying state across plays).
+  const activeTransition = useMemo<TransitionClip | null>(
+    () => transitions.find((c) => inRange(c, tMs)) ?? null,
+    [transitions, tMs],
+  );
+  const activeTransitionSpec = useMemo<TransitionSpec | null>(
+    () =>
+      activeTransition && p.transitions
+        ? p.transitions.find((t) => t.id === activeTransition.transition_id) ?? null
+        : null,
+    [activeTransition, p.transitions],
+  );
 
   // Boundary-driven video play/pause. Active clip plays unmuted, others are
   // paused. Re-runs only when activeVideo identity flips or play-state
@@ -380,6 +412,19 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         {videos.length === 0 ? (
           <div className="live-preview-empty">
             No video clips on the timeline. Use <strong>+ Add</strong> to drop one in.
+          </div>
+        ) : null}
+
+        {/* Transition takeover — full-screen card on top of the video stack
+            for the clip's duration. Reset key flips when the clip enters
+            range so the typed-text headline restarts cleanly. */}
+        {activeTransition && activeTransitionSpec ? (
+          <div className="live-transition">
+            <TransitionSlide
+              spec={activeTransitionSpec}
+              framesByStepId={p.framesByStepId ?? {}}
+              resetKey={`${activeTransition.id}-${activeTransition.start_ms}`}
+            />
           </div>
         ) : null}
 

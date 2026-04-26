@@ -17,7 +17,7 @@ interface Props {
 
 type Mode = "menu" | "self" | "youtube";
 
-interface ExportResult { url: string; bytes: number; music_tracks: number; cached?: boolean; }
+interface ExportResult { url: string; bytes: number; music_tracks: number; transitions?: number; cached?: boolean; }
 
 export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "master", className }: Props) {
   const [open, setOpen] = useState(false);
@@ -187,6 +187,9 @@ export function PublishButton({ walkthroughId, displayName, videoUrl, takeId = "
                     {exportResult.cached ? "Served from cache — " : "Rendered fresh — "}
                     {(exportResult.bytes / (1024 * 1024)).toFixed(1)} MB ·
                     {" "}{exportResult.music_tracks} music track{exportResult.music_tracks === 1 ? "" : "s"} mixed
+                    {typeof exportResult.transitions === "number" && exportResult.transitions > 0
+                      ? ` · ${exportResult.transitions} transition${exportResult.transitions === 1 ? "" : "s"} composited`
+                      : ""}
                   </p>
                 ) : null}
               </div>

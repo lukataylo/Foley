@@ -11,6 +11,10 @@ interface Props {
   framesByStepId: Record<string, string>;
   resetKey?: string | number;
   stylizedUrl?: string | null;
+  /** Override the typed-text headline. Remotion's renderer passes a frame-
+   *  deterministic version here because typed.js is wall-clock based and
+   *  freezes during headless render. The default uses the live TypedText. */
+  renderHeadline?: (strings: string[]) => React.ReactNode;
 }
 
 const FONT_FAMILY: Record<string, string> = {
@@ -20,7 +24,7 @@ const FONT_FAMILY: Record<string, string> = {
   display: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", sans-serif',
 };
 
-export function TransitionSlide({ spec, framesByStepId, resetKey, stylizedUrl }: Props) {
+export function TransitionSlide({ spec, framesByStepId, resetKey, stylizedUrl, renderHeadline }: Props) {
   // Stylized PNG from Nano Banana takes over completely.
   if (stylizedUrl ?? spec.stylized_url) {
     return (
@@ -44,9 +48,13 @@ export function TransitionSlide({ spec, framesByStepId, resetKey, stylizedUrl }:
   const sub = isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)";
   const fontFamily = FONT_FAMILY[spec.font];
 
-  const headline = spec.typed ? (
+  const headlineStrings =
+    spec.typed_strings && spec.typed_strings.length ? spec.typed_strings : [spec.text];
+  const headline = renderHeadline ? (
+    renderHeadline(headlineStrings)
+  ) : spec.typed ? (
     <TypedText
-      strings={spec.typed_strings && spec.typed_strings.length ? spec.typed_strings : [spec.text]}
+      strings={headlineStrings}
       typeSpeed={42}
       loop={Boolean(spec.typed_strings && spec.typed_strings.length > 1)}
       resetKey={resetKey}

@@ -3,14 +3,23 @@ import crypto from "crypto";
 import { spawn } from "child_process";
 import { mkdir, readFile, stat, writeFile } from "fs/promises";
 import path from "path";
+import { pathToFileURL } from "url";
 import { NextRequest, NextResponse } from "next/server";
-import { migrateOverlay, type EditOverlay, type MusicClip } from "@/lib/timeline";
+import {
+  migrateOverlay,
+  type EditOverlay,
+  type MusicClip,
+  type TransitionClip,
+} from "@/lib/timeline";
 import { publicPath } from "@/lib/fs";
 import { isValidTakeId, isValidWalkthroughId } from "@/lib/ids";
 import { publicAssetPath } from "@/lib/path-security";
+import type { TransitionSpec } from "@/lib/transitions";
+import { migrateTransition } from "@/lib/transitions";
+import { renderTransition } from "@/lib/remotion-render";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // ffmpeg can take a while
+export const maxDuration = 600; // ffmpeg + Remotion can take a while
 
 const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
@@ -29,6 +38,54 @@ function runFfmpeg(args: string[]): Promise<void> {
       else reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-1500)}`));
     });
   });
+}
+
+interface PreparedTransition {
+  clip: TransitionClip;
+  spec: TransitionSpec;
+  videoPath: string;
+}
+
+/** Render every transition clip on the timeline to its own MP4. Skips clips
+ *  whose spec is missing (e.g. user deleted the spec but kept the clip) and
+ *  surfaces a clear error if a screenshot path can't be resolved. */
+async function prepareTransitions(opts: {
+  walkthroughId: string;
+  overlay: EditOverlay;
+  transitions: TransitionSpec[];
+  cacheDir: string;
+}): Promise<PreparedTransition[]> {
+  const transitionClips = opts.overlay.clips.filter(
+    (c): c is TransitionClip => c.kind === "transition",
+  );
+  if (transitionClips.length === 0) return [];
+
+  const specsById = new Map(opts.transitions.map((t) => [t.id, t]));
+  const out: PreparedTransition[] = [];
+  for (const clip of transitionClips) {
+    const spec = specsById.get(clip.transition_id);
+    if (!spec) continue; // orphaned clip — silently skip rather than fail export
+
+    // Resolve every screenshot path to a file:// URL so headless Chrome can
+    // load it without needing the Next dev server to be reachable.
+    const framesByStepId: Record<string, string> = {};
+    for (const s of spec.screenshots) {
+      const localUrl = publicPath(opts.walkthroughId, "steps", `${s.step_id}.png`);
+      const absPath = publicAssetPath(REPO_ROOT, localUrl);
+      if (!absPath) continue;
+      framesByStepId[s.step_id] = pathToFileURL(absPath).toString();
+    }
+
+    const { outPath } = await renderTransition({
+      spec,
+      framesByStepId,
+      durationMs: clip.duration_ms,
+      repoRoot: REPO_ROOT,
+      cacheDir: opts.cacheDir,
+    });
+    out.push({ clip, spec, videoPath: outPath });
+  }
+  return out;
 }
 
 export async function POST(
@@ -52,8 +109,8 @@ export async function POST(
     return NextResponse.json({ error: `master.mp4 missing at ${takeId}` }, { status: 404 });
   }
 
-  // Load overlay so we can mix in any music clips. If no overlay on disk,
-  // there are no music tracks to mix and the export equals the master.
+  // Load overlay so we can mix in any music clips and render any transition
+  // clips. If no overlay on disk, the export equals the master.
   const overlayPath = path.join(REPO_ROOT, "walkthroughs", params.id, "timeline.json");
   let overlay: EditOverlay | null = null;
   try {
@@ -65,15 +122,64 @@ export async function POST(
   const musicClips: MusicClip[] =
     overlay?.clips.filter((c): c is MusicClip => c.kind === "music" && !!c.asset_url) ?? [];
 
+  // Load transition specs from the take. Older takes don't have this file —
+  // that's fine, just means no title cards to splice. We probe two
+  // locations: the correct per-walkthrough path, and the legacy /v1/ path
+  // that the takes/[id]/transitions PUT route still writes to. Either is a
+  // valid source until that route is fixed.
+  const transitionsPathPrimary = path.join(takeDir, "transitions.json");
+  const transitionsPathLegacy = path.join(
+    REPO_ROOT, "walkthroughs", "v1", "takes", takeId, "transitions.json",
+  );
+  let transitions: TransitionSpec[] = [];
+  for (const p of [transitionsPathPrimary, transitionsPathLegacy]) {
+    try {
+      const raw = await readFile(p, "utf8");
+      const parsed = JSON.parse(raw) as { transitions?: unknown[] };
+      if (Array.isArray(parsed.transitions) && parsed.transitions.length > 0) {
+        transitions = parsed.transitions.map((t) => migrateTransition(t as TransitionSpec));
+        break;
+      }
+    } catch {
+      /* try next */
+    }
+  }
+
   const exportsDir = path.join(REPO_ROOT, "walkthroughs", params.id, "exports");
   await mkdir(exportsDir, { recursive: true });
+  const transitionCacheDir = path.join(exportsDir, "transition-cache");
 
-  // Hash on inputs so identical exports short-circuit.
+  // Render every transition clip up front. We do this before computing the
+  // hash so that the hash includes the resolved transition video bytes — a
+  // spec edit that changes the rendered MP4 should bust the cache too.
+  let prepared: PreparedTransition[] = [];
+  if (overlay) {
+    try {
+      prepared = await prepareTransitions({
+        walkthroughId: params.id,
+        overlay,
+        transitions,
+        cacheDir: transitionCacheDir,
+      });
+    } catch (e) {
+      return NextResponse.json(
+        { error: `transition render failed: ${e instanceof Error ? e.message : String(e)}` },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Hash on inputs so identical exports short-circuit. Including the
+  // transition cache file basenames is enough — they're already content-
+  // hashed by renderTransition().
   const hashInput = JSON.stringify({
     takeId,
     music: musicClips.map((c) => ({
       url: c.asset_url, start: c.start_ms, dur: c.duration_ms, vol: c.volume,
       fi: c.fade_in_ms, fo: c.fade_out_ms,
+    })),
+    transitions: prepared.map((t) => ({
+      file: path.basename(t.videoPath), start: t.clip.start_ms, dur: t.clip.duration_ms,
     })),
   });
   const hash = crypto.createHash("sha256").update(hashInput).digest("hex").slice(0, 12);
@@ -85,21 +191,21 @@ export async function POST(
     return NextResponse.json({
       ok: true, url: publicUrl, bytes: s.size, cached: true,
       music_tracks: musicClips.length,
+      transitions: prepared.length,
     });
   } catch { /* not cached, render */ }
 
-  if (musicClips.length === 0) {
-    // No music to mix — copy the master as the export.
+  // Fast path: no music, no transitions — copy master byte-for-byte.
+  if (musicClips.length === 0 && prepared.length === 0) {
     const buf = await readFile(masterPath);
     await writeFile(outPath, buf);
     return NextResponse.json({
-      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0,
+      ok: true, url: publicUrl, bytes: buf.length, music_tracks: 0, transitions: 0,
     });
   }
 
-  // Build ffmpeg args. Inputs: master + each music asset. Use amix to combine
-  // master audio with the music tracks (each delayed to its start_ms).
-  // The master video stream is copied through; only audio is re-encoded.
+  // Build ffmpeg args. Inputs: master + each music asset + each transition.
+  // Filter complex below assembles the final video and audio streams.
   const inputs: string[] = ["-i", masterPath];
   for (const m of musicClips) {
     const localPath = publicAssetPath(REPO_ROOT, m.asset_url);
@@ -108,16 +214,52 @@ export async function POST(
     }
     inputs.push("-i", localPath);
   }
+  const transitionInputStart = 1 + musicClips.length;
+  for (const t of prepared) {
+    inputs.push("-i", t.videoPath);
+  }
 
-  // Filter complex:
-  // [0:a] master narration (label "narr")
-  // [1:a]..[Na:a] music tracks → adelay → volume → label "m1","m2",...
-  // amix all of them → "mixout"
   const filterParts: string[] = [];
+
+  // ── Video chain ────────────────────────────────────────────────────────
+  // If there are transitions, scale each to master dims and overlay onto
+  // the master video for the clip's time range. Otherwise pass video
+  // through unchanged (and we re-encode it as h264 at the end either way
+  // when the video filter is present).
+  let videoOutLabel = "0:v";
+  if (prepared.length > 0) {
+    // Scale each transition input to master dimensions so an off-spec
+    // resolution doesn't produce letterboxing.
+    prepared.forEach((t, i) => {
+      const inputIdx = transitionInputStart + i;
+      filterParts.push(
+        `[${inputIdx}:v]scale=1920:1080:force_original_aspect_ratio=decrease,` +
+          `pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=PTS-STARTPTS` +
+          `[t${i}]`,
+      );
+    });
+    let runningLabel = "0:v";
+    prepared.forEach((t, i) => {
+      const startS = (t.clip.start_ms / 1000).toFixed(3);
+      const endS = ((t.clip.start_ms + t.clip.duration_ms) / 1000).toFixed(3);
+      const nextLabel = i === prepared.length - 1 ? "vout" : `vmix${i}`;
+      filterParts.push(
+        `[${runningLabel}][t${i}]overlay=enable='between(t,${startS},${endS})':` +
+          `shortest=0:eof_action=pass[${nextLabel}]`,
+      );
+      runningLabel = nextLabel;
+    });
+    videoOutLabel = "vout";
+  }
+
+  // ── Audio chain ────────────────────────────────────────────────────────
+  // [0:a] master narration → label "narr"
+  // [k:a] music tracks (k = 1..N_music) → adelay/volume → labels "m1"…
+  // amix all → "aout"
   filterParts.push(`[0:a]volume=1.0[narr]`);
   const mixLabels = ["narr"];
   musicClips.forEach((c, i) => {
-    const idx = i + 1; // 0 is master
+    const idx = i + 1;
     const delayMs = Math.max(0, c.start_ms);
     const fadeIn = c.fade_in_ms / 1000;
     const fadeOut = c.fade_out_ms / 1000;
@@ -132,16 +274,32 @@ export async function POST(
     filterParts.push(chain);
     mixLabels.push(`m${idx}`);
   });
-  const inputsForMix = mixLabels.map((l) => `[${l}]`).join("");
-  filterParts.push(`${inputsForMix}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,volume=1.5[mixout]`);
+  let audioOutLabel: string;
+  if (mixLabels.length === 1) {
+    // Just narration — no mix required, pass through.
+    audioOutLabel = "narr";
+  } else {
+    const inputsForMix = mixLabels.map((l) => `[${l}]`).join("");
+    filterParts.push(
+      `${inputsForMix}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,` +
+        `volume=1.5[aout]`,
+    );
+    audioOutLabel = "aout";
+  }
+
+  // Encode: re-encode video when there are transitions (filter applied),
+  // copy otherwise (cheaper, identical bytes for the music-only path).
+  const videoCodecArgs = prepared.length > 0
+    ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"]
+    : ["-c:v", "copy"];
 
   try {
     await runFfmpeg([
       ...inputs,
       "-filter_complex", filterParts.join(";"),
-      "-map", "0:v",
-      "-map", "[mixout]",
-      "-c:v", "copy",
+      "-map", `[${videoOutLabel}]`,
+      "-map", `[${audioOutLabel}]`,
+      ...videoCodecArgs,
       "-c:a", "aac",
       "-b:a", "192k",
       "-ar", "44100",
@@ -162,5 +320,6 @@ export async function POST(
     url: publicUrl,
     bytes: s.size,
     music_tracks: musicClips.length,
+    transitions: prepared.length,
   });
 }
