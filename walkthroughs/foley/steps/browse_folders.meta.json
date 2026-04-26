@@ -1,8 +1,8 @@
 {
   "step_id": "browse_folders",
-  "fingerprint": "51bdad28ebf636db",
-  "actual_duration_ms": 2539,
-  "declared_duration_ms": 6500,
+  "fingerprint": "0d132a365d19a00f",
+  "actual_duration_ms": 2561,
+  "declared_duration_ms": 6000,
   "viewport": {
     "width": 1440,
     "height": 900

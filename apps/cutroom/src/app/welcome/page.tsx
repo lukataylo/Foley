@@ -242,14 +242,17 @@ function MaintainIcon() {
 }
 
 function LaptopMockup() {
+  // Plays the recursive demo — Foley demoing Foley. Captured by the same
+  // pipeline judges run when they onboard a project, so the hero on /welcome
+  // is itself proof of the system.
   return (
     <div className="laptop-mockup">
       <div className="laptop-screen">
         <div className="laptop-screen-bezel" />
         <video
           className="laptop-video"
-          src="/walkthroughs/v1/takes/master/master.mp4"
-          poster="/walkthroughs/v1/steps/intro.png"
+          src="/walkthroughs/foley/takes/master/master.mp4"
+          poster="/walkthroughs/foley/steps/intro.png"
           autoPlay
           loop
           muted

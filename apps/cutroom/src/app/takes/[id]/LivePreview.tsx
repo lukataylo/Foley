@@ -135,9 +135,13 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
 
   // Boundary-driven video play/pause. Runs only when the active or next clip
   // changes (or play-state flips), NOT on every tMs tick — so we don't churn
-  // play()/pause() at 60Hz. The active clip is playing+unmuted; the next clip
-  // is also playing but muted+hidden once shouldWarmNext flips, so the cut at
-  // the boundary swaps the .live-video-active class with no decode latency.
+  // play()/pause() at 60Hz.
+  //
+  // Pre-roll trick: the next clip starts buffering (paused, seeked to 0)
+  // a moment before the boundary so the decoder is warm. We *don't* let it
+  // play during pre-roll — playing-while-muted advances currentTime past 0
+  // and produces a perceptible "skip" of WARMUP_MS at every boundary when
+  // it gets promoted to active.
   useEffect(() => {
     for (const v of videos) {
       const el = videoRefs.current[v.id];
@@ -148,19 +152,36 @@ export const LivePreview = forwardRef<LivePreviewHandle, Props>(function LivePre
         if (p.isPlaying && el.paused) void el.play().catch(() => {});
         if (!p.isPlaying && !el.paused) el.pause();
       } else if (isNext) {
-        // Pre-roll: seek to 0 once and start playing muted so the decoder
-        // is hot when the playhead reaches the boundary.
+        // Pre-roll: seek to 0 if needed but keep paused so currentTime
+        // doesn't drift forward before the swap.
         if (el.currentTime > 0.05) el.currentTime = 0;
-        if (el.paused) void el.play().catch(() => {});
+        if (!el.paused) el.pause();
       } else if (!el.paused) {
         el.pause();
       }
     }
   }, [videos, activeVideo, nextVideo, shouldWarmNext, p.isPlaying]);
 
-  // Drift-correction for the active video — runs on every tMs but only seeks
-  // when out of sync by more than 300ms. Decoupled from the boundary effect
-  // above so element swaps aren't re-evaluated dozens of times per second.
+  // Hard re-sync the active video the moment its identity changes (boundary
+  // crossing). Drift-correction's 0.3s threshold is fine for steady-state
+  // but lets the new active clip start anywhere from 0 to ~0.3s, which the
+  // user perceives as a skip. Force-seek to the correct local position
+  // exactly once per swap.
+  const activeVideoIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const newId = activeVideo?.id ?? null;
+    if (newId === activeVideoIdRef.current) return;
+    activeVideoIdRef.current = newId;
+    if (!activeVideo) return;
+    const el = videoRefs.current[activeVideo.id];
+    if (!el) return;
+    const localPos = Math.max(0, (tMs - activeVideo.start_ms) / 1000);
+    el.currentTime = localPos;
+  }, [activeVideo, tMs]);
+
+  // Drift-correction for the active video — runs on every tMs tick but only
+  // seeks when the gap exceeds 300ms. Boundary swaps are handled above; this
+  // effect only catches sustained drift within a single clip.
   useEffect(() => {
     if (!activeVideo) return;
     const el = videoRefs.current[activeVideo.id];

@@ -1,8 +1,8 @@
 {
-  "step_id": "review_steps",
-  "fingerprint": "4986226fcef0550e",
-  "actual_duration_ms": 2575,
-  "declared_duration_ms": 6500,
+  "step_id": "approve_take",
+  "fingerprint": "cef8f977980abafb",
+  "actual_duration_ms": 3057,
+  "declared_duration_ms": 7000,
   "viewport": {
     "width": 1440,
     "height": 900
@@ -14,7 +14,7 @@
     },
     {
       "kind": "wait",
-      "ms": 2500
+      "ms": 3000
     }
   ]
 }

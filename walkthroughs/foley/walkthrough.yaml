@@ -8,78 +8,65 @@ brand_ref: brand.yaml
 steps:
 - id: intro
   title: Welcome to Cutroom
-  narration: This is Foley's Cutroom, the home base where your team reviews auto-generated product walkthrough
-    videos.
+  narration: This is Foley's Cutroom, where auto-generated product walkthrough videos land for review.
   actions:
   - kind: goto
     url: /
   - kind: wait
     ms: 3500
-  duration_ms: 5500
+  duration_ms: 5000
   viewport:
     width: 1440
     height: 900
 - id: browse_folders
-  title: Browse walkthrough folders
-  narration: Each folder card represents one walkthrough. You can see the step count, number of takes,
-    and who last touched it.
+  title: Project folders
+  narration: Every connected repo gets its own folder, showing step counts, takes, and who last touched
+    it.
   actions:
   - kind: scroll
     ms: 400
   - kind: wait
     ms: 2500
-  duration_ms: 6500
+  duration_ms: 6000
   viewport:
     width: 1440
     height: 900
 - id: open_walkthrough
   title: Open a walkthrough
-  narration: Opening the Foley walkthrough brings up all five steps, each captured automatically from
-    an incoming pull request.
+  narration: Opening the Foley project reveals the full walkthrough Foley built automatically from pull
+    request activity.
   actions:
   - kind: goto
     url: /walkthroughs/foley
   - kind: wait
-    ms: 3000
+    ms: 2800
   duration_ms: 6000
   viewport:
     width: 1440
     height: 900
 - id: review_steps
-  title: Review steps and clips
-  narration: Scroll down to see each step's narration text, clip preview, and timing sitting side by side.
+  title: Review the steps
+  narration: Each step is a short clip with narration Foley generated to match the code change in that
+    PR.
   actions:
   - kind: scroll
-    ms: 600
+    ms: 500
   - kind: wait
     ms: 2500
-  duration_ms: 5500
+  duration_ms: 6500
   viewport:
     width: 1440
     height: 900
-- id: inspect_take
-  title: Inspect a take
-  narration: Each take shows the recorded clip alongside its step title and narration, ready for your
-    team to approve or re-generate.
+- id: approve_take
+  title: Approve and ship
+  narration: Once you approve a take, Foley stitches the clips into a finished video and keeps it current
+    with every new PR.
   actions:
   - kind: scroll
     ms: 500
   - kind: wait
     ms: 3000
-  duration_ms: 6500
-  viewport:
-    width: 1440
-    height: 900
-- id: publish_flow
-  title: Approve and publish
-  narration: Once the take looks right, approving it here lets Foley publish the updated video and keep
-    your docs current automatically.
-  actions:
-  - kind: scroll
-    ms: 500
-  - kind: wait
-    ms: 3000
-  duration_ms: 6500
+  duration_ms: 7000
   viewport:
     width: 1440
     height: 900

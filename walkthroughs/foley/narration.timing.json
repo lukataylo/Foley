@@ -2,38 +2,33 @@
   "version": 1,
   "voice_id": "XB0fDUnXU5powFXDhCwa",
   "model_id": "eleven_turbo_v2_5",
-  "duration_ms": 42864,
-  "script": "This is Foley's Cutroom, the home base where your team reviews auto-generated product walkthrough videos. Each folder card represents one walkthrough. You can see the step count, number of takes, and who last touched it. Opening the Foley walkthrough brings up all five steps, each captured automatically from an incoming pull request. Scroll down to see each step's narration text, clip preview, and timing sitting side by side. Each take shows the recorded clip alongside its step title and narration, ready for your team to approve or re-generate. Once the take looks right, approving it here lets Foley publish the updated video and keep your docs current automatically.",
+  "duration_ms": 31347,
+  "script": "This is Foley's Cutroom, where auto-generated product walkthrough videos land for review. Every connected repo gets its own folder, showing step counts, takes, and who last touched it. Opening the Foley project reveals the full walkthrough Foley built automatically from pull request activity. Each step is a short clip with narration Foley generated to match the code change in that PR. Once you approve a take, Foley stitches the clips into a finished video and keeps it current with every new PR.",
   "steps": [
     {
       "step_id": "intro",
       "start_ms": 0,
-      "end_ms": 6026
+      "end_ms": 4899
     },
     {
       "step_id": "browse_folders",
-      "start_ms": 6467,
-      "end_ms": 13247
+      "start_ms": 5341,
+      "end_ms": 11390
     },
     {
       "step_id": "open_walkthrough",
-      "start_ms": 13851,
-      "end_ms": 20596
+      "start_ms": 11993,
+      "end_ms": 18054
     },
     {
       "step_id": "review_steps",
-      "start_ms": 21037,
-      "end_ms": 27271
+      "start_ms": 18565,
+      "end_ms": 23998
     },
     {
-      "step_id": "inspect_take",
-      "start_ms": 27654,
-      "end_ms": 34760
-    },
-    {
-      "step_id": "publish_flow",
-      "start_ms": 35143,
-      "end_ms": 42863
+      "step_id": "approve_take",
+      "start_ms": 24509,
+      "end_ms": 31347
     }
   ]
 }

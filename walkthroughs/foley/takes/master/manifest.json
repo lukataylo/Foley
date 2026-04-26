@@ -2,54 +2,46 @@
   "walkthrough_id": "foley",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "10991797b2369120033365c2b379f17b8bf80600d871e3433499dbac126593f1",
+  "master_sha256": "409d7ace054cdaabf3148488f8f74c4a91bd1bab1adc3ed50254d960b35d4034",
   "segments": [
     {
       "step_id": "intro",
-      "fingerprint": "aa8d0cd95618615a",
+      "fingerprint": "7d8d64952c51e264",
       "segment_path": "segments/intro.mp4",
-      "segment_sha256": "593b8824652ef1d00e2137015c9458b61d3e2dad6d62c8d74f965f754eb4a61c",
-      "duration_ms": 5500,
+      "segment_sha256": "1513104d2ac894bb6ef13ff7b039e20457aa88c87b12438f33da7d9f83af5f71",
+      "duration_ms": 5000,
       "source": "rebuilt"
     },
     {
       "step_id": "browse_folders",
-      "fingerprint": "51bdad28ebf636db",
+      "fingerprint": "0d132a365d19a00f",
       "segment_path": "segments/browse_folders.mp4",
-      "segment_sha256": "aca23f9ebf3a09ac8004287571828c3cffe92a1d2e3900781122465b048dd0f6",
-      "duration_ms": 6500,
+      "segment_sha256": "c3c3c1903445c8f54cbac398691e7f66e7007692655842fbb4d29fc20b90f14b",
+      "duration_ms": 6000,
       "source": "rebuilt"
     },
     {
       "step_id": "open_walkthrough",
-      "fingerprint": "8d34c7372c012e49",
+      "fingerprint": "b981001054d2f415",
       "segment_path": "segments/open_walkthrough.mp4",
-      "segment_sha256": "e218808a3d2fbba6386125ad1eee8469eb0e00ae6d29593205c4771424aab638",
+      "segment_sha256": "3654b76410fcf4a1aebbc2bd61e90c96bfb4a550ff87a4df2a93a2a55dd539ab",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
     {
       "step_id": "review_steps",
-      "fingerprint": "ecb06805d32d9131",
+      "fingerprint": "4986226fcef0550e",
       "segment_path": "segments/review_steps.mp4",
-      "segment_sha256": "1bc94d99f6f941ec369b2b4e01e9634584e97dc49263cbf7ba83e0e25dcc4f60",
-      "duration_ms": 5500,
-      "source": "rebuilt"
-    },
-    {
-      "step_id": "inspect_take",
-      "fingerprint": "9143996e7ef10c40",
-      "segment_path": "segments/inspect_take.mp4",
-      "segment_sha256": "ba80aa2876e3260f87cfa72a443a5f4a92216b2658bfd1508484362677220114",
+      "segment_sha256": "923530b0c11932c20196b03ca61e1be25d22d7bb29c215e6b5833f1ce2b2ebb0",
       "duration_ms": 6500,
       "source": "rebuilt"
     },
     {
-      "step_id": "publish_flow",
-      "fingerprint": "755451df4aaef9cf",
-      "segment_path": "segments/publish_flow.mp4",
-      "segment_sha256": "b6c091760dd5f145d22da44e26fa01fbaa55049699b512db1cd0464ef3d5d317",
-      "duration_ms": 6500,
+      "step_id": "approve_take",
+      "fingerprint": "cef8f977980abafb",
+      "segment_path": "segments/approve_take.mp4",
+      "segment_sha256": "b6cf5d4b3d70fd15ab6bd37ad1b38dcb40188bafe81e759b07463977b0bc3113",
+      "duration_ms": 7000,
       "source": "rebuilt"
     }
   ]
