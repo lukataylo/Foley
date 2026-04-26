@@ -1,0 +1,20 @@
+{
+  "step_id": "connect_github",
+  "fingerprint": "00eee5979c81acec",
+  "actual_duration_ms": 7178,
+  "declared_duration_ms": 6500,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "actions": [
+    {
+      "kind": "goto",
+      "url": "/onboard"
+    },
+    {
+      "kind": "wait",
+      "ms": 6000
+    }
+  ]
+}

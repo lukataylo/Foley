@@ -1,7 +1,7 @@
 {
-  "step_id": "open_walkthrough",
-  "fingerprint": "7f16c510bdde424d",
-  "actual_duration_ms": 8517,
+  "step_id": "welcome",
+  "fingerprint": "925bec86799d2e7a",
+  "actual_duration_ms": 7567,
   "declared_duration_ms": 6000,
   "viewport": {
     "width": 1440,
@@ -10,7 +10,7 @@
   "actions": [
     {
       "kind": "goto",
-      "url": "/walkthroughs/v1"
+      "url": "/welcome"
     },
     {
       "kind": "wait",

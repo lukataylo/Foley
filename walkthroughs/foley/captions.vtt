@@ -1,16 +1,16 @@
 WEBVTT
 
-step-1-intro
-00:00:00.000 --> 00:00:05.968
-Foley home
-This is Foley — every connected repo gets a folder showing its steps, takes, and last activity.
+step-1-welcome
+00:00:00.000 --> 00:00:08.440
+Welcome to Foley
+Foley turns a GitHub repo into a maintained product walkthrough video — narrated, captioned, and re-rendered on every pull request.
 
-step-2-open_walkthrough
-00:00:06.351 --> 00:00:12.597
-Open a walkthrough
-Click into any walkthrough to see the master video, the takes Foley pulled from PRs, and the brand controls.
+step-2-connect_github
+00:00:08.824 --> 00:00:15.000
+Connect a GitHub repo
+Connect a GitHub repository — Foley reads its landing page and asks Claude to draft the first walkthrough.
 
 step-3-open_editor
-00:00:13.038 --> 00:00:18.762
+00:00:15.325 --> 00:00:22.662
 Edit and render
-Jump into the editor to draft new steps, retake any clip, and render a fresh master video.
+Open the editor to draft new steps, retake any clip, and render a fresh master video — ready to publish.

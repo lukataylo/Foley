@@ -5,17 +5,17 @@
   "pr_number": null,
   "pr_title": null,
   "director_note": null,
-  "created_at": "2026-04-26T05:53:48.166668Z",
+  "created_at": "2026-04-26T06:08:22.128917Z",
   "status": "approved",
   "step_diffs": [
     {
-      "step_id": "intro",
+      "step_id": "welcome",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null
     },
     {
-      "step_id": "open_walkthrough",
+      "step_id": "connect_github",
       "status": "unchanged",
       "reason": "initial master",
       "proposed_step": null

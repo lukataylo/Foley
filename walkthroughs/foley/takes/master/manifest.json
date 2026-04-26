@@ -2,30 +2,30 @@
   "walkthrough_id": "foley",
   "take_id": "master",
   "master_path": "master.mp4",
-  "master_sha256": "23c91b8d236359a6e68fd8376c05d8dfa60e578952b25c0cf4f8abc5e7590268",
+  "master_sha256": "d3dd7acd632add1bc8ccd253f1df894b35a0f24e6f806fc811a5c87f8fddb2db",
   "segments": [
     {
-      "step_id": "intro",
-      "fingerprint": "0f71098008792ee9",
-      "segment_path": "segments/intro.mp4",
-      "segment_sha256": "850ca2a221d50ac1e9f5a918134ddd41840d61f6e4c62e29c819da1abd645b79",
-      "duration_ms": 5000,
-      "source": "rebuilt"
-    },
-    {
-      "step_id": "open_walkthrough",
-      "fingerprint": "7f16c510bdde424d",
-      "segment_path": "segments/open_walkthrough.mp4",
-      "segment_sha256": "f62468d9d9d9bd9cf561a0f6d6d1469c418667a651ed53ad06939106b21e37cf",
+      "step_id": "welcome",
+      "fingerprint": "925bec86799d2e7a",
+      "segment_path": "segments/welcome.mp4",
+      "segment_sha256": "b777a1c508caf2312fe767f44a70247c6d62c28a242c978e66c02e0629401337",
       "duration_ms": 6000,
       "source": "rebuilt"
     },
     {
+      "step_id": "connect_github",
+      "fingerprint": "00eee5979c81acec",
+      "segment_path": "segments/connect_github.mp4",
+      "segment_sha256": "cc1fd6f420713dd465b4eaf198dec1ae7c4f3455d2e59587699462f3ae5437ef",
+      "duration_ms": 6500,
+      "source": "rebuilt"
+    },
+    {
       "step_id": "open_editor",
-      "fingerprint": "47fff3b3d2ace965",
+      "fingerprint": "4b1f2d76cdc29fa1",
       "segment_path": "segments/open_editor.mp4",
-      "segment_sha256": "38b5e990d70c9836cfb37304c788122695717873216722228a05d4f1f4c28df7",
-      "duration_ms": 8000,
+      "segment_sha256": "5b2a4f641eab8c038c4436e801ff2310b370634eb61ebda65e92d81e206b9b7b",
+      "duration_ms": 7500,
       "source": "rebuilt"
     }
   ]

@@ -6,39 +6,39 @@ target_app:
   dev_url: http://localhost:3000
 brand_ref: brand.yaml
 steps:
-- id: intro
-  title: Foley home
-  narration: This is Foley — every connected repo gets a folder showing its steps, takes, and last activity.
+- id: welcome
+  title: Welcome to Foley
+  narration: Foley turns a GitHub repo into a maintained product walkthrough video — narrated, captioned, and re-rendered on every pull request.
   actions:
   - kind: goto
-    url: /
-  - kind: wait
-    ms: 4500
-  duration_ms: 5000
-  viewport:
-    width: 1440
-    height: 900
-- id: open_walkthrough
-  title: Open a walkthrough
-  narration: Click into any walkthrough to see the master video, the takes Foley pulled from PRs, and the brand controls.
-  actions:
-  - kind: goto
-    url: /walkthroughs/v1
+    url: /welcome
   - kind: wait
     ms: 5500
   duration_ms: 6000
   viewport:
     width: 1440
     height: 900
+- id: connect_github
+  title: Connect a GitHub repo
+  narration: Connect a GitHub repository — Foley reads its landing page and asks Claude to draft the first walkthrough.
+  actions:
+  - kind: goto
+    url: /onboard
+  - kind: wait
+    ms: 6000
+  duration_ms: 6500
+  viewport:
+    width: 1440
+    height: 900
 - id: open_editor
   title: Edit and render
-  narration: Jump into the editor to draft new steps, retake any clip, and render a fresh master video.
+  narration: Open the editor to draft new steps, retake any clip, and render a fresh master video — ready to publish.
   actions:
   - kind: goto
     url: /walkthroughs/v1/edit
   - kind: wait
-    ms: 7500
-  duration_ms: 8000
+    ms: 7000
+  duration_ms: 7500
   viewport:
     width: 1440
     height: 900
